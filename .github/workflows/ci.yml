@@ -1,0 +1,59 @@
+# PR pipeline (TECH-SPEC §4.10): lint -> test (-race, coverage gate) ->
+# licence scan -> fuzz 10s per target -> govulncheck -> build -> benchmarks
+# published. Every stage runs through the same Makefile target a developer
+# runs locally (TECH-SPEC §5.1) so this workflow never drifts from `make ci`.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: lint, test, licence, fuzz, govulncheck, build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Lint
+        run: make lint
+
+      - name: Test (-race, -covermode=atomic) and coverage gate
+        run: make cover
+
+      - name: Licence scan
+        run: make license
+
+      - name: Fuzz (10s per target)
+        run: make fuzz
+
+      - name: govulncheck
+        run: make govulncheck
+
+      - name: Build
+        run: make build
+
+      - name: Benchmarks
+        run: make benchstat-report
+
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchstat
+          path: benchstat.txt
+          if-no-files-found: error

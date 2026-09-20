@@ -12,6 +12,12 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GOLANGCI_LINT_VERSION ?= v2.13.2
 GOVULNCHECK_VERSION   ?= latest
 BENCHSTAT_VERSION     ?= latest
+GO_LICENSES_VERSION   ?= latest
+
+# Permissive-only licence policy (TECH-SPEC §1.0): fails on any dependency
+# classified forbidden (e.g. AGPL, SSPL), restricted or reciprocal (e.g.
+# GPL, LGPL), or unrecognised.
+DISALLOWED_LICENSE_TYPES ?= forbidden,restricted,reciprocal,unknown
 
 # Size guard (TECH-SPEC S6) and fuzz budget per PR (TECH-SPEC T4).
 MAX_FILE_LINES ?= 400
@@ -34,9 +40,10 @@ EXE           := $(if $(filter Windows_NT,$(OS)),.exe,)
 GOLANGCI_LINT := $(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 GOVULNCHECK   := $(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 BENCHSTAT     := $(GO) run golang.org/x/perf/cmd/benchstat@$(BENCHSTAT_VERSION)
+GO_LICENSES   := $(GO) run github.com/google/go-licenses@$(GO_LICENSES_VERSION)
 
-.PHONY: all help tools lint lint-golangci lint-filelen lint-negative test cover fuzz bench \
-        govulncheck build image openapi acceptance report ci clean
+.PHONY: all help tools lint lint-golangci lint-filelen lint-negative test cover license fuzz bench \
+        benchstat-report govulncheck build image openapi acceptance report ci clean
 
 all: build
 
@@ -49,6 +56,7 @@ tools: ## pre-build the pinned dev tools into the Go build cache
 	$(GOLANGCI_LINT) version
 	$(GOVULNCHECK) -version
 	$(BENCHSTAT) -h >/dev/null 2>&1 || true
+	$(GO_LICENSES) version >/dev/null 2>&1 || true
 
 # ---------------------------------------------------------------- lint
 
@@ -93,6 +101,9 @@ cover: test ## enforce TECH-SPEC T1: >= $(COVER_MIN)% overall, 100% on gates and
 	  fi; \
 	done
 
+license: ## TECH-SPEC §1.0: permissive-only licence scan (blocks GPL/LGPL/AGPL/SSPL)
+	$(GO_LICENSES) check ./... --disallowed_types=$(DISALLOWED_LICENSE_TYPES)
+
 fuzz: ## run every Fuzz* target for $(FUZZ_TIME) (TECH-SPEC §4.6)
 	@for f in $$(grep -rls --include='*_test.go' '^func Fuzz' ./internal ./cmd ./tools 2>/dev/null); do \
 	  pkg=./$$(dirname $$f); \
@@ -104,6 +115,9 @@ fuzz: ## run every Fuzz* target for $(FUZZ_TIME) (TECH-SPEC §4.6)
 
 bench: ## run benchmarks; output in bench.txt for benchstat (TECH-SPEC §4.7, T3)
 	$(GO) test -run='^$$' -bench=. -benchmem ./... | tee bench.txt
+
+benchstat-report: bench ## format bench.txt into benchstat.txt, published as a PR artifact (TECH-SPEC §4.7, §4.10)
+	$(BENCHSTAT) bench.txt | tee benchstat.txt
 
 govulncheck: ## TECH-SPEC §1.3 CVE policy
 	$(GOVULNCHECK) ./...
@@ -130,7 +144,7 @@ report: ## render docs/acceptance/<version>-<date>.md from acceptance.json (Phas
 
 # ---------------------------------------------------------------- CI
 
-ci: lint cover fuzz govulncheck build ## everything the PR pipeline runs (TECH-SPEC §4.10)
+ci: lint license cover fuzz govulncheck build ## everything the PR pipeline runs (TECH-SPEC §4.10)
 
 clean:
-	rm -rf bin/ coverage.out bench.txt acceptance.json
+	rm -rf bin/ coverage.out bench.txt benchstat.txt acceptance.json

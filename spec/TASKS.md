@@ -210,12 +210,12 @@
   - `go vet -tags acceptance ./test/...` exit 0 in CI (harness compiles without a cluster) — TECH §4.8
 
 ### Task 1.12: Continuous integration (PR pipeline)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §1.0 (CVE and licence policy), §1.3 (continuous policy), §4.10 (CI stages), T1, T3, T4, §5.1 (`ci.yml`)
 - **Subtasks:**
-  - [ ] 1.12.1 `.github/workflows/ci.yml`: lint → `go test -race -covermode=atomic ./...` → coverage gate (90 % overall on the T1 package list; 100 % on `service/gates`, `api/errors`; `franz`, `app`, `cmd` excluded) → fuzz 10 s per target → `govulncheck` → build → `benchstat` artifact — TECH §4.10, T1
-  - [ ] 1.12.2 Licence scan step (permissive-only allow-list) failing on GPL/LGPL/AGPL/SSPL in the module graph — TECH §1.0
-  - [ ] 1.12.3 `Makefile` targets mirror every CI stage so they run identically locally — TECH §5.1
+  - [x] 1.12.1 `.github/workflows/ci.yml`: lint → `go test -race -covermode=atomic ./...` → coverage gate (90 % overall on the T1 package list; 100 % on `service/gates`, `api/errors`; `franz`, `app`, `cmd` excluded) → fuzz 10 s per target → `govulncheck` → build → `benchstat` artifact — TECH §4.10, T1
+  - [x] 1.12.2 Licence scan step (permissive-only allow-list) failing on GPL/LGPL/AGPL/SSPL in the module graph — TECH §1.0
+  - [x] 1.12.3 `Makefile` targets mirror every CI stage so they run identically locally — TECH §5.1
 - **Tests (Definition of Done):**
   - `ci.yml` green on a clean PR; every stage listed in TECH §4.10 appears as a named job step — TECH §4.10
   - Negative PR (temporary): coverage forced below 90 % → the coverage step fails; a GPL-licensed module added → the licence step fails — TECH T1, §1.0
