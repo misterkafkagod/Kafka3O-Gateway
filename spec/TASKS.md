@@ -122,16 +122,16 @@
   - `TestFake_Race` (concurrent seeds and calls under `-race`) — TECH §4.3
 
 ### Task 1.7: Service core and gates
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §9.1 (upper half: auth → tier → F2 → F3 → F6 → break-glass), F1–F3, F6, D5, O7, O9; TECH §2.0 P1, §2.3 (gate check as one function, `run[T]`), O1, T1 (100 % on gates)
 - **Subtasks:**
-  - [ ] 1.7.1 `internal/service/core/caller.go`: `Caller{KeyID *string, Tier, BreakGlassReason string, RequestID, ClientIP, Client}` — FUNC §8.5; TECH P1
-  - [ ] 1.7.2 `policy.go`: `Policy{AuthEnabled, ReadOnly, DataPlaneLock, Disabled map[ID]bool}` from config — FUNC §8.2 switches
-  - [ ] 1.7.3 `errors.go`: `PolicyError{Code}` with codes `TierForbidden`, `ReadOnlyMode`, `OperationDisabled`, `DataPlaneLocked`, `ConfirmationMismatch`, `BoundExceeded`, `Validation` — FUNC §8.4
-  - [ ] 1.7.4 `run.go`: generic `run[T](ctx, caller, descriptor, fn)` calling `gates.Check` first — TECH §2.3
-  - [ ] 1.7.5 `internal/service/gates/check.go`: `Check(caller, descriptor, policy) error` implementing FUNC §9.1 nodes F–K3 exactly, break-glass bypasses F6 only, sets `HIGH` flag — FUNC §9.1 (+ C1), §9.5
-  - [ ] 1.7.6 `check_test.go`: full matrix (tier × access × F2 × F3 × F6 × header) — 100 % coverage — TECH T1, §4.5 O7/O9
-  - [ ] 1.7.7 `BenchmarkGatesCheck` in `check_test.go` (Step 11 G1) — TECH §4.7
+  - [x] 1.7.1 `internal/service/core/caller.go`: `Caller{KeyID *string, Tier, BreakGlassReason string, RequestID, ClientIP, Client}` — FUNC §8.5; TECH P1
+  - [x] 1.7.2 `policy.go`: `Policy{AuthEnabled, ReadOnly, DataPlaneLock, Disabled map[ID]bool}` from config — FUNC §8.2 switches
+  - [x] 1.7.3 `errors.go`: `PolicyError{Code}` with codes `TierForbidden`, `ReadOnlyMode`, `OperationDisabled`, `DataPlaneLocked`, `ConfirmationMismatch`, `BoundExceeded`, `Validation` — FUNC §8.4
+  - [x] 1.7.4 `run.go`: generic `run[T](ctx, caller, descriptor, fn)` calling `gates.Check` first — TECH §2.3
+  - [x] 1.7.5 `internal/service/gates/check.go`: `Check(caller, descriptor, policy) error` implementing FUNC §9.1 nodes F–K3 exactly, break-glass bypasses F6 only, sets `HIGH` flag — FUNC §9.1 (+ C1), §9.5
+  - [x] 1.7.6 `check_test.go`: full matrix (tier × access × F2 × F3 × F6 × header) — 100 % coverage — TECH T1, §4.5 O7/O9
+  - [x] 1.7.7 `BenchmarkGatesCheck` in `check_test.go` (Step 11 G1) — TECH §4.7
 - **Tests (Definition of Done):**
   - `TestGatesCheck_Matrix` (table: tier {reader, operator, auth-off} × access {R, W} × readOnly × disabled × lock × header → expected code or nil; every FUNC §9.1 exit F–K3 hit) — VC O7, O9
   - `TestGatesCheck_BreakGlassBypassesF6Only` (header present + readOnly → `ReadOnlyMode`) — FUNC §9.1 rules (C1)
