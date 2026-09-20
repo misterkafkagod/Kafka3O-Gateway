@@ -68,11 +68,11 @@
   - `TestExampleConfig_LoadsAndListsEveryKey` (`configs/config.example.yaml` parses; every `Config` field present) — TECH §5.1
 
 ### Task 1.3: Command table
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §5.1–§5.3 (41 commands), §5.4–§5.6 (access, destructive, data-plane); TECH §2.3 (declarative command table), O1 (gates key off descriptor fields)
 - **Subtasks:**
-  - [ ] 1.3.1 `internal/command/table.go`: `Descriptor{ID, Name, Access R|W, Destructive, DataPlane}` × 41 (destructive set = FUNC §5.6; data-plane = M1–M8) — FUNC §5.5–§5.6
-  - [ ] 1.3.2 `table_test.go`: 41 entries, unique ids, `Destructive ⇒ Access == W`, data-plane set == {M1…M8} — TECH O1
+  - [x] 1.3.1 `internal/command/table.go`: `Descriptor{ID, Name, Access R|W, Destructive, DataPlane}` × 41 (destructive set = FUNC §5.6; data-plane = M1–M8) — FUNC §5.5–§5.6
+  - [x] 1.3.2 `table_test.go`: 41 entries, unique ids, `Destructive ⇒ Access == W`, data-plane set == {M1…M8} — TECH O1
 - **Tests (Definition of Done):**
   - `TestTable_Has41UniqueIDs` — FUNC §5
   - `TestTable_DestructiveSetMatchesSpec` (exactly T7, T8, T9, T10, T11, T12, G4, G5, G6, G7, M8, C5, C9, C12, S1, S2) — FUNC §5.6
