@@ -70,6 +70,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("app: listen on %s: %w", cfg.HTTP.Addr, err)
 	}
+	logger.Info("listening on " + cfg.HTTP.Addr)
 
 	// The shutdown grace period is the same "bounded request + headroom"
 	// value already derived onto WriteTimeout (TECH-SPEC §5.4, C6): no

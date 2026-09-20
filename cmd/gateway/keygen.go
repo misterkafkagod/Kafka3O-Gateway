@@ -30,7 +30,7 @@ func runKeygen(args []string) int {
 		return 1
 	}
 
-	fmt.Printf("tier:   %s\nkey:    %s\nsha256: %s\n", *tier, key, digest)
+	fmt.Printf("tier=%s\nkey=%s\nsha256=%s\n", *tier, key, digest)
 	return 0
 }
 
