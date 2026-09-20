@@ -1,0 +1,235 @@
+{
+  "components": {
+    "schemas": {
+      "Body": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "kafkaError": {
+            "$ref": "#/components/schemas/KafkaErrorInfo"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "status",
+          "requestId"
+        ],
+        "type": "object"
+      },
+      "Envelope": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/Envelope.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Body"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "KafkaErrorInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "type": "object"
+      },
+      "LiveBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/LiveBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "ReadyAudit": {
+        "additionalProperties": false,
+        "properties": {
+          "healthy": {
+            "type": "boolean"
+          },
+          "sink": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sink",
+          "healthy"
+        ],
+        "type": "object"
+      },
+      "ReadyBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ReadyBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/ReadyAudit"
+          },
+          "cluster": {
+            "$ref": "#/components/schemas/ReadyCluster"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "cluster",
+          "audit"
+        ],
+        "type": "object"
+      },
+      "ReadyCluster": {
+        "additionalProperties": false,
+        "properties": {
+          "brokersSeen": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "latencyMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reachable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reachable",
+          "brokersSeen",
+          "latencyMs"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Kafka Application Gateway",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/health/live": {
+      "get": {
+        "operationId": "health-live",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "Health"
+        ],
+        "x-command-id": "C3"
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "operationId": "health-ready",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "Health"
+        ],
+        "x-command-id": "C3"
+      }
+    }
+  }
+}

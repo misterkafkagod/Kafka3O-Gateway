@@ -141,20 +141,20 @@
   - `BenchmarkGatesCheck` runs under `make bench` and reports `allocs/op` — TECH §4.7 (Step 11 G1)
 
 ### Task 1.8: HTTP layer — Huma, middleware, error tables, health, bijection test
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.2 (conventions), §8.3 (envelopes), §8.4 (taxonomy), §8.7 C3, O1, O5, O6, X1–X5; TECH §1.1 (Huma v2.39.1), O4, O5, §6.1 B2/B3/B6, §6.3 C2, C13, §6.2 (C3 routes)
 - **Subtasks:**
-  - [ ] 1.8.1 `internal/api/api.go`: `New(deps) http.Handler` — Huma on `net/http` mux, base `/v1`, `/openapi.json`, `/docs` (config toggle), middleware chain order: request-id → api-key → CORS → otelhttp — TECH §1.1, §6.2
-  - [ ] 1.8.2 `middleware/requestid.go`: echo if `^[A-Za-z0-9._-]{1,128}$` else generate; set on response and context — FUNC X4, §8.2 (C2)
-  - [ ] 1.8.3 `middleware/apikey.go`: SHA-256 of presented key, `crypto/subtle` compare against configured digests, builds `core.Caller`; auth disabled → operator with nil key id; **no exempt routes** — FUNC §8.2 (B3); TECH §1.1 security primitives, §6.1 B4
-  - [ ] 1.8.4 `middleware/clientip.go`: trusted-proxy CIDRs → right-most untrusted `X-Forwarded-For`, else peer — TECH §6.1 B6
-  - [ ] 1.8.5 `middleware/cors.go`: origins from config; allow `X-Api-Key`, `X-Break-Glass-Reason`, `X-Request-Id`, `Content-Type`; expose `X-Request-Id`; no wildcard with auth — FUNC X5; TECH C13
-  - [ ] 1.8.6 `errors/tables.go` + `envelope.go`: `map[kafka.Kind]httpMapping`, `map[core.Code]httpMapping` → FUNC §8.4 rows; Huma error model replaced by `{ error: { code, message, status, requestId, kafkaError?, details? } }` with `application/json`; Huma validation errors → `VALIDATION_FAILED` with `details.fields[]` — FUNC §8.3, §8.4; TECH O4
-  - [ ] 1.8.7 `errors/tables_test.go`: iterate every `Kind` and `Code`, fail on a missing row — 100 % coverage — TECH O4, T1
-  - [ ] 1.8.8 `health/live.go`, `health/ready.go`: `/health/live` → `{status}`; `/health/ready` → `{status, cluster:{reachable, brokersSeen, latencyMs}, audit:{sink, healthy}}`, 503 when cluster DOWN (audit does not gate) — FUNC §8.7 C3, O6; TECH §6.1 B5
-  - [ ] 1.8.9 `x-command-id` operation extension helper; `openapi_test.go`: (a) every operation carries exactly one id present in `command.Table`; (b) every table id not in `pending` has ≥ 1 operation; (c) `pending` lists all ids except C3 — shrinks each phase; golden `testdata/openapi.golden.json` with `-update` — FUNC §9.7 O1 (reworded); TECH O5, §4.5 O1
-  - [ ] 1.8.10 Component tests via `testutil`: 401 shapes, request-id echo/generate, CORS preflight, health UP/DOWN with `fake.Unreachable` — TECH §4.5 O6/X4/X5
-  - [ ] 1.8.11 Fuzz target `FuzzAPIKeyHeader` for the `X-Api-Key` header parser (never panics; only exact digest matches authenticate) with seed corpus (Step 11 G2) — TECH §4.6
+  - [x] 1.8.1 `internal/api/api.go`: `New(deps) http.Handler` — Huma on `net/http` mux, base `/v1`, `/openapi.json`, `/docs` (config toggle), middleware chain order: request-id → api-key → CORS → otelhttp — TECH §1.1, §6.2
+  - [x] 1.8.2 `middleware/requestid.go`: echo if `^[A-Za-z0-9._-]{1,128}$` else generate; set on response and context — FUNC X4, §8.2 (C2)
+  - [x] 1.8.3 `middleware/apikey.go`: SHA-256 of presented key, `crypto/subtle` compare against configured digests, builds `core.Caller`; auth disabled → operator with nil key id; **no exempt routes** — FUNC §8.2 (B3); TECH §1.1 security primitives, §6.1 B4
+  - [x] 1.8.4 `middleware/clientip.go`: trusted-proxy CIDRs → right-most untrusted `X-Forwarded-For`, else peer — TECH §6.1 B6
+  - [x] 1.8.5 `middleware/cors.go`: origins from config; allow `X-Api-Key`, `X-Break-Glass-Reason`, `X-Request-Id`, `Content-Type`; expose `X-Request-Id`; no wildcard with auth — FUNC X5; TECH C13
+  - [x] 1.8.6 `errors/tables.go` + `envelope.go`: `map[kafka.Kind]httpMapping`, `map[core.Code]httpMapping` → FUNC §8.4 rows; Huma error model replaced by `{ error: { code, message, status, requestId, kafkaError?, details? } }` with `application/json`; Huma validation errors → `VALIDATION_FAILED` with `details.fields[]` — FUNC §8.3, §8.4; TECH O4
+  - [x] 1.8.7 `errors/tables_test.go`: iterate every `Kind` and `Code`, fail on a missing row — 100 % coverage — TECH O4, T1
+  - [x] 1.8.8 `health/live.go`, `health/ready.go`: `/health/live` → `{status}`; `/health/ready` → `{status, cluster:{reachable, brokersSeen, latencyMs}, audit:{sink, healthy}}`, 503 when cluster DOWN (audit does not gate) — FUNC §8.7 C3, O6; TECH §6.1 B5
+  - [x] 1.8.9 `x-command-id` operation extension helper; `openapi_test.go`: (a) every operation carries exactly one id present in `command.Table`; (b) every table id not in `pending` has ≥ 1 operation; (c) `pending` lists all ids except C3 — shrinks each phase; golden `testdata/openapi.golden.json` with `-update` — FUNC §9.7 O1 (reworded); TECH O5, §4.5 O1
+  - [x] 1.8.10 Component tests via `testutil`: 401 shapes, request-id echo/generate, CORS preflight, health UP/DOWN with `fake.Unreachable` — TECH §4.5 O6/X4/X5
+  - [x] 1.8.11 Fuzz target `FuzzAPIKeyHeader` for the `X-Api-Key` header parser (never panics; only exact digest matches authenticate) with seed corpus (Step 11 G2) — TECH §4.6
 - **Tests (Definition of Done):**
   - `FuzzAPIKeyHeader` 10 s green in CI with committed seeds — TECH §4.6 (Step 11 G2)
   - `TestOpenAPI_EveryOperationHasExactlyOneKnownCommandID`, `TestOpenAPI_EveryNonPendingIDHasAnOperation`, `TestOpenAPI_PendingIsTableMinusImplemented`, `TestOpenAPI_Golden` — VC O1; TECH O5
