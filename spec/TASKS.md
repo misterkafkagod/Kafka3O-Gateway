@@ -80,13 +80,13 @@
   - `TestTable_DestructiveImpliesW` — FUNC §5.6, §9.1 rules
 
 ### Task 1.4: Kafka Port — domain types, errors, role interfaces (Phase 1 subset)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.1 (three protocol surfaces); TECH §2.2 (Ports & Adapters), I1 (three role interfaces), D1 (stdlib only), L2 (`Kind` semantics)
 - **Subtasks:**
-  - [ ] 1.4.1 `internal/kafka/types.go`: `Broker`, `ClusterInfo`, `Topic`, `Partition`, `Record`, `Header`, `Group`, `ConfigEntry` (with `Source`, `IsSensitive`) — no JSON tags (I5) — FUNC §8.7
-  - [ ] 1.4.2 `errors.go`: `Error{Kind, Resource, KafkaCode, KafkaName, Cause}`, `Kind` enum (`NotFound`, `AlreadyExists`, `GroupActive`, `ReassignmentInProgress`, `Timeout`, `Unavailable`, `Broker`, `Unsupported`) — FUNC §8.4; TECH L2
-  - [ ] 1.4.3 `port.go`: `Admin`, `Consumer`, `Producer` interfaces; Phase-1 method `Admin.DescribeCluster(ctx)` — TECH I1
-  - [ ] 1.4.4 `depguard` proves `internal/kafka` imports stdlib only — TECH D1, §5.3
+  - [x] 1.4.1 `internal/kafka/types.go`: `Broker`, `ClusterInfo`, `Topic`, `Partition`, `Record`, `Header`, `Group`, `ConfigEntry` (with `Source`, `IsSensitive`) — no JSON tags (I5) — FUNC §8.7
+  - [x] 1.4.2 `errors.go`: `Error{Kind, Resource, KafkaCode, KafkaName, Cause}`, `Kind` enum (`NotFound`, `AlreadyExists`, `GroupActive`, `ReassignmentInProgress`, `Timeout`, `Unavailable`, `Broker`, `Unsupported`) — FUNC §8.4; TECH L2
+  - [x] 1.4.3 `port.go`: `Admin`, `Consumer`, `Producer` interfaces; Phase-1 method `Admin.DescribeCluster(ctx)` — TECH I1
+  - [x] 1.4.4 `depguard` proves `internal/kafka` imports stdlib only — TECH D1, §5.3
 - **Tests (Definition of Done):**
   - `port_test.go` compile-time assertions `var _ Admin = (*fake.Fake)(nil)` etc. (compiled from `fake_test.go`) — TECH I1
   - `TestError_ErrorsAsExposesKindCodeName` — TECH L2
