@@ -40,6 +40,13 @@ linters:
         # pattern, not an internal abstraction leak (TECH-SPEC S4, D4).
         - kgo\.Opt
         - sasl\.Mechanism
+        # OTel SDK's own extension-point interfaces: trace.Span is what
+        # tracer.Start returns, and SpanExporter/Exporter are the SDK's
+        # documented pluggable-backend types (internal/telemetry) — the
+        # same rationale as the franz-go entries above (TECH-SPEC S4, D4).
+        - otel/trace\.Span
+        - sdk/trace\.SpanExporter
+        - sdk/metric\.Exporter
     gosec:
       excludes:
         - G104 # duplicate of errcheck
@@ -319,6 +326,7 @@ linters:
           allow:
             - $gostd
             - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/kafka/fake
             - github.com/misterkafkagod/kafka3o/internal/telemetry
             - go.opentelemetry.io
             - github.com/google/go-cmp

@@ -167,13 +167,13 @@
   - `TestHealth_LiveAlways200`, `TestHealth_Ready503WhenFakeUnreachable`, `TestHealth_ReadyReportsAuditFieldWithoutGating` — VC O6; TECH §6.1 B5
 
 ### Task 1.9: Telemetry
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §1.0 (OpenTelemetry mandatory), §1.1 (OTel v1.46.0, otelhttp, otelslog), §4.5 Telemetry, §5.1 `internal/telemetry`
 - **Subtasks:**
-  - [ ] 1.9.1 `internal/telemetry/otel.go`: tracer + meter providers, OTLP gRPC/HTTP exporters from config, resource attributes, `Shutdown(ctx)` — TECH §1.1
-  - [ ] 1.9.2 `slog.go`: JSON `slog` handler to stdout bridged via `otelslog`; `requestId` on every line — FUNC X4; TECH §1.1 logging
-  - [ ] 1.9.3 `tracetest` in-memory exporter option for tests; component test asserts one server span per request with `requestId` attribute — TECH §4.5 Telemetry
-  - [ ] 1.9.4 `internal/telemetry/kafkatrace.go`: tracing decorators `TracedAdmin`, `TracedConsumer`, `TracedProducer` wrapping the three `kafka` role interfaces (one child span per port call, named by method, error status recorded); wired in `internal/app` around the franz adapters; `internal/telemetry` may import `internal/kafka` (Step 11 G3 — spec note N3) — TECH §4.5 Telemetry, D5, §2.2 interface rule
+  - [x] 1.9.1 `internal/telemetry/otel.go`: tracer + meter providers, OTLP gRPC/HTTP exporters from config, resource attributes, `Shutdown(ctx)` — TECH §1.1
+  - [x] 1.9.2 `slog.go`: JSON `slog` handler to stdout bridged via `otelslog`; `requestId` on every line — FUNC X4; TECH §1.1 logging
+  - [x] 1.9.3 `tracetest` in-memory exporter option for tests; component test asserts one server span per request with `requestId` attribute — TECH §4.5 Telemetry
+  - [x] 1.9.4 `internal/telemetry/kafkatrace.go`: tracing decorators `TracedAdmin`, `TracedConsumer`, `TracedProducer` wrapping the three `kafka` role interfaces (one child span per port call, named by method, error status recorded); wired in `internal/app` around the franz adapters; `internal/telemetry` may import `internal/kafka` (Step 11 G3 — spec note N3) — TECH §4.5 Telemetry, D5, §2.2 interface rule
 - **Tests (Definition of Done):**
   - `TestTelemetry_OneServerSpanPerRequestWithRequestIDAttribute` (tracetest) — 4.5 Telemetry
   - `TestTelemetry_LogLinesCarryRequestID` (captured slog output) — FUNC X4
