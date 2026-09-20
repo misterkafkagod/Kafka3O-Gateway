@@ -197,12 +197,12 @@
   - `make lint` passes the `cmd/gateway` and `internal/app` `depguard` rows — TECH §5.3
 
 ### Task 1.11: Test scaffolding and acceptance harness
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.8 (acceptance design), §4.9 (conventions), §5.1 (`internal/testutil`, `test/acceptance`), §5.5
 - **Subtasks:**
-  - [ ] 1.11.1 `internal/testutil/gateway.go`: `NewTestGateway(t, opts...)` → `httptest.Server` + fake port + recording sink + fixed clock + configured keys; `clock.go`; `http.go` request helpers — TECH §4.9
-  - [ ] 1.11.2 `test/acceptance/main_test.go` (`//go:build acceptance`): `TestMain` starts `app.Run` against `KAFKA_BOOTSTRAP` (+ TLS/SASL env), operator/reader keys from env; `helpers.go` with `acc-<runID>-` prefixing and `t.Cleanup` deletion — TECH §4.8
-  - [ ] 1.11.3 `TestAcceptance_C3_HealthLive`, `TestAcceptance_C3_HealthReady` — TECH §4.8
+  - [x] 1.11.1 `internal/testutil/gateway.go`: `NewTestGateway(t, opts...)` → `httptest.Server` + fake port + recording sink + fixed clock + configured keys; `clock.go`; `http.go` request helpers — TECH §4.9
+  - [x] 1.11.2 `test/acceptance/main_test.go` (`//go:build acceptance`): `TestMain` starts `app.Run` against `KAFKA_BOOTSTRAP` (+ TLS/SASL env), operator/reader keys from env; `helpers.go` with `acc-<runID>-` prefixing and `t.Cleanup` deletion — TECH §4.8
+  - [x] 1.11.3 `TestAcceptance_C3_HealthLive`, `TestAcceptance_C3_HealthReady` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestNewTestGateway_BootsWithFakeRecordingSinkAndFixedClock` — TECH §4.9
   - `TestNewTestGateway_OptionsApplyPolicyAndKeys` — TECH §4.9
