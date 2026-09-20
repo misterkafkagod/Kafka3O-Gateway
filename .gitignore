@@ -1,0 +1,20 @@
+# Build and test artefacts
+bin/
+dist/
+coverage.out
+bench.txt
+acceptance.json
+*.test
+*.prof
+*.exe
+
+# Local configuration (never commit key digests or SASL credentials)
+configs/dev.yaml
+configs/*.local.yaml
+.env
+
+# Editors
+.idea/
+.vscode/
+*.swp
+.DS_Store

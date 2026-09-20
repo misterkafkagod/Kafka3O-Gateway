@@ -34,15 +34,15 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓ — step 10 is covered by `TestApp_ShutdownOrder` (added to Task 1.10 as an addition beyond TECH §4.5; flagged for Step 11).
 
 ### Task 1.1: Repository scaffold and lint policy
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §1.0, §1.1 (Go 1.27.1, toolchain pin), §3.6 (enforcement matrix), §5.1 (tree), §5.3 (`depguard`)
 - **Subtasks:**
-  - [ ] 1.1.1 `go.mod` with module `github.com/misterkafkagod/kafka3o`, `go 1.27`, `toolchain go1.27.1`; `go.sum` — TECH §5.1
-  - [ ] 1.1.2 `Makefile` targets: `lint`, `test`, `cover`, `fuzz`, `bench`, `build`, `image`, `openapi`, `acceptance`, `report` — TECH §5.1
-  - [ ] 1.1.3 `.golangci.yml`: `depguard` rules exactly as TECH §5.3 (12 rows), `gosec`, `exhaustive`, `funlen` 60/40, `gocyclo` 15, `gochecknoglobals`, `gochecknoinits`, `ireturn`, file-length check — TECH §3.6, S6, D1–D5
-  - [ ] 1.1.4 `renovate.json` (Go modules, GitHub Actions, Docker digests) — TECH §1.3 continuous policy
-  - [ ] 1.1.5 `LICENSE` (Apache-2.0), `README.md` (incl. supported broker range Kafka 3.3 → 4.x — TECH C3), `SECURITY.md`, `CONTRIBUTING.md` hosting the **code-review checklist** for the rules not machine-checked (S1–S5, I2, I5 — TECH §3.6), `CHANGELOG.md`, `.github/CODEOWNERS` — TECH §1.0, §3.6, §5.1, C3
-  - [ ] 1.1.6 `configs/config.example.yaml` skeleton (filled in by 1.2) — TECH §5.1
+  - [x] 1.1.1 `go.mod` with module `github.com/misterkafkagod/kafka3o`, `go 1.27`, `toolchain go1.27.1`; `go.sum` — TECH §5.1
+  - [x] 1.1.2 `Makefile` targets: `lint`, `test`, `cover`, `fuzz`, `bench`, `build`, `image`, `openapi`, `acceptance`, `report` — TECH §5.1
+  - [x] 1.1.3 `.golangci.yml`: `depguard` rules exactly as TECH §5.3 (12 rows), `gosec`, `exhaustive`, `funlen` 60/40, `gocyclo` 15, `gochecknoglobals`, `gochecknoinits`, `ireturn`, file-length check — TECH §3.6, S6, D1–D5
+  - [x] 1.1.4 `renovate.json` (Go modules, GitHub Actions, Docker digests) — TECH §1.3 continuous policy
+  - [x] 1.1.5 `LICENSE` (Apache-2.0), `README.md` (incl. supported broker range Kafka 3.3 → 4.x — TECH C3), `SECURITY.md`, `CONTRIBUTING.md` hosting the **code-review checklist** for the rules not machine-checked (S1–S5, I2, I5 — TECH §3.6), `CHANGELOG.md`, `.github/CODEOWNERS` — TECH §1.0, §3.6, §5.1, C3
+  - [x] 1.1.6 `configs/config.example.yaml` skeleton (filled in by 1.2) — TECH §5.1
 - **Tests (Definition of Done):**
   - `make lint` → `golangci-lint run ./...` exit 0 with every TECH §5.3 `depguard` rule loaded and `gosec`, `exhaustive`, `funlen`, `gocyclo`, `gochecknoglobals`, `gochecknoinits`, `ireturn` enabled — TECH §3.6
   - `make lint-negative` → a fixture file importing `github.com/twmb/franz-go/pkg/kgo` from `internal/kafka` fails `depguard` — TECH D1, §5.3

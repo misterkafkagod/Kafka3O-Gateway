@@ -1,0 +1,6 @@
+// Copy of a forbidden import used by `make lint-negative` (TECH-SPEC D1, §5.3).
+// The Makefile copies this file to zz_depguard_probe_test.go, runs golangci-lint on
+// internal/kafka, expects depguard to reject it, and removes the copy again.
+package kafka_test
+
+import _ "github.com/twmb/franz-go/pkg/kgo" // must be rejected: the port is stdlib-only

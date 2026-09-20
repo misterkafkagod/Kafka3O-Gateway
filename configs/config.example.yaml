@@ -1,0 +1,85 @@
+# Kafka3O Gateway — example configuration (TECH-SPEC §5.1).
+#
+# Every key can be overridden by an environment variable: prefix KGW_, upper-case,
+# nested keys joined with "_" (kafka.bootstrap → KGW_KAFKA_BOOTSTRAP). Environment wins.
+# All values are read once at start-up; changing any of them requires a restart (FUNC-SPEC §9.6).
+#
+# Secrets (API-key digests are not secrets, but SASL passwords and TLS keys are) must come
+# from the environment or mounted files — never from a committed YAML file.
+#
+# This is the Task 1.1 skeleton: keys and structure. Task 1.2 fills in every default and
+# adds validation; `configs/config.example.yaml` is then loaded by a test to prove it parses.
+
+kafka:
+  bootstrap: []              # ["broker-1:9092", "broker-2:9092"]
+  tls:
+    enabled: false
+    caFile: ""               # /etc/kafka3o/tls/ca.pem
+    certFile: ""             # mutual TLS, optional
+    keyFile: ""              # KGW_KAFKA_TLS_KEYFILE — mounted secret
+  sasl:
+    mechanism: ""            # "", PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER
+    username: ""             # KGW_KAFKA_SASL_USERNAME
+    password: ""             # KGW_KAFKA_SASL_PASSWORD — environment only
+  producer:
+    acks: all                # TECH-SPEC C4
+    idempotent: true
+  consumer:
+    isolationLevel: read_committed   # TECH-SPEC C4
+
+http:
+  addr: ":8080"
+  tls:
+    certFile: ""             # KGW_HTTP_TLS_CERT — optional native TLS (TECH-SPEC C6)
+    keyFile: ""              # KGW_HTTP_TLS_KEY
+  readHeaderTimeout: 10s    # KGW_HTTP_READ_HEADER_TIMEOUT
+  idleTimeout: 60s          # KGW_HTTP_IDLE_TIMEOUT
+  bodyLimit: 1MiB           # KGW_HTTP_BODY_LIMIT — JSON bodies; bulk produce has its own limit below
+  trustedProxies: []        # KGW_HTTP_TRUSTED_PROXIES — CIDRs whose X-Forwarded-For is honoured (B6)
+  cors:
+    origins: []              # KGW_CORS_ORIGINS — no wildcard while auth is enabled (C13)
+  docs:
+    enabled: true            # KGW_DOCS_ENABLED — serves /docs (still requires an API key)
+
+auth:
+  enabled: true              # false = trusted network, every caller is an operator (FUNC-SPEC D3)
+  keys: []                   # KGW_API_KEYS — JSON list of { id, tier, sha256 } (TECH-SPEC B4)
+  #  - id: ops-alice
+  #    tier: operator
+  #    sha256: "<64 hex chars from `kafka3o-gateway keygen --tier operator`>"
+  #  - id: ui-readonly
+  #    tier: reader
+  #    sha256: "<64 hex chars>"
+
+policy:
+  readOnlyMode: false        # F2 — blocks every W command
+  dataPlaneLock: false       # F6 — blocks M1–M8; operator break-glass per request
+  disabledOperations: []     # F3 — e.g. ["T11", "T12"] (destructive command ids, FUNC-SPEC §5.6)
+
+bounds:                      # FUNC-SPEC §8.8 — defaults and ceilings; callers cannot exceed a ceiling
+  read:
+    limit:        { default: 100,      ceiling: 1000 }
+  scan:
+    maxScan:      { default: 10000,    ceiling: 100000 }
+    maxMatches:   { default: 100,      ceiling: 1000 }
+    maxBytes:     { default: 10MiB,    ceiling: 100MiB }
+    maxTime:      { default: 10s,      ceiling: 60s }
+    regexTimeout: 100ms
+  replay:
+    limit:        { default: 1000,     ceiling: 10000 }
+  bulkProduceBody: 10MiB
+  throughput:
+    seconds:      { default: 5,        ceiling: 60 }
+  page:
+    size:         { default: 50,       ceiling: 500 }
+
+audit:
+  sink: stdout               # stdout | kafka   (stdout/file always runs; kafka is additional, fail-closed)
+  topic: ""                  # KGW_AUDIT_TOPIC — never auto-created (TECH-SPEC B5)
+
+telemetry:
+  otlp:
+    endpoint: ""             # e.g. otel-collector:4317; empty disables export
+    protocol: grpc           # grpc | http
+  serviceName: kafka3o-gateway
+  logLevel: info

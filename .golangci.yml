@@ -1,0 +1,459 @@
+# golangci-lint v2 configuration — TECH-SPEC §3.6 (enforcement matrix) and §5.3 (dependency boundaries).
+# Every depguard rule below is one row of the §5.3 table; a violation fails the build, not a review.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - depguard # D1, D3, D5 — import boundaries
+    - exhaustive # O4 — every Kind / PolicyCode switch is complete
+    - funlen # S6
+    - gochecknoglobals # D2 — no package-level state
+    - gochecknoinits # D2 — no init() side effects
+    - gocyclo # S6
+    - gosec # T4 — security lint
+    - ireturn # D4 — accept interfaces, return structs
+
+  settings:
+    funlen:
+      lines: 60
+      statements: 40
+      ignore-comments: true
+    gocyclo:
+      min-complexity: 15
+    exhaustive:
+      default-signifies-exhaustive: false
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - generic
+    gosec:
+      excludes:
+        - G104 # duplicate of errcheck
+
+    depguard:
+      rules:
+        # --- internal/kafka: the port imports nothing but the standard library (D1) ---
+        kafka-port:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/*.go"
+            - "!**/internal/kafka/*_test.go"
+          allow:
+            - $gostd
+        kafka-port-tests:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: port tests must not depend on the franz adapter
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: porttest is driven from the adapters' tests, not the port's
+
+        # --- internal/kafka/franz: kafka + telemetry hook + franz-go only ---
+        franz-adapter:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/franz/*.go"
+            - "!**/internal/kafka/franz/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/telemetry
+            - github.com/twmb/franz-go
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: adapters never import the fake
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: porttest is test-only
+        franz-adapter-tests:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/franz/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/twmb/franz-go
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: franz tests run the contract suite against the real adapter, never the fake
+
+        # --- internal/kafka/fake: kafka only; imported only from _test.go files (P3) ---
+        fake-adapter:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/fake/*.go"
+            - "!**/internal/kafka/fake/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: the fake never touches the real adapter
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: porttest is driven from fake_test.go, not the fake itself
+        fake-adapter-tests:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/fake/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: the fake never touches the real adapter
+
+        # --- internal/kafka/porttest: the contract suite knows the port and go-cmp only ---
+        porttest:
+          list-mode: strict
+          files:
+            - "**/internal/kafka/porttest/*.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: porttest must work for any adapter
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: porttest must work for any adapter
+
+        # --- internal/scan: kafka + regexp (stdlib) + RFC 9535 JSONPath ---
+        scan:
+          list-mode: strict
+          files:
+            - "**/internal/scan/*.go"
+            - "!**/internal/scan/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/theory/jsonpath
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: scan works against the port
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: scan works against the port
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: test-only
+        scan-tests:
+          list-mode: strict
+          files:
+            - "**/internal/scan/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/scan
+            - github.com/theory/jsonpath
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: tests use the fake
+
+        # --- internal/audit: kafka (Producer for the sink) + slog (stdlib) ---
+        audit:
+          list-mode: strict
+          files:
+            - "**/internal/audit/*.go"
+            - "!**/internal/audit/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: audit works against the port
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: audit works against the port
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: test-only
+        audit-tests:
+          list-mode: strict
+          files:
+            - "**/internal/audit/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/audit
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: tests use the fake
+        audittest:
+          list-mode: strict
+          files:
+            - "**/internal/audit/audittest/*.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/audit
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/audit/audittest
+              desc: no self-import
+
+        # --- internal/service/**: kafka, command, scan, audit, service/core, service/gates ---
+        service:
+          list-mode: strict
+          files:
+            - "**/internal/service/**/*.go"
+            - "!**/internal/service/**/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/command
+            - github.com/misterkafkagod/kafka3o/internal/scan
+            - github.com/misterkafkagod/kafka3o/internal/audit
+            - github.com/misterkafkagod/kafka3o/internal/service/core
+            - github.com/misterkafkagod/kafka3o/internal/service/gates
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: services depend on the port, never the adapter (D1)
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: production code never imports the fake (P3)
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/audit/audittest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/api
+              desc: types flow inward only (D3)
+            - pkg: net/http
+              desc: services are transport-neutral (P1)
+            - pkg: github.com/danielgtaylor/huma
+              desc: services are transport-neutral (P1)
+        service-tests:
+          list-mode: strict
+          files:
+            - "**/internal/service/**/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/command
+            - github.com/misterkafkagod/kafka3o/internal/scan
+            - github.com/misterkafkagod/kafka3o/internal/audit
+            - github.com/misterkafkagod/kafka3o/internal/service
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: tests use the fake
+
+        # --- internal/api/**: service, command, kafka (domain types), api/*, telemetry helpers, huma, otelhttp ---
+        api:
+          list-mode: strict
+          files:
+            - "**/internal/api/**/*.go"
+            - "!**/internal/api/**/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/service
+            - github.com/misterkafkagod/kafka3o/internal/command
+            - github.com/misterkafkagod/kafka3o/internal/api
+            - github.com/misterkafkagod/kafka3o/internal/telemetry
+            - github.com/danielgtaylor/huma/v2
+            - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: handlers never see the adapter
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: production code never imports the fake (P3)
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/scan
+              desc: scanning is a service concern (S3)
+            - pkg: github.com/misterkafkagod/kafka3o/internal/audit/audittest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/testutil
+              desc: test-only
+            - pkg: github.com/twmb/franz-go
+              desc: franz-go only in the adapter (D5)
+        api-tests:
+          list-mode: strict
+          files:
+            - "**/internal/api/**/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal
+            - github.com/danielgtaylor/huma/v2
+            - github.com/google/go-cmp
+            - go.opentelemetry.io/otel/sdk
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: tests use the fake
+
+        # --- internal/telemetry: OTel SDK + the kafka port (tracing decorators, Step 11 G3) ---
+        telemetry:
+          list-mode: strict
+          files:
+            - "**/internal/telemetry/*.go"
+            - "!**/internal/telemetry/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - go.opentelemetry.io
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: decorators wrap the port, not the adapter
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: production code never imports the fake (P3)
+        telemetry-tests:
+          list-mode: strict
+          files:
+            - "**/internal/telemetry/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/telemetry
+            - go.opentelemetry.io
+            - github.com/google/go-cmp
+
+        # --- internal/config: koanf only ---
+        config:
+          list-mode: strict
+          files:
+            - "**/internal/config/*.go"
+            - "!**/internal/config/*_test.go"
+          allow:
+            - $gostd
+            - github.com/knadh/koanf
+        config-tests:
+          list-mode: strict
+          files:
+            - "**/internal/config/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/config
+            - github.com/google/go-cmp
+
+        # --- internal/command: standard library only ---
+        command:
+          list-mode: strict
+          files:
+            - "**/internal/command/*.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/command
+
+        # --- internal/app: the composition root — everything internal plus the franz adapter (D2, Y5) ---
+        app:
+          list-mode: strict
+          files:
+            - "**/internal/app/*.go"
+            - "!**/internal/app/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: production code never imports the fake (P3)
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/audit/audittest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/testutil
+              desc: test-only
+            - pkg: github.com/twmb/franz-go
+              desc: franz-go only in the adapter (D5)
+        app-tests:
+          list-mode: strict
+          files:
+            - "**/internal/app/*_test.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal
+            - github.com/google/go-cmp
+            - go.opentelemetry.io/otel/sdk
+
+        # --- cmd/gateway: thin entrypoint — app and config only ---
+        cmd-gateway:
+          list-mode: strict
+          files:
+            - "**/cmd/gateway/*.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/app
+            - github.com/misterkafkagod/kafka3o/internal/config
+
+        # --- internal/testutil: test scaffolding; may see everything internal ---
+        testutil:
+          list-mode: strict
+          files:
+            - "**/internal/testutil/*.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal
+            - github.com/google/go-cmp
+            - go.opentelemetry.io/otel/sdk
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
+              desc: scaffolding never reaches a real broker (V1)
+
+        # --- test/acceptance: app, config, kafka, franz (cluster-effect assertions); never the fake ---
+        acceptance:
+          list-mode: strict
+          files:
+            - "**/test/acceptance/*.go"
+          allow:
+            - $gostd
+            - github.com/misterkafkagod/kafka3o/internal/app
+            - github.com/misterkafkagod/kafka3o/internal/config
+            - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/google/go-cmp
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: acceptance runs against a real cluster
+
+        # --- tools/: standard library only ---
+        tools:
+          list-mode: strict
+          files:
+            - "**/tools/**/*.go"
+          allow:
+            - $gostd
+
+        # --- global belt-and-braces: test doubles are imported only from _test.go files (P3, §5.3) ---
+        test-doubles-only-from-tests:
+          list-mode: lax
+          files:
+            - "**/*.go"
+            - "!**/*_test.go"
+            - "!**/internal/kafka/fake/*.go"
+            - "!**/internal/kafka/porttest/*.go"
+            - "!**/internal/audit/audittest/*.go"
+            - "!**/internal/testutil/*.go"
+          deny:
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/fake
+              desc: the fake is a test double (P3)
+            - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/porttest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/audit/audittest
+              desc: test-only
+            - pkg: github.com/misterkafkagod/kafka3o/internal/testutil
+              desc: test-only
+
+  exclusions:
+    rules:
+      # Table-driven tests and fixtures legitimately exceed the production size guards (S6 targets production code).
+      - path: _test\.go
+        linters:
+          - funlen
+          - gocyclo
+          - gochecknoglobals
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/misterkafkagod/kafka3o
