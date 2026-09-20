@@ -94,13 +94,13 @@
   - `make lint` passes the `internal/kafka` stdlib-only `depguard` rule — TECH D1
 
 ### Task 1.5: franz-go adapter (Phase 1 subset)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §1.1 (franz-go v1.21.7 / kadm v1.18.0, TLS/SASL), S4 (adapters only translate), L2/L3 (error and context semantics), D5 (kotel hook); FUNC X6
 - **Subtasks:**
-  - [ ] 1.5.1 `internal/kafka/franz/client.go`: build `kgo.Client` (+ `kadm`) from config; `security.go`: TLS (min 1.2), SASL PLAIN / SCRAM-256 / SCRAM-512 / OAUTHBEARER — FUNC X6; TECH §1.1
-  - [ ] 1.5.2 `errors.go`: `kerr → kafka.Kind` table (unknown topic/partition → NotFound, topic exists → AlreadyExists, non-empty group → GroupActive, unsupported version → Unsupported, ctx deadline → Timeout, no brokers → Unavailable, rest → Broker) preserving code and name — FUNC §8.4; TECH L2, L3
-  - [ ] 1.5.3 `admin.go`: `DescribeCluster` via `kadm.DescribeCluster` — FUNC §8.7 C1
-  - [ ] 1.5.4 `plugin/kotel` hooks wired for traces/metrics — TECH §1.1, D5
+  - [x] 1.5.1 `internal/kafka/franz/client.go`: build `kgo.Client` (+ `kadm`) from config; `security.go`: TLS (min 1.2), SASL PLAIN / SCRAM-256 / SCRAM-512 / OAUTHBEARER — FUNC X6; TECH §1.1
+  - [x] 1.5.2 `errors.go`: `kerr → kafka.Kind` table (unknown topic/partition → NotFound, topic exists → AlreadyExists, non-empty group → GroupActive, unsupported version → Unsupported, ctx deadline → Timeout, no brokers → Unavailable, rest → Broker) preserving code and name — FUNC §8.4; TECH L2, L3
+  - [x] 1.5.3 `admin.go`: `DescribeCluster` via `kadm.DescribeCluster` — FUNC §8.7 C1
+  - [x] 1.5.4 `plugin/kotel` hooks wired for traces/metrics — TECH §1.1, D5
 - **Tests (Definition of Done):**
   - `TestFranz_KerrMapping_TableDriven` (every listed `kerr` → expected `Kind`, `KafkaCode` and `KafkaName` preserved; `context.DeadlineExceeded` → `Timeout`) — TECH L2, L3
   - `TestFranz_SecurityOptions_TLSMinVersionAndSASLMechanisms` (option construction only, no broker) — FUNC X6

@@ -34,6 +34,12 @@ linters:
         - empty
         - stdlib
         - generic
+        # franz-go's own extension-point interfaces: kgo.NewClient(opts...Opt) and
+        # kgo.SASL(...sasl.Mechanism) are built by returning these types from small
+        # option-building helpers (internal/kafka/franz) — that is the SDK's documented
+        # pattern, not an internal abstraction leak (TECH-SPEC S4, D4).
+        - kgo\.Opt
+        - sasl\.Mechanism
     gosec:
       excludes:
         - G104 # duplicate of errcheck
