@@ -107,14 +107,14 @@
   - Level 2: `porttest.Run(t, franz.New(cfg))` under `//go:build integration` passes the `DescribeCluster` cases (wired in Task 16.2) — TECH L1
 
 ### Task 1.6: Fake Kafka Port and contract suite (Phase 1 subset)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.3 (fake contract), §4.4, L1–L4 (`porttest`), P3 (test-only), §5.5
 - **Subtasks:**
-  - [ ] 1.6.1 `internal/kafka/fake/fake.go` + `model.go`: in-memory model skeleton (brokers, topics, groups, users, quotas, reassignments, quorum) with mutex; injected `now func() time.Time`; package doc comment states that compaction is **not** simulated — TECH §4.3
-  - [ ] 1.6.2 `faults.go`: `FailNext(method, kind)`, `FailAlways`, `Latency(method, d)`, `Unreachable(bool)`; recording `Calls()`, `MutatingCalls()`, `AssertCalled`, `AssertNoCommits`, `AssertNoGroupJoin` — TECH §4.3
-  - [ ] 1.6.3 `seed.go`: `SeedBroker`, `SeedTopic`, `SeedGroup` — TECH §4.3
-  - [ ] 1.6.4 `admin.go`: `DescribeCluster` — FUNC §8.7 C1
-  - [ ] 1.6.5 `internal/kafka/porttest/suite.go` + `admin.go`: `Run(t, port)` with `DescribeCluster` happy path, `Unreachable → KindUnavailable`, ctx deadline → `KindTimeout`; `fake_test.go` runs it — TECH L1–L4
+  - [x] 1.6.1 `internal/kafka/fake/fake.go` + `model.go`: in-memory model skeleton (brokers, topics, groups, users, quotas, reassignments, quorum) with mutex; injected `now func() time.Time`; package doc comment states that compaction is **not** simulated — TECH §4.3
+  - [x] 1.6.2 `faults.go`: `FailNext(method, kind)`, `FailAlways`, `Latency(method, d)`, `Unreachable(bool)`; recording `Calls()`, `MutatingCalls()`, `AssertCalled`, `AssertNoCommits`, `AssertNoGroupJoin` — TECH §4.3
+  - [x] 1.6.3 `seed.go`: `SeedBroker`, `SeedTopic`, `SeedGroup` — TECH §4.3
+  - [x] 1.6.4 `admin.go`: `DescribeCluster` — FUNC §8.7 C1
+  - [x] 1.6.5 `internal/kafka/porttest/suite.go` + `admin.go`: `Run(t, port)` with `DescribeCluster` happy path, `Unreachable → KindUnavailable`, ctx deadline → `KindTimeout`; `fake_test.go` runs it — TECH L1–L4
 - **Tests (Definition of Done):**
   - `TestFake_PortContract` (invokes `porttest.Run(t, fake.New())`) — TECH L1
   - `porttest` cases `Admin_DescribeCluster_ReturnsSeededBrokers`, `Admin_Unreachable_KindUnavailable`, `Any_DeadlineExceeded_KindTimeout` — TECH L2, L3

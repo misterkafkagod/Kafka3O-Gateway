@@ -117,6 +117,7 @@ linters:
           allow:
             - $gostd
             - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/kafka/porttest
             - github.com/google/go-cmp
           deny:
             - pkg: github.com/misterkafkagod/kafka3o/internal/kafka/franz
