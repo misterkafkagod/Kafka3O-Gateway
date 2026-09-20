@@ -8,6 +8,20 @@ import (
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 )
 
+// LogOption customises NewLogger.
+type LogOption func(*logSettings)
+
+type logSettings struct {
+	level slog.Leveler
+}
+
+// WithLevel sets the minimum level NewLogger's JSON handler emits
+// (TECH-SPEC §1.1 logging, config Telemetry.LogLevel). The default is
+// slog's own default (Info).
+func WithLevel(level slog.Leveler) LogOption {
+	return func(s *logSettings) { s.level = level }
+}
+
 // NewLogger builds the gateway's structured logger (TECH-SPEC §1.1
 // logging): every record is written as JSON to w (stdout in production)
 // for operators, and the same record is bridged into the OTel Logs
@@ -15,9 +29,13 @@ import (
 // until the logs SDK is stable in v1.47" (TECH-SPEC §1.0). Callers attach a
 // request id to a line the same way as any other attribute, e.g.
 // logger.InfoContext(ctx, "msg", "requestId", id) (FUNC-SPEC X4).
-func NewLogger(w io.Writer, serviceName string) *slog.Logger {
+func NewLogger(w io.Writer, serviceName string, opts ...LogOption) *slog.Logger {
+	var s logSettings
+	for _, opt := range opts {
+		opt(&s)
+	}
 	return slog.New(fanoutHandler{
-		json:   slog.NewJSONHandler(w, nil),
+		json:   slog.NewJSONHandler(w, &slog.HandlerOptions{Level: s.level}),
 		bridge: otelslog.NewHandler(serviceName),
 	})
 }

@@ -18,6 +18,7 @@ import (
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
+	"github.com/misterkafkagod/kafka3o/internal/telemetry"
 )
 
 // basePath is every operation's URL prefix (TECH-SPEC §6.2). It is not
@@ -46,7 +47,7 @@ type Deps struct {
 
 // New builds the gateway's HTTP handler: Huma operations on a net/http mux
 // wrapped by the middleware chain, in the documented order (TECH-SPEC
-// §6.2) request-id → client-ip → api-key → CORS → mux.
+// §6.2) request-id → client-ip → api-key → CORS → otelhttp → mux.
 func New(deps Deps) http.Handler {
 	mux := http.NewServeMux()
 
@@ -60,6 +61,9 @@ func New(deps Deps) http.Handler {
 	registerHealth(humaAPI, deps)
 
 	var handler http.Handler = mux
+	handler = telemetry.HTTPMiddleware("gateway", func(r *http.Request) string {
+		return apierrors.RequestIDFrom(r.Context())
+	})(handler)
 	handler = middleware.CORS(deps.CORSOrigins, deps.AuthEnabled)(handler)
 	handler = middleware.APIKey(deps.Keys, deps.AuthEnabled)(handler)
 	handler = middleware.ClientIP(deps.TrustedProxies)(handler)

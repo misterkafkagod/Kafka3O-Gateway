@@ -182,13 +182,13 @@
   - `TestTelemetry_DecoratorsSatisfyPortInterfaces` (compile-time assertions) — TECH §2.2 interface rule
 
 ### Task 1.10: Composition root, entrypoint, `probe` and `keygen` subcommands
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §2.0 P1–P3, §2.1 (`internal/app`), D2, §5.0 Y5, §5.4 (shutdown order, exec probes), §6.1 B3 (probe), B4 (keygen), §6.3 C6 (server timeouts)
 - **Subtasks:**
-  - [ ] 1.10.1 `internal/app/run.go`: `Run(ctx, cfg) error` — config → telemetry → franz client → services → api → `http.Server` (timeouts from config, optional TLS); only importer of `franz` — TECH §2.1, D2, C6
-  - [ ] 1.10.2 Graceful shutdown: SIGTERM → stop accepting → drain ≤ maxTime + 5 s → flush audit → OTel shutdown → close `kgo` clients; log `shutdown complete` — TECH §5.4
-  - [ ] 1.10.3 `cmd/gateway/main.go`: subcommands `serve` (default, `--config`), `probe --live|--ready` (GET `127.0.0.1:8080/health/*` with `KGW_PROBE_API_KEY`, exit 0/1), `keygen --tier` (32 random bytes → base64url key + sha256), `--version` — TECH §6.1 B3/B4, §5.1
-  - [ ] 1.10.4 `depguard`: `cmd/gateway` imports only `app` and `config` — TECH §5.3
+  - [x] 1.10.1 `internal/app/run.go`: `Run(ctx, cfg) error` — config → telemetry → franz client → services → api → `http.Server` (timeouts from config, optional TLS); only importer of `franz` — TECH §2.1, D2, C6
+  - [x] 1.10.2 Graceful shutdown: SIGTERM → stop accepting → drain ≤ maxTime + 5 s → flush audit → OTel shutdown → close `kgo` clients; log `shutdown complete` — TECH §5.4
+  - [x] 1.10.3 `cmd/gateway/main.go`: subcommands `serve` (default, `--config`), `probe --live|--ready` (GET `127.0.0.1:8080/health/*` with `KGW_PROBE_API_KEY`, exit 0/1), `keygen --tier` (32 random bytes → base64url key + sha256), `--version` — TECH §6.1 B3/B4, §5.1
+  - [x] 1.10.4 `depguard`: `cmd/gateway` imports only `app` and `config` — TECH §5.3
 - **Tests (Definition of Done):**
   - `TestApp_ServerTimeoutsFromConfig` (`ReadHeaderTimeout` 10 s, `IdleTimeout` 60 s, `WriteTimeout` = ceiling + 5 s) — TECH C6
   - `TestApp_ShutdownOrder` (httptest server + recording sink + fake exporter: stop-accepting → in-flight drained → audit flushed → OTel shutdown → clients closed; `shutdown complete` logged) — TECH §5.4 *(Step 10 addition beyond §4.5)*
