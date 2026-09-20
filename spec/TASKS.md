@@ -50,14 +50,14 @@
   - Review-checklist item (Step 11 G4): `CONTRIBUTING.md` contains a checklist entry for each of S1, S2, S3, S4, S5, I2, I5 quoting the rule; `README.md` states the supported broker range — TECH §3.6, C3
 
 ### Task 1.2: Configuration package
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.2 (configuration switches, sensitive values), §8.8 (bounds); TECH §1.1 (koanf v2.3.6), §5.4 (`KGW_` env, ConfigMap/Secret), §6.1 B4 (hashed keys), B6 (trusted proxies), §6.3 C6 (listener), configuration-keys list
 - **Subtasks:**
-  - [ ] 1.2.1 `internal/config/config.go`: immutable `Config` with kafka (bootstrap, TLS, SASL mechanism/user/password), http (addr, TLS cert/key, `ReadHeaderTimeout` 10 s, `IdleTimeout` 60 s, `WriteTimeout` = maxTime ceiling + 5 s, body limit 1 MB, trusted proxies, CORS origins, docs enabled), auth (enabled, keys), policy (readOnlyMode, dataPlaneLock, disabledOperations), bounds (every §8.8 row incl. `maxMatches` 100/1 000), audit (sink, topic), telemetry (OTLP endpoint) — FUNC §8.8; TECH §6.3
-  - [ ] 1.2.2 `load.go`: koanf YAML file + `KGW_` env overrides (env wins); `--config` flag — TECH §1.1, §5.4
-  - [ ] 1.2.3 `validate.go`: ceilings ≥ defaults, key list `{id, tier ∈ reader|operator, sha256 hex-64}`, duplicate ids rejected, CORS wildcard forbidden when auth enabled, `WriteTimeout` derived — TECH §6.1 B4, C13
-  - [ ] 1.2.4 `redact.go`: `String()`/`slog.LogValuer` masking SASL password, TLS key, key digests — FUNC §8.2 sensitive; TECH §1.1
-  - [ ] 1.2.5 Unit tests incl. `testdata/` YAML fixtures; fill `configs/config.example.yaml` with every key and default — TECH §4.5, §5.1
+  - [x] 1.2.1 `internal/config/config.go`: immutable `Config` with kafka (bootstrap, TLS, SASL mechanism/user/password), http (addr, TLS cert/key, `ReadHeaderTimeout` 10 s, `IdleTimeout` 60 s, `WriteTimeout` = maxTime ceiling + 5 s, body limit 1 MB, trusted proxies, CORS origins, docs enabled), auth (enabled, keys), policy (readOnlyMode, dataPlaneLock, disabledOperations), bounds (every §8.8 row incl. `maxMatches` 100/1 000), audit (sink, topic), telemetry (OTLP endpoint) — FUNC §8.8; TECH §6.3
+  - [x] 1.2.2 `load.go`: koanf YAML file + `KGW_` env overrides (env wins); `--config` flag — TECH §1.1, §5.4
+  - [x] 1.2.3 `validate.go`: ceilings ≥ defaults, key list `{id, tier ∈ reader|operator, sha256 hex-64}`, duplicate ids rejected, CORS wildcard forbidden when auth enabled, `WriteTimeout` derived — TECH §6.1 B4, C13
+  - [x] 1.2.4 `redact.go`: `String()`/`slog.LogValuer` masking SASL password, TLS key, key digests — FUNC §8.2 sensitive; TECH §1.1
+  - [x] 1.2.5 Unit tests incl. `testdata/` YAML fixtures; fill `configs/config.example.yaml` with every key and default — TECH §4.5, §5.1
 - **Tests (Definition of Done):**
   - `TestLoad_YAMLThenEnvOverrides` — TECH §1.1, §5.4
   - `TestValidate_DuplicateKeyID_Fails`, `TestValidate_BadDigest_Fails`, `TestValidate_UnknownTier_Fails` — TECH §6.1 B4

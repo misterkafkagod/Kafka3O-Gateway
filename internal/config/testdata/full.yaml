@@ -1,0 +1,70 @@
+# Every leaf set to a non-default value, used by TestLoad_YAMLThenEnvOverrides.
+kafka:
+  bootstrap: ["yaml-1:9092", "yaml-2:9092"]
+  request_timeout: 45s
+  tls:
+    enabled: true
+    ca_file: /etc/kafka3o/tls/ca.pem
+    cert_file: /etc/kafka3o/tls/client.pem
+    key_file: /etc/kafka3o/tls/client-key.pem
+  sasl:
+    mechanism: SCRAM-SHA-512
+    username: gateway
+    password: yaml-secret
+  producer:
+    acks: "1"
+    idempotent: false
+  consumer:
+    isolation_level: read_uncommitted
+http:
+  addr: ":9090"
+  tls:
+    cert_file: /etc/kafka3o/tls/http.pem
+    key_file: /etc/kafka3o/tls/http-key.pem
+  read_header_timeout: 7s
+  idle_timeout: 30s
+  write_timeout: 90s
+  body_limit: 2MiB
+  trusted_proxies: ["10.0.0.0/8"]
+  cors:
+    origins: ["https://ui.example.com"]
+  docs:
+    enabled: false
+auth:
+  enabled: true
+  keys:
+    - id: ops
+      tier: operator
+      sha256: "0000000000000000000000000000000000000000000000000000000000000001"
+    - id: ui
+      tier: reader
+      sha256: "0000000000000000000000000000000000000000000000000000000000000002"
+policy:
+  read_only_mode: true
+  data_plane_lock: true
+  disabled_operations: ["T11", "T12"]
+bounds:
+  read:
+    limit: { default: 20, ceiling: 200 }
+  scan:
+    max_scan: { default: 500, ceiling: 5000 }
+    max_matches: { default: 10, ceiling: 100 }
+    max_bytes: { default: 1MiB, ceiling: 8MiB }
+    max_time: { default: 2s, ceiling: 20s }
+    regex_timeout: 50ms
+  replay:
+    limit: { default: 100, ceiling: 1000 }
+  bulk_produce_body: 4MiB
+  throughput:
+    seconds: { default: 3, ceiling: 30 }
+  page:
+    size: { default: 25, ceiling: 250 }
+audit:
+  sink: kafka
+  topic: _kgw_audit
+telemetry:
+  otlp:
+    endpoint: otel-collector:4317
+    protocol: http
+  service_name: gw-test
+  log_level: debug

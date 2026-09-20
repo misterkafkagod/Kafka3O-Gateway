@@ -1,0 +1,8 @@
+# The smallest valid file: a bootstrap and one key; everything else defaults.
+kafka:
+  bootstrap: ["localhost:9092"]
+auth:
+  keys:
+    - id: dev
+      tier: operator
+      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"

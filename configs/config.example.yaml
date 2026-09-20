@@ -1,85 +1,105 @@
-# Kafka3O Gateway — example configuration (TECH-SPEC §5.1).
+# Kafka3O Gateway — reference configuration (TECH-SPEC §5.1, §6.3).
 #
-# Every key can be overridden by an environment variable: prefix KGW_, upper-case,
-# nested keys joined with "_" (kafka.bootstrap → KGW_KAFKA_BOOTSTRAP). Environment wins.
-# All values are read once at start-up; changing any of them requires a restart (FUNC-SPEC §9.6).
+# Every key below is shown with its default. Every key can be overridden by an
+# environment variable named KGW_ + the key path in upper case with "." → "_"
+# (kafka.bootstrap → KGW_KAFKA_BOOTSTRAP). Environment always wins over this file.
+# Lists are comma-separated in the environment; auth.keys is a JSON document.
 #
-# Secrets (API-key digests are not secrets, but SASL passwords and TLS keys are) must come
-# from the environment or mounted files — never from a committed YAML file.
+# All values are read once at start-up; changing any of them means a restart
+# (FUNC-SPEC §8.2, §9.6). Unknown keys — here or in the environment — fail start-up.
 #
-# This is the Task 1.1 skeleton: keys and structure. Task 1.2 fills in every default and
-# adds validation; `configs/config.example.yaml` is then loaded by a test to prove it parses.
+# Secrets (SASL password, TLS private keys) must come from the environment or
+# mounted files, never from a committed YAML file. API-key digests are not
+# secrets, but a fresh checkout should still leave auth.keys empty.
 
 kafka:
-  bootstrap: []              # ["broker-1:9092", "broker-2:9092"]
+  bootstrap: []                     # KGW_KAFKA_BOOTSTRAP — required: ["broker-1:9092", "broker-2:9092"]
+  request_timeout: 30s              # KGW_KAFKA_REQUEST_TIMEOUT — admin / produce timeout → 504 KAFKA_TIMEOUT
   tls:
-    enabled: false
-    caFile: ""               # /etc/kafka3o/tls/ca.pem
-    certFile: ""             # mutual TLS, optional
-    keyFile: ""              # KGW_KAFKA_TLS_KEYFILE — mounted secret
+    enabled: false                  # KGW_KAFKA_TLS_ENABLED
+    ca_file: ""                     # KGW_KAFKA_TLS_CA_FILE
+    cert_file: ""                   # KGW_KAFKA_TLS_CERT_FILE — mutual TLS, set with key_file
+    key_file: ""                    # KGW_KAFKA_TLS_KEY_FILE — mounted secret; redacted in logs
   sasl:
-    mechanism: ""            # "", PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER
-    username: ""             # KGW_KAFKA_SASL_USERNAME
-    password: ""             # KGW_KAFKA_SASL_PASSWORD — environment only
+    mechanism: ""                   # KGW_KAFKA_SASL_MECHANISM — "", PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER
+    username: ""                    # KGW_KAFKA_SASL_USERNAME
+    password: ""                    # KGW_KAFKA_SASL_PASSWORD — environment only; redacted in logs
   producer:
-    acks: all                # TECH-SPEC C4
-    idempotent: true
+    acks: all                       # KGW_KAFKA_PRODUCER_ACKS — all | 1 | 0 (TECH-SPEC C4)
+    idempotent: true                # KGW_KAFKA_PRODUCER_IDEMPOTENT
   consumer:
-    isolationLevel: read_committed   # TECH-SPEC C4
+    isolation_level: read_committed # KGW_KAFKA_ISOLATION_LEVEL — read_committed | read_uncommitted (TECH-SPEC C4)
 
 http:
-  addr: ":8080"
+  addr: ":8080"                     # KGW_HTTP_ADDR
   tls:
-    certFile: ""             # KGW_HTTP_TLS_CERT — optional native TLS (TECH-SPEC C6)
-    keyFile: ""              # KGW_HTTP_TLS_KEY
-  readHeaderTimeout: 10s    # KGW_HTTP_READ_HEADER_TIMEOUT
-  idleTimeout: 60s          # KGW_HTTP_IDLE_TIMEOUT
-  bodyLimit: 1MiB           # KGW_HTTP_BODY_LIMIT — JSON bodies; bulk produce has its own limit below
-  trustedProxies: []        # KGW_HTTP_TRUSTED_PROXIES — CIDRs whose X-Forwarded-For is honoured (B6)
+    cert_file: ""                   # KGW_HTTP_TLS_CERT (alias of KGW_HTTP_TLS_CERT_FILE) — optional native TLS (TECH-SPEC C6); set with key_file
+    key_file: ""                    # KGW_HTTP_TLS_KEY (alias of KGW_HTTP_TLS_KEY_FILE) — redacted in logs
+  read_header_timeout: 10s          # KGW_HTTP_READ_HEADER_TIMEOUT
+  idle_timeout: 60s                 # KGW_HTTP_IDLE_TIMEOUT
+  write_timeout: 0s                 # KGW_HTTP_WRITE_TIMEOUT — 0 = derived: bounds.scan.max_time.ceiling + 5s
+  body_limit: 1MiB                  # KGW_HTTP_BODY_LIMIT — JSON bodies; bulk produce has bounds.bulk_produce_body
+  trusted_proxies: []               # KGW_HTTP_TRUSTED_PROXIES — CIDRs whose X-Forwarded-For is honoured (TECH-SPEC B6)
   cors:
-    origins: []              # KGW_CORS_ORIGINS — no wildcard while auth is enabled (C13)
+    origins: []                     # KGW_CORS_ORIGINS — no "*" while auth is enabled (TECH-SPEC C13)
   docs:
-    enabled: true            # KGW_DOCS_ENABLED — serves /docs (still requires an API key)
+    enabled: true                   # KGW_DOCS_ENABLED — serves /docs (still requires an API key)
 
 auth:
-  enabled: true              # false = trusted network, every caller is an operator (FUNC-SPEC D3)
-  keys: []                   # KGW_API_KEYS — JSON list of { id, tier, sha256 } (TECH-SPEC B4)
+  enabled: true                     # KGW_AUTH_ENABLED — false = trusted network, every caller is an operator (FUNC-SPEC D3)
+  keys: []                          # KGW_API_KEYS — JSON list of { id, tier, sha256 } (TECH-SPEC B4); ≥ 1 while enabled
   #  - id: ops-alice
-  #    tier: operator
-  #    sha256: "<64 hex chars from `kafka3o-gateway keygen --tier operator`>"
+  #    tier: operator                # reader | operator
+  #    sha256: "<64 hex chars printed by `kafka3o-gateway keygen --tier operator`>"
   #  - id: ui-readonly
   #    tier: reader
   #    sha256: "<64 hex chars>"
 
 policy:
-  readOnlyMode: false        # F2 — blocks every W command
-  dataPlaneLock: false       # F6 — blocks M1–M8; operator break-glass per request
-  disabledOperations: []     # F3 — e.g. ["T11", "T12"] (destructive command ids, FUNC-SPEC §5.6)
+  read_only_mode: false             # KGW_POLICY_READ_ONLY_MODE — F2: blocks every W command
+  data_plane_lock: false            # KGW_POLICY_DATA_PLANE_LOCK — F6: blocks M1–M8; operator break-glass per request
+  disabled_operations: []           # KGW_POLICY_DISABLED_OPERATIONS — F3: destructive command ids, e.g. ["T11", "T12"]
 
-bounds:                      # FUNC-SPEC §8.8 — defaults and ceilings; callers cannot exceed a ceiling
+bounds:                             # FUNC-SPEC §8.8 — callers get the default when silent and cannot exceed the ceiling
   read:
-    limit:        { default: 100,      ceiling: 1000 }
+    limit:
+      default: 100                  # KGW_BOUNDS_READ_LIMIT_DEFAULT — M1
+      ceiling: 1000                 # KGW_BOUNDS_READ_LIMIT_CEILING
   scan:
-    maxScan:      { default: 10000,    ceiling: 100000 }
-    maxMatches:   { default: 100,      ceiling: 1000 }
-    maxBytes:     { default: 10MiB,    ceiling: 100MiB }
-    maxTime:      { default: 10s,      ceiling: 60s }
-    regexTimeout: 100ms
+    max_scan:
+      default: 10000                # KGW_BOUNDS_SCAN_MAX_SCAN_DEFAULT — M3 / M4 records evaluated
+      ceiling: 100000               # KGW_BOUNDS_SCAN_MAX_SCAN_CEILING
+    max_matches:
+      default: 100                  # KGW_BOUNDS_SCAN_MAX_MATCHES_DEFAULT — M3 / M4 items returned
+      ceiling: 1000                 # KGW_BOUNDS_SCAN_MAX_MATCHES_CEILING
+    max_bytes:
+      default: 10MiB                # KGW_BOUNDS_SCAN_MAX_BYTES_DEFAULT
+      ceiling: 100MiB               # KGW_BOUNDS_SCAN_MAX_BYTES_CEILING
+    max_time:
+      default: 10s                  # KGW_BOUNDS_SCAN_MAX_TIME_DEFAULT — wall-clock from Resolve
+      ceiling: 60s                  # KGW_BOUNDS_SCAN_MAX_TIME_CEILING — also drives http.write_timeout
+    regex_timeout: 100ms            # KGW_BOUNDS_SCAN_REGEX_TIMEOUT — per-record guard (RE2 is linear anyway)
   replay:
-    limit:        { default: 1000,     ceiling: 10000 }
-  bulkProduceBody: 10MiB
+    limit:
+      default: 1000                 # KGW_BOUNDS_REPLAY_LIMIT_DEFAULT — M8 records per call (FUNC-SPEC D4)
+      ceiling: 10000                # KGW_BOUNDS_REPLAY_LIMIT_CEILING
+  bulk_produce_body: 10MiB          # KGW_BOUNDS_BULK_PRODUCE_BODY — M6 request body ceiling
   throughput:
-    seconds:      { default: 5,        ceiling: 60 }
+    seconds:
+      default: 5                    # KGW_BOUNDS_THROUGHPUT_SECONDS_DEFAULT — C10 sample window
+      ceiling: 60                   # KGW_BOUNDS_THROUGHPUT_SECONDS_CEILING
   page:
-    size:         { default: 50,       ceiling: 500 }
+    size:
+      default: 50                   # KGW_BOUNDS_PAGE_SIZE_DEFAULT — every list endpoint
+      ceiling: 500                  # KGW_BOUNDS_PAGE_SIZE_CEILING
 
 audit:
-  sink: stdout               # stdout | kafka   (stdout/file always runs; kafka is additional, fail-closed)
-  topic: ""                  # KGW_AUDIT_TOPIC — never auto-created (TECH-SPEC B5)
+  sink: stdout                      # KGW_AUDIT_SINK — stdout (always on) | kafka (stdout + topic, fail-closed)
+  topic: ""                         # KGW_AUDIT_TOPIC — required for kafka; never auto-created (TECH-SPEC B5)
 
 telemetry:
   otlp:
-    endpoint: ""             # e.g. otel-collector:4317; empty disables export
-    protocol: grpc           # grpc | http
-  serviceName: kafka3o-gateway
-  logLevel: info
+    endpoint: ""                    # KGW_TELEMETRY_OTLP_ENDPOINT — e.g. otel-collector:4317; empty disables export
+    protocol: grpc                  # KGW_TELEMETRY_OTLP_PROTOCOL — grpc | http
+  service_name: kafka3o-gateway     # KGW_TELEMETRY_SERVICE_NAME
+  log_level: info                   # KGW_TELEMETRY_LOG_LEVEL — debug | info | warn | error
