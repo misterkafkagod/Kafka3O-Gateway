@@ -10,8 +10,10 @@ import (
 // the API layer (Task 1.8) owns the Code -> HTTP status mapping. Not every
 // Code is producible yet: gates.Check (Task 1.7) only ever returns
 // TierForbidden, ReadOnlyMode, OperationDisabled, or DataPlaneLocked;
-// ConfirmationMismatch, BoundExceeded, and Validation are used by later
-// tasks (destructive Plan/Apply, bounded reads) that share this vocabulary.
+// ConfirmationMismatch and BoundExceeded are used by later tasks (destructive
+// Plan/Apply, bounded reads) that share this vocabulary. Validation and
+// InvalidRegex are produced starting with Task 2.3 (topic.Service.List's
+// `?pattern=` compile failure).
 type Code int
 
 // Code values (FUNC-SPEC §8.4).
@@ -23,6 +25,7 @@ const (
 	ConfirmationMismatch
 	BoundExceeded
 	Validation
+	InvalidRegex
 )
 
 // String returns the Code's FUNC-SPEC §8.4 wire name.
@@ -42,6 +45,8 @@ func (c Code) String() string {
 		return "BOUND_EXCEEDED"
 	case Validation:
 		return "VALIDATION_FAILED"
+	case InvalidRegex:
+		return "INVALID_REGEX"
 	}
 	return fmt.Sprintf("code(%d)", int(c))
 }
@@ -49,7 +54,10 @@ func (c Code) String() string {
 // Codes lists every Code, for exhaustiveness tests over the error tables
 // (TECH-SPEC O4).
 func Codes() []Code {
-	return []Code{TierForbidden, ReadOnlyMode, OperationDisabled, DataPlaneLocked, ConfirmationMismatch, BoundExceeded, Validation}
+	return []Code{
+		TierForbidden, ReadOnlyMode, OperationDisabled, DataPlaneLocked,
+		ConfirmationMismatch, BoundExceeded, Validation, InvalidRegex,
+	}
 }
 
 // PolicyError is a gate or validation failure (FUNC-SPEC §8.4). Message, when

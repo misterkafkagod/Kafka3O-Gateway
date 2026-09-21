@@ -47,6 +47,7 @@ func codeTable() map[core.Code]httpMapping {
 		core.ConfirmationMismatch: {400, "CONFIRMATION_MISMATCH"},
 		core.BoundExceeded:        {400, "BOUND_EXCEEDED"},
 		core.Validation:           {400, "VALIDATION_FAILED"},
+		core.InvalidRegex:         {400, "INVALID_REGEX"},
 	}
 }
 

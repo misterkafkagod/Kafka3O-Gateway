@@ -265,11 +265,11 @@
   - `TestClusterService_HealthSummary_AffectedCappedAt1000WithTruncated` — TECH C11
 
 ### Task 2.3: Topic service (T1–T4)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 T1–T4, §8.2 (`?pattern=` RE2 unanchored, pagination), X3; TECH §6.1 B7
 - **Subtasks:**
-  - [ ] 2.3.1 `internal/service/topic/service.go`: `List` (regex pattern compile → `INVALID_REGEX`, includeInternal, sort by name, page/pageSize with total), `Describe` (`approxMessageCount = Σ(end − begin)`), `Size`, `CountInWindow` — FUNC §8.7; TECH §6.1 B7
-  - [ ] 2.3.2 Unit tests: pattern semantics, paging past end, approx count — TECH §4.5 Pagination
+  - [x] 2.3.1 `internal/service/topic/service.go`: `List` (regex pattern compile → `INVALID_REGEX`, includeInternal, sort by name, page/pageSize with total), `Describe` (`approxMessageCount = Σ(end − begin)`), `Size`, `CountInWindow` — FUNC §8.7; TECH §6.1 B7
+  - [x] 2.3.2 Unit tests: pattern semantics, paging past end, approx count — TECH §4.5 Pagination
 - **Tests (Definition of Done):**
   - `TestTopicService_List_PatternIsRE2Unanchored`, `TestTopicService_List_InvalidPatternIsInvalidRegex` — TECH §6.1 B7
   - `TestTopicService_List_SortedByNameStablePaging`, `TestTopicService_List_PagePastEndEmptyWithTotal`, `TestTopicService_List_IncludeInternalToggle` — 4.5 Pagination; FUNC X3
