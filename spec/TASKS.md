@@ -18,7 +18,7 @@
 ---
 
 ## Phase 1: Gateway boots, authenticates a key, reports health, serves OpenAPI
-- **Phase Status:** Awaiting Manual Verification
+- **Phase Status:** Verified
 - **Goal:** A human can start the binary against a cluster, get 401 without a key, 200 with one, see readiness reflect cluster reachability, and fetch `/openapi.json`.
 - **Manual Test Plan:**
   1. `go build ./... && go test -race ./...` → both exit 0; the coverage summary prints ≥ 90 % for the gated packages.
