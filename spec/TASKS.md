@@ -253,11 +253,11 @@
   - `TestFranz_ConfigSourceNormalisation` (unit: every kadm source enum → `default`/`static`/`dynamic`) — FUNC §5.1 T2
 
 ### Task 2.2: Cluster service (C1, C2, C4)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 C1, C2, C4, §8.2 (sensitive values); TECH §6.3 C11 (affected cap), S2, I2
 - **Subtasks:**
-  - [ ] 2.2.1 `internal/service/cluster/service.go`: `Service` with `Admin` only (I2 note); `DescribeCluster`, `DescribeBrokerConfig` (mask sensitive), `HealthSummary` (URPs, offline, non-preferred leader, broker count; `affected` capped at 1 000 with `truncated`) — FUNC §8.7; TECH C11
-  - [ ] 2.2.2 Unit tests over the fake — TECH §4.1 1a
+  - [x] 2.2.1 `internal/service/cluster/service.go`: `Service` with `Admin` only (I2 note); `DescribeCluster`, `DescribeBrokerConfig` (mask sensitive), `HealthSummary` (URPs, offline, non-preferred leader, broker count; `affected` capped at 1 000 with `truncated`) — FUNC §8.7; TECH C11
+  - [x] 2.2.2 Unit tests over the fake — TECH §4.1 1a
 - **Tests (Definition of Done):**
   - `TestClusterService_DescribeCluster_MapsBrokersAndController` — FUNC §8.7 C1
   - `TestClusterService_DescribeBrokerConfig_SensitiveValueNull` — FUNC §8.2
