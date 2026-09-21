@@ -323,15 +323,15 @@
   - `TestFranzConsumer_OptionsNoGroupReadCommitted` (unit: option construction, no broker) — TECH C4, §2.3
 
 ### Task 3.2: Bounded scan loop and decoders
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §9.2 (state machine, end snapshot, maxTime wall-clock, continuation, `latest`), §8.2 (encodings, `format=`), §8.3 (scan envelope, record), §8.8 (bounds), §9.1 rules (`to` = min(to, endSnapshot), `latest` continuation — C9); TECH §2.3 (one scan loop), I4 (`Matcher` func type), §4.9 (injected `now`)
 - **Subtasks:**
-  - [ ] 3.2.1 `internal/scan/runner.go`: `Run(ctx, consumer, spec, matcher, emit) (Stats, error)` implementing Resolve → Assign → Poll → Evaluate → Bounded/Exhausted/Empty → Done; end snapshot at Resolve; `context.WithTimeout(maxTime)`; `stoppedBy`; per-partition continuation — FUNC §9.2
-  - [ ] 3.2.2 `spec.go`: `Spec{Topic, Partitions, From (beginning|latest|offset|timestamp), To, MaxMessages, MaxBytes, MaxTime, Format}`; `latest` → start `max(begin, end − limit)`, sort by `timestampMs` desc, truncate; `to` → `min(to, endSnapshot)` — FUNC §9.2, C9
-  - [ ] 3.2.3 `decode.go`: auto-detect JSON → UTF-8 → base64 for key/value; `format=` override; headers `string`/`base64` rule; `sizeBytes` — FUNC §8.2
-  - [ ] 3.2.4 `matcher.go`: `type Matcher func(Record) MatchResult{Match, Skipped bool}`; `MatchAll` — TECH I4
-  - [ ] 3.2.5 `stats.go`: `Stats{Scanned, Matched, Skipped, Bytes, ElapsedMs, ReachedEnd, StoppedBy, Continuation}` — FUNC §8.3
-  - [ ] 3.2.6 Unit tests for every §9.2 transition with the fake and fixed clock: Empty, Exhausted, each Bounded cause, end snapshot ignores records appended mid-scan, continuation gap/overlap-free, `latest` ordering — TECH §4.5 Scan
+  - [x] 3.2.1 `internal/scan/runner.go`: `Run(ctx, consumer, spec, matcher, emit) (Stats, error)` implementing Resolve → Assign → Poll → Evaluate → Bounded/Exhausted/Empty → Done; end snapshot at Resolve; `context.WithTimeout(maxTime)`; `stoppedBy`; per-partition continuation — FUNC §9.2
+  - [x] 3.2.2 `spec.go`: `Spec{Topic, Partitions, From (beginning|latest|offset|timestamp), To, MaxMessages, MaxBytes, MaxTime, Format}`; `latest` → start `max(begin, end − limit)`, sort by `timestampMs` desc, truncate; `to` → `min(to, endSnapshot)` — FUNC §9.2, C9
+  - [x] 3.2.3 `decode.go`: auto-detect JSON → UTF-8 → base64 for key/value; `format=` override; headers `string`/`base64` rule; `sizeBytes` — FUNC §8.2
+  - [x] 3.2.4 `matcher.go`: `type Matcher func(Record) MatchResult{Match, Skipped bool}`; `MatchAll` — TECH I4
+  - [x] 3.2.5 `stats.go`: `Stats{Scanned, Matched, Skipped, Bytes, ElapsedMs, ReachedEnd, StoppedBy, Continuation}` — FUNC §8.3
+  - [x] 3.2.6 Unit tests for every §9.2 transition with the fake and fixed clock: Empty, Exhausted, each Bounded cause, end snapshot ignores records appended mid-scan, continuation gap/overlap-free, `latest` ordering — TECH §4.5 Scan
 - **Tests (Definition of Done):**
   - `TestScanRun_Empty_NoPartitionsOrFromAtEnd`, `TestScanRun_Exhausted_ReachedEndTrueStoppedByNil` — FUNC §9.2
   - `TestScanRun_Bounded_MaxMessages`, `TestScanRun_Bounded_MaxBytes`, `TestScanRun_Bounded_MaxTime_FixedClockWithLatency` — VC O3
