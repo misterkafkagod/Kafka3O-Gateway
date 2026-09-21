@@ -114,6 +114,29 @@ func (f *Fake) SeedLogDir(topic string, partition int32, brokerID int32, dir str
 	p.logDir[brokerID] = fakeLogDirEntry{dir: dir, bytes: bytes}
 }
 
+// SeedCompactAway simulates compaction/retention having removed every
+// record before beforeOffset from one partition: the begin offset advances
+// to beforeOffset and any records at or above the old begin but below
+// beforeOffset are dropped, keeping the beginOffset + len(records) == end
+// invariant intact (Task 3.3 M2; FUNC-SPEC §9.1 rules C10).
+func (f *Fake) SeedCompactAway(topic string, partition int32, beforeOffset int64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t := f.model.topics[topic]
+	if t == nil || int(partition) < 0 || int(partition) >= len(t.partitions) {
+		return
+	}
+	p := &t.partitions[partition]
+	kept := p.records[:0:0]
+	for _, r := range p.records {
+		if r.Offset >= beforeOffset {
+			kept = append(kept, r)
+		}
+	}
+	p.records = kept
+	p.beginOffset = beforeOffset
+}
+
 // GroupOffset is one committed offset seeded onto a consumer group.
 type GroupOffset struct {
 	Topic     string

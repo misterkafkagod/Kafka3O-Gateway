@@ -342,11 +342,11 @@
   - `BenchmarkScanRun/1krecords`, `BenchmarkScanRun/10krecords`, `BenchmarkDecode/json`, `BenchmarkDecode/string`, `BenchmarkDecode/binary`, `BenchmarkEncodeScanEnvelope` compile and run under `make bench` — TECH §4.7
 
 ### Task 3.3: Message service (M1, M2)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 M1, M2, §9.1 rules (M2 compacted-away 404 — C10), §5.6 (data-plane); TECH S2, I2 (`Consumer`, `Producer`)
 - **Subtasks:**
-  - [ ] 3.3.1 `internal/service/message/service.go`: `Read` (bounds validated against ceilings → `BoundExceeded`), `Get` (assign at offset, first record offset > requested → `NotFound`) — FUNC §8.7, C10
-  - [ ] 3.3.2 Descriptors M1, M2 flagged `DataPlane` (gates ready for Phase 6) — FUNC F6
+  - [x] 3.3.1 `internal/service/message/service.go`: `Read` (bounds validated against ceilings → `BoundExceeded`), `Get` (assign at offset, first record offset > requested → `NotFound`) — FUNC §8.7, C10
+  - [x] 3.3.2 Descriptors M1, M2 flagged `DataPlane` (gates ready for Phase 6) — FUNC F6 (already set by Task 1.3; verified via `TestTable_DataPlaneIsM1ToM8`)
 - **Tests (Definition of Done):**
   - `TestMessageService_Read_LimitAboveCeilingIsBoundExceeded`, `TestMessageService_Read_DefaultsApplied` — VC O3; FUNC §8.8
   - `TestMessageService_Get_ReturnsRecordAtOffset`, `TestMessageService_Get_CompactedAwayIsNotFound`, `TestMessageService_Get_OutOfRangeIsNotFound` — FUNC §8.7 M2; TECH C10
