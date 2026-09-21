@@ -48,8 +48,23 @@ type Admin interface {
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,
 // T4, C10). It uses manual partition assignment — no group, no commits
-// (FUNC-SPEC O4). Methods arrive with Phase 3 (Task 3.1).
-type Consumer interface{}
+// (FUNC-SPEC O4). The end snapshot a scan reads up to is resolved by the
+// caller via Admin.ListEndOffsets, not by Consumer itself (FUNC-SPEC §9.2).
+type Consumer interface {
+	// Assign begins a manual-assignment session over topic's partitions,
+	// each starting at startOffsets[partition] (FUNC-SPEC §9.2 Assign; O4:
+	// no group, no commits). Calling Assign again replaces the session.
+	Assign(ctx context.Context, topic string, partitions []int32, startOffsets map[int32]int64) error
+
+	// Poll returns whatever records have arrived for the assigned
+	// partitions since the last call — possibly none. Poll does not itself
+	// know when a partition is exhausted; the caller compares returned
+	// offsets against its own end snapshot (FUNC-SPEC §9.2 Poll/Evaluate).
+	Poll(ctx context.Context) ([]Record, error)
+
+	// Close releases the session (TECH-SPEC §2.3: a dedicated client per scan).
+	Close()
+}
 
 // Producer is the message-writing surface (FUNC-SPEC §8.1: M5–M8 target and
 // the F5 audit sink). Methods arrive with Phase 5 (Task 5.1).

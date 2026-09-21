@@ -33,9 +33,15 @@ func (nopAdmin) ListOffsetsAfterMilli(context.Context, string, int64) (map[int32
 }
 func (nopAdmin) DescribeLogDirs(context.Context, string) ([]LogDirReplica, error) { return nil, nil }
 
+type nopConsumer struct{}
+
+func (nopConsumer) Assign(context.Context, string, []int32, map[int32]int64) error { return nil }
+func (nopConsumer) Poll(context.Context) ([]Record, error)                         { return nil, nil }
+func (nopConsumer) Close()                                                         {}
+
 var (
 	_ Admin    = nopAdmin{}
-	_ Consumer = struct{}{}
+	_ Consumer = nopConsumer{}
 	_ Producer = struct{}{}
 )
 

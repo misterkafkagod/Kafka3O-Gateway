@@ -311,13 +311,13 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 3.1: Consumer port and adapters
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.1 (manual assignment, no group, no commits), O4, X8, §9.2 (end snapshot); TECH §2.3 (client lifecycle), C4 (`read_committed`), L1–L4
 - **Subtasks:**
-  - [ ] 3.1.1 Port `Consumer`: `Assign(ctx, topic, partitions, startOffsets)`, `Poll(ctx) ([]Record, error)`, `Close()`; end snapshot obtained through `Admin.ListEndOffsets` — FUNC §9.2
-  - [ ] 3.1.2 `franz/consumer.go`: dedicated `kgo.Client` per scan with `ConsumePartitions`, no group id, `FetchIsolationLevel` from config, closed at scan end — TECH §2.3, C4
-  - [ ] 3.1.3 `fake/consumer.go`: serves the model's record log honouring `Latency` and `FailNext`; records no commit/join calls — TECH §4.3
-  - [ ] 3.1.4 `porttest/consumer.go`: assign+poll from offset, from timestamp, beyond end; `AssertNoCommits`/`AssertNoGroupJoin` — TECH §4.5 O4
+  - [x] 3.1.1 Port `Consumer`: `Assign(ctx, topic, partitions, startOffsets)`, `Poll(ctx) ([]Record, error)`, `Close()`; end snapshot obtained through `Admin.ListEndOffsets` — FUNC §9.2
+  - [x] 3.1.2 `franz/consumer.go`: dedicated `kgo.Client` per scan with `ConsumePartitions`, no group id, `FetchIsolationLevel` from config, closed at scan end — TECH §2.3, C4
+  - [x] 3.1.3 `fake/consumer.go`: serves the model's record log honouring `Latency` and `FailNext`; records no commit/join calls — TECH §4.3
+  - [x] 3.1.4 `porttest/consumer.go`: assign+poll from offset, from timestamp, beyond end; `AssertNoCommits`/`AssertNoGroupJoin` — TECH §4.5 O4
 - **Tests (Definition of Done):**
   - `porttest` cases `Consumer_AssignAndPollFromOffset`, `Consumer_PollFromTimestampResolvedOffset`, `Consumer_BeyondEndReturnsNothing`, `Consumer_NoCommitNoGroupJoin`, `Consumer_CloseReleases` — VC O4; TECH L2
   - `TestFranzConsumer_OptionsNoGroupReadCommitted` (unit: option construction, no broker) — TECH C4, §2.3

@@ -16,6 +16,12 @@ func TestFake_PortContract(t *testing.T) {
 	porttest.Run(t, New())
 }
 
+func TestFake_ConsumerPortContract(t *testing.T) {
+	t.Parallel()
+	f := New()
+	porttest.RunConsumer(t, f, f)
+}
+
 func TestFake_FailNext_FiresOnce(t *testing.T) {
 	t.Parallel()
 	f := New()

@@ -40,6 +40,11 @@ type Fake struct {
 	failAlways  map[string]kafka.Kind
 	latency     map[string]time.Duration
 	unreachable bool
+
+	// consumerSession is the fake's single active manual-assignment session
+	// (TECH-SPEC §4.3): one Assign replaces any previous session, mirroring
+	// a dedicated per-scan client (no group, no commits — FUNC-SPEC O4).
+	consumerSession *consumerSession
 }
 
 // Option configures a Fake at construction.
