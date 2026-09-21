@@ -15,9 +15,14 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 
+	apicluster "github.com/misterkafkagod/kafka3o/internal/api/cluster"
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
+	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
+	"github.com/misterkafkagod/kafka3o/internal/kafka"
+	"github.com/misterkafkagod/kafka3o/internal/service/cluster"
+	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
 )
 
@@ -29,6 +34,12 @@ const basePath = "/v1"
 type Deps struct {
 	// Cluster is the Kafka admin port readiness probes against (C3).
 	Cluster health.ClusterProbe
+	// Admin is the full Kafka admin port the cluster and topic services are
+	// built from (C1, C2, C4, T1-T4). The same concrete value as Cluster in
+	// practice — Admin is the wider interface those services need (TECH-SPEC I2).
+	Admin kafka.Admin
+	// PageBounds is the configured ?pageSize= default and ceiling (FUNC-SPEC §8.8).
+	PageBounds apitopic.PageBounds
 	// AuditStatus reports the configured audit sink's health (TECH-SPEC B5).
 	AuditStatus health.AuditStatus
 	// Keys are the configured API keys (TECH-SPEC B4). Ignored when
@@ -59,6 +70,8 @@ func New(deps Deps) http.Handler {
 
 	humaAPI := humago.New(mux, config)
 	registerHealth(humaAPI, deps)
+	apicluster.Register(humaAPI, cluster.New(deps.Admin))
+	apitopic.Register(humaAPI, topic.New(deps.Admin), deps.PageBounds)
 
 	var handler http.Handler = mux
 	handler = telemetry.HTTPMiddleware("gateway", func(r *http.Request) string {

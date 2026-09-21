@@ -12,6 +12,7 @@ import (
 
 	"github.com/misterkafkagod/kafka3o/internal/api"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
+	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/fake"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
@@ -67,7 +68,8 @@ func WithKeys(keys ...middleware.Key) Option {
 }
 
 // defaultSettings is NewTestGateway's starting point before opts run: auth
-// enabled, one operator key (DefaultOperatorKey), the real-time clock.
+// enabled, one operator key (DefaultOperatorKey), the real-time clock, and
+// the same page-size default/ceiling as configs/config.example.yaml.
 func defaultSettings() settings {
 	return settings{
 		deps: api.Deps{
@@ -76,6 +78,7 @@ func defaultSettings() settings {
 				{ID: "test-operator", Tier: core.TierOperator, SHA256: sha256.Sum256([]byte(DefaultOperatorKey))},
 			},
 			AuthEnabled: true,
+			PageBounds:  apitopic.PageBounds{Default: 50, Ceiling: 500},
 		},
 	}
 }
@@ -92,6 +95,7 @@ func NewTestGateway(t *testing.T, opts ...Option) *Gateway {
 
 	f := fake.New(s.fakeOpts...)
 	s.deps.Cluster = f
+	s.deps.Admin = f
 	for _, hook := range s.hooks {
 		hook(&s.deps, f)
 	}

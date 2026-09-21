@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "AffectedDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "issue": {
+            "type": "string"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "issue"
+        ],
+        "type": "object"
+      },
       "Body": {
         "additionalProperties": false,
         "properties": {
@@ -30,6 +51,247 @@
           "message",
           "status",
           "requestId"
+        ],
+        "type": "object"
+      },
+      "BrokerConfigEntryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "isReadOnly": {
+            "type": "boolean"
+          },
+          "isSensitive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "source",
+          "isSensitive",
+          "isReadOnly"
+        ],
+        "type": "object"
+      },
+      "BrokerDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "port": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "rack": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "host",
+          "port",
+          "rack"
+        ],
+        "type": "object"
+      },
+      "BrokersHealthDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "online": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "online"
+        ],
+        "type": "object"
+      },
+      "ClusterHealthBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ClusterHealthBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "affected": {
+            "items": {
+              "$ref": "#/components/schemas/AffectedDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "brokers": {
+            "$ref": "#/components/schemas/BrokersHealthDTO"
+          },
+          "partitions": {
+            "$ref": "#/components/schemas/PartitionsHealthDTO"
+          },
+          "topics": {
+            "$ref": "#/components/schemas/TopicsHealthDTO"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "brokers",
+          "topics",
+          "partitions",
+          "affected",
+          "truncated"
+        ],
+        "type": "object"
+      },
+      "DescribeBrokerConfigBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/DescribeBrokerConfigBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "brokerId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/BrokerConfigEntryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "brokerId",
+          "configs"
+        ],
+        "type": "object"
+      },
+      "DescribeClusterBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/DescribeClusterBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "brokers": {
+            "items": {
+              "$ref": "#/components/schemas/BrokerDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "controllerId": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clusterId",
+          "controllerId",
+          "brokers"
+        ],
+        "type": "object"
+      },
+      "DescribeTopicBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/DescribeTopicBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "approxMessageCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/TopicConfigEntryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "internal": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitionCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partitions": {
+            "items": {
+              "$ref": "#/components/schemas/PartitionDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "replicationFactor": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "internal",
+          "partitionCount",
+          "replicationFactor",
+          "approxMessageCount",
+          "partitions",
+          "configs"
         ],
         "type": "object"
       },
@@ -71,6 +333,37 @@
         ],
         "type": "object"
       },
+      "ListTopicsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ListTopicsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TopicSummaryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageDTO"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "type": "object"
+      },
       "LiveBody": {
         "additionalProperties": false,
         "properties": {
@@ -89,6 +382,168 @@
         },
         "required": [
           "status"
+        ],
+        "type": "object"
+      },
+      "PageDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object"
+      },
+      "PartitionCountDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "fromOffset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "toOffset": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "fromOffset",
+          "toOffset",
+          "count"
+        ],
+        "type": "object"
+      },
+      "PartitionDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "approxCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "beginOffset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "endOffset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "isr": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "leader": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "replicas": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "leader",
+          "replicas",
+          "isr",
+          "beginOffset",
+          "endOffset",
+          "approxCount"
+        ],
+        "type": "object"
+      },
+      "PartitionSizeDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "replicas": {
+            "items": {
+              "$ref": "#/components/schemas/ReplicaSizeDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "bytes",
+          "replicas"
+        ],
+        "type": "object"
+      },
+      "PartitionsHealthDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "nonPreferredLeader": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "offline": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "underReplicated": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "underReplicated",
+          "offline",
+          "nonPreferredLeader"
         ],
         "type": "object"
       },
@@ -158,6 +613,178 @@
           "latencyMs"
         ],
         "type": "object"
+      },
+      "ReplicaSizeDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "brokerId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "logDir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "brokerId",
+          "logDir",
+          "bytes"
+        ],
+        "type": "object"
+      },
+      "TopicConfigEntryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "isReadOnly": {
+            "type": "boolean"
+          },
+          "isSensitive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "source",
+          "isSensitive",
+          "isReadOnly"
+        ],
+        "type": "object"
+      },
+      "TopicCountBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TopicCountBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "partitions": {
+            "items": {
+              "$ref": "#/components/schemas/PartitionCountDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "to": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic",
+          "from",
+          "to",
+          "total",
+          "partitions"
+        ],
+        "type": "object"
+      },
+      "TopicSizeBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TopicSizeBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "partitions": {
+            "items": {
+              "$ref": "#/components/schemas/PartitionSizeDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": "string"
+          },
+          "totalBytes": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic",
+          "totalBytes",
+          "partitions"
+        ],
+        "type": "object"
+      },
+      "TopicSummaryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "internal": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "replicationFactor": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "partitions",
+          "replicationFactor",
+          "internal"
+        ],
+        "type": "object"
+      },
+      "TopicsHealthDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "type": "object"
       }
     }
   },
@@ -167,6 +794,113 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/cluster": {
+      "get": {
+        "operationId": "cluster-describe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescribeClusterBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Describe the cluster",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C1"
+      }
+    },
+    "/v1/cluster/brokers/{brokerId}/config": {
+      "get": {
+        "operationId": "cluster-broker-config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brokerId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescribeBrokerConfigBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Describe a broker's configuration",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C2"
+      }
+    },
+    "/v1/cluster/health": {
+      "get": {
+        "operationId": "cluster-health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterHealthBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Cluster health summary",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C4"
+      }
+    },
     "/v1/health/live": {
       "get": {
         "operationId": "health-live",
@@ -229,6 +963,220 @@
           "Health"
         ],
         "x-command-id": "C3"
+      }
+    },
+    "/v1/topics": {
+      "get": {
+        "operationId": "topic-list",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "pattern",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "includeInternal",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTopicsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List topics",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T1"
+      }
+    },
+    "/v1/topics/{name}": {
+      "get": {
+        "operationId": "topic-describe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescribeTopicBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Describe a topic",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T2"
+      }
+    },
+    "/v1/topics/{name}/count": {
+      "get": {
+        "operationId": "topic-count",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicCountBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Message count in a time window",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T4"
+      }
+    },
+    "/v1/topics/{name}/size": {
+      "get": {
+        "operationId": "topic-size",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicSizeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Topic on-disk size",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T3"
       }
     }
   }

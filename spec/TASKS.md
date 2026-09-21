@@ -278,13 +278,13 @@
   - `TestTopicService_CountInWindow_ClampsToEndAndSums` — FUNC §8.7 T4
 
 ### Task 2.4: Routes, DTOs, component and acceptance tests (C1, C2, C4, T1–T4)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.2 (URL table), §4.5, §4.8, I5 (DTOs separate)
 - **Subtasks:**
-  - [ ] 2.4.1 `internal/api/cluster/{routes,dto,mapping}.go`: `GET /v1/cluster`, `GET /v1/cluster/brokers/{brokerId}/config`, `GET /v1/cluster/health` — TECH §6.2
-  - [ ] 2.4.2 `internal/api/topic/{routes,dto,mapping}.go`: `GET /v1/topics`, `GET /v1/topics/{name}`, `/size`, `/count` — TECH §6.2
-  - [ ] 2.4.3 Component tests: 404 envelope, masking, pagination, reader access, `AssertNoCommits` after each; every `kafka.Kind` injected via `FailNext` on `GET /v1/topics/{name}` maps to its FUNC §8.4 row (Step 11 N1) — TECH §4.5 O4/O5/Pagination
-  - [ ] 2.4.4 Acceptance tests C1, C2, C4, T1–T4; remove ids from `pending` — TECH §4.8
+  - [x] 2.4.1 `internal/api/cluster/{routes,dto,mapping}.go`: `GET /v1/cluster`, `GET /v1/cluster/brokers/{brokerId}/config`, `GET /v1/cluster/health` — TECH §6.2
+  - [x] 2.4.2 `internal/api/topic/{routes,dto,mapping}.go`: `GET /v1/topics`, `GET /v1/topics/{name}`, `/size`, `/count` — TECH §6.2
+  - [x] 2.4.3 Component tests: 404 envelope, masking, pagination, reader access, `AssertNoCommits` after each; every `kafka.Kind` injected via `FailNext` on `GET /v1/topics/{name}` maps to its FUNC §8.4 row (Step 11 N1) — TECH §4.5 O4/O5/Pagination
+  - [x] 2.4.4 Acceptance tests C1, C2, C4, T1–T4; remove ids from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestAPI_ErrorMapping_EveryKindThroughHTTP` (table over every `kafka.Kind` via `fake.FailNext` → HTTP status, `code`, `kafkaError`, `requestId`) — VC O5; 4.5 O5 (Step 11 N1)
   - `TestAPI_Inspection_ReaderKeyAllowedOnAllRoutes` (C1, C2, C4, T1–T4) — VC O7

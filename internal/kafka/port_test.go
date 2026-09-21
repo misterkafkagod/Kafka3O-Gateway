@@ -20,8 +20,8 @@ func (nopAdmin) DescribeCluster(context.Context) (ClusterInfo, error) { return C
 func (nopAdmin) DescribeBrokerConfigs(context.Context, int32) ([]ConfigEntry, error) {
 	return nil, nil
 }
-func (nopAdmin) Metadata(context.Context) (ClusterMetadata, error) { return ClusterMetadata{}, nil }
-func (nopAdmin) ListTopics(context.Context) ([]TopicSummary, error) { return nil, nil }
+func (nopAdmin) Metadata(context.Context) (ClusterMetadata, error)     { return ClusterMetadata{}, nil }
+func (nopAdmin) ListTopics(context.Context) ([]TopicSummary, error)    { return nil, nil }
 func (nopAdmin) DescribeTopics(context.Context, string) (Topic, error) { return Topic{}, nil }
 func (nopAdmin) DescribeTopicConfigs(context.Context, string) ([]ConfigEntry, error) {
 	return nil, nil

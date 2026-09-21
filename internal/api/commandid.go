@@ -19,6 +19,13 @@ func commandExtension(id string) map[string]any {
 func implementedCommandIDs() map[string]bool {
 	return map[string]bool{
 		"C3": true,
+		"C1": true,
+		"C2": true,
+		"C4": true,
+		"T1": true,
+		"T2": true,
+		"T3": true,
+		"T4": true,
 	}
 }
 

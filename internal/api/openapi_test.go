@@ -109,9 +109,10 @@ func TestOpenAPI_PendingIsTableMinusImplemented(t *testing.T) {
 	got := append([]string(nil), api.Pending()...)
 	sort.Strings(got)
 
+	implemented := map[string]bool{"C1": true, "C2": true, "C3": true, "C4": true, "T1": true, "T2": true, "T3": true, "T4": true}
 	want := make([]string, 0, len(command.Table()))
 	for _, d := range command.Table() {
-		if d.ID == "C3" {
+		if implemented[d.ID] {
 			continue
 		}
 		want = append(want, d.ID)

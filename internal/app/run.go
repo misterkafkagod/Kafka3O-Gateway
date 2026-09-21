@@ -16,6 +16,7 @@ import (
 
 	"github.com/misterkafkagod/kafka3o/internal/api"
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
+	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
 	"github.com/misterkafkagod/kafka3o/internal/config"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/franz"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
@@ -111,8 +112,11 @@ func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
 		return nil, err
 	}
 
+	admin := telemetry.NewTracedAdmin(client)
 	return api.New(api.Deps{
-		Cluster:        telemetry.NewTracedAdmin(client),
+		Cluster:        admin,
+		Admin:          admin,
+		PageBounds:     apitopic.PageBounds{Default: cfg.Bounds.Page.Size.Default, Ceiling: cfg.Bounds.Page.Size.Ceiling},
 		AuditStatus:    auditStatus(cfg.Audit),
 		Keys:           keys,
 		AuthEnabled:    cfg.Auth.Enabled,
