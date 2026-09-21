@@ -241,13 +241,13 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 2.1: Port, adapters, and contract cases for inspection
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.1 (Admin surface), §8.7 C1, C2, C4, T1–T4; TECH L1–L4
 - **Subtasks:**
-  - [ ] 2.1.1 Port methods: `DescribeBrokerConfigs`, `ListTopics`, `DescribeTopics`, `DescribeTopicConfigs`, `ListStartOffsets`, `ListEndOffsets`, `ListOffsetsAfterMilli`, `DescribeLogDirs`, `Metadata` (for health summary) — FUNC §8.7
-  - [ ] 2.1.2 `franz/admin.go` implementations via `kadm`; sensitive configs preserved as `IsSensitive` with nil value; config source normalised to `default` / `static` / `dynamic` — TECH §1.1; FUNC §5.1 T2
-  - [ ] 2.1.3 `fake/admin.go` implementations over the model (offsets, log-dir sizes, configs with source) — TECH §4.3
-  - [ ] 2.1.4 `porttest/admin.go`: happy paths, `NotFound` for missing topic/broker, timestamp offset lookup — TECH L2
+  - [x] 2.1.1 Port methods: `DescribeBrokerConfigs`, `ListTopics`, `DescribeTopics`, `DescribeTopicConfigs`, `ListStartOffsets`, `ListEndOffsets`, `ListOffsetsAfterMilli`, `DescribeLogDirs`, `Metadata` (for health summary) — FUNC §8.7
+  - [x] 2.1.2 `franz/admin.go` implementations via `kadm`; sensitive configs preserved as `IsSensitive` with nil value; config source normalised to `default` / `static` / `dynamic` — TECH §1.1; FUNC §5.1 T2
+  - [x] 2.1.3 `fake/admin.go` implementations over the model (offsets, log-dir sizes, configs with source) — TECH §4.3
+  - [x] 2.1.4 `porttest/admin.go`: happy paths, `NotFound` for missing topic/broker, timestamp offset lookup — TECH L2
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_DescribeBrokerConfigs_SensitiveHasNilValue`, `Admin_DescribeBrokerConfigs_MissingBrokerNotFound`, `Admin_ListTopics_IncludesInternalFlag`, `Admin_DescribeTopics_MissingNotFound`, `Admin_DescribeTopicConfigs_SourceNormalised`, `Admin_ListOffsets_StartEnd`, `Admin_ListOffsetsAfterMilli_FirstAtOrAfter`, `Admin_DescribeLogDirs_PerReplicaBytes` (fake in CI; franz at Level 2) — TECH L2
   - `TestFranz_ConfigSourceNormalisation` (unit: every kadm source enum → `default`/`static`/`dynamic`) — FUNC §5.1 T2

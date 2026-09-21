@@ -106,3 +106,29 @@ type ConfigEntry struct {
 	IsSensitive bool
 	IsReadOnly  bool
 }
+
+// TopicSummary is one topic in a topic listing (FUNC-SPEC §8.7 T1): partition
+// count and replication factor only, no per-partition detail. Internal topics
+// are always included; the includeInternal toggle is a service-layer filter.
+type TopicSummary struct {
+	Name              string
+	Internal          bool
+	PartitionCount    int
+	ReplicationFactor int
+}
+
+// LogDirReplica is one replica's on-disk footprint for one partition
+// (FUNC-SPEC §8.7 T3).
+type LogDirReplica struct {
+	Partition int32
+	BrokerID  int32
+	LogDir    string
+	Bytes     int64
+}
+
+// ClusterMetadata is a full, unfiltered snapshot of brokers and topics used to
+// compute the cluster health summary (FUNC-SPEC §8.7 C4).
+type ClusterMetadata struct {
+	Brokers []Broker
+	Topics  []Topic
+}

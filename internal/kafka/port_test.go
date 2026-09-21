@@ -17,6 +17,21 @@ import (
 type nopAdmin struct{}
 
 func (nopAdmin) DescribeCluster(context.Context) (ClusterInfo, error) { return ClusterInfo{}, nil }
+func (nopAdmin) DescribeBrokerConfigs(context.Context, int32) ([]ConfigEntry, error) {
+	return nil, nil
+}
+func (nopAdmin) Metadata(context.Context) (ClusterMetadata, error) { return ClusterMetadata{}, nil }
+func (nopAdmin) ListTopics(context.Context) ([]TopicSummary, error) { return nil, nil }
+func (nopAdmin) DescribeTopics(context.Context, string) (Topic, error) { return Topic{}, nil }
+func (nopAdmin) DescribeTopicConfigs(context.Context, string) ([]ConfigEntry, error) {
+	return nil, nil
+}
+func (nopAdmin) ListStartOffsets(context.Context, string) (map[int32]int64, error) { return nil, nil }
+func (nopAdmin) ListEndOffsets(context.Context, string) (map[int32]int64, error)   { return nil, nil }
+func (nopAdmin) ListOffsetsAfterMilli(context.Context, string, int64) (map[int32]int64, error) {
+	return nil, nil
+}
+func (nopAdmin) DescribeLogDirs(context.Context, string) ([]LogDirReplica, error) { return nil, nil }
 
 var (
 	_ Admin    = nopAdmin{}
@@ -90,6 +105,7 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[Partition](), reflect.TypeFor[TopicPartition](), reflect.TypeFor[Record](),
 		reflect.TypeFor[Header](), reflect.TypeFor[Group](), reflect.TypeFor[GroupMember](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
+		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 	}
 	for _, typ := range types {
 		for i := range typ.NumField() {
