@@ -224,7 +224,7 @@
 ---
 
 ## Phase 2: Cluster and topic inspection
-- **Phase Status:** Not Started
+- **Phase Status:** Awaiting Manual Verification
 - **Goal:** A human can list and describe topics, see broker configs with sensitive values masked, sizes, message counts in a time window, and the cluster health summary.
 - **Manual Test Plan:**
   1. CS2.
