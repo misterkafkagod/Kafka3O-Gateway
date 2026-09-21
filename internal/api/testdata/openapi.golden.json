@@ -316,6 +316,26 @@
         ],
         "type": "object"
       },
+      "HeaderDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueEncoding": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "valueEncoding"
+        ],
+        "type": "object"
+      },
       "KafkaErrorInfo": {
         "additionalProperties": false,
         "properties": {
@@ -547,6 +567,37 @@
         ],
         "type": "object"
       },
+      "ReadMessagesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ReadMessagesBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "scan": {
+            "$ref": "#/components/schemas/ScanStatsDTO"
+          }
+        },
+        "required": [
+          "items",
+          "scan"
+        ],
+        "type": "object"
+      },
       "ReadyAudit": {
         "additionalProperties": false,
         "properties": {
@@ -614,6 +665,77 @@
         ],
         "type": "object"
       },
+      "RecordDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/RecordDTO.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "$ref": "#/components/schemas/HeaderDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "keyEncoding": {
+            "type": "string"
+          },
+          "offset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "sizeBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "timestampMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueEncoding": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "offset",
+          "timestamp",
+          "timestampMs",
+          "key",
+          "keyEncoding",
+          "value",
+          "valueEncoding",
+          "headers",
+          "sizeBytes"
+        ],
+        "type": "object"
+      },
       "ReplicaSizeDTO": {
         "additionalProperties": false,
         "properties": {
@@ -633,6 +755,58 @@
           "brokerId",
           "logDir",
           "bytes"
+        ],
+        "type": "object"
+      },
+      "ScanStatsDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "continuation": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "elapsedMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "matched": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reachedEnd": {
+            "type": "boolean"
+          },
+          "scanned": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "skipped": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "stoppedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "scanned",
+          "matched",
+          "skipped",
+          "bytes",
+          "elapsedMs",
+          "reachedEnd",
+          "stoppedBy",
+          "continuation"
         ],
         "type": "object"
       },
@@ -1135,6 +1309,170 @@
           "Topics"
         ],
         "x-command-id": "T4"
+      }
+    },
+    "/v1/topics/{name}/messages": {
+      "get": {
+        "operationId": "message-read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "partition",
+            "schema": {
+              "default": -1,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "maxBytes",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "maxTimeMs",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadMessagesBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Read messages",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M1"
+      }
+    },
+    "/v1/topics/{name}/partitions/{partition}/messages/{offset}": {
+      "get": {
+        "operationId": "message-get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "partition",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "offset",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Fetch a single message",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M2"
       }
     },
     "/v1/topics/{name}/size": {

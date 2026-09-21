@@ -18,7 +18,9 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
 	"github.com/misterkafkagod/kafka3o/internal/config"
+	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/franz"
+	"github.com/misterkafkagod/kafka3o/internal/service/message"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
 )
 
@@ -38,21 +40,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("app: telemetry: %w", err)
 	}
 
-	client, err := franz.New(franz.Config{
-		Bootstrap:      cfg.Kafka.Bootstrap,
-		RequestTimeout: cfg.Kafka.RequestTimeout,
-		TLS: franz.TLSConfig{
-			Enabled:  cfg.Kafka.TLS.Enabled,
-			CAFile:   cfg.Kafka.TLS.CAFile,
-			CertFile: cfg.Kafka.TLS.CertFile,
-			KeyFile:  cfg.Kafka.TLS.KeyFile,
-		},
-		SASL: franz.SASLConfig{
-			Mechanism: cfg.Kafka.SASL.Mechanism,
-			Username:  cfg.Kafka.SASL.Username,
-			Password:  cfg.Kafka.SASL.Password,
-		},
-	})
+	client, err := franz.New(franzConfig(cfg))
 	if err != nil {
 		return fmt.Errorf("app: kafka client: %w", err)
 	}
@@ -114,9 +102,15 @@ func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
 
 	admin := telemetry.NewTracedAdmin(client)
 	return api.New(api.Deps{
-		Cluster:        admin,
-		Admin:          admin,
-		PageBounds:     apitopic.PageBounds{Default: cfg.Bounds.Page.Size.Default, Ceiling: cfg.Bounds.Page.Size.Ceiling},
+		Cluster:     admin,
+		Admin:       admin,
+		PageBounds:  apitopic.PageBounds{Default: cfg.Bounds.Page.Size.Default, Ceiling: cfg.Bounds.Page.Size.Ceiling},
+		NewConsumer: newConsumerFactory(cfg),
+		MessageBounds: message.Bounds{
+			Limit:    message.Range{Default: cfg.Bounds.Read.Limit.Default, Ceiling: cfg.Bounds.Read.Limit.Ceiling},
+			MaxBytes: message.RangeBytes{Default: int64(cfg.Bounds.Scan.MaxBytes.Default), Ceiling: int64(cfg.Bounds.Scan.MaxBytes.Ceiling)},
+			MaxTime:  message.RangeDuration{Default: cfg.Bounds.Scan.MaxTime.Default, Ceiling: cfg.Bounds.Scan.MaxTime.Ceiling},
+		},
 		AuditStatus:    auditStatus(cfg.Audit),
 		Keys:           keys,
 		AuthEnabled:    cfg.Auth.Enabled,
@@ -124,6 +118,36 @@ func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
 		TrustedProxies: trustedProxies,
 		DocsEnabled:    cfg.HTTP.Docs.Enabled,
 	}), nil
+}
+
+// franzConfig maps cfg's Kafka connection settings onto franz.Config, shared
+// by the long-lived admin client (Run) and every dedicated per-scan Consumer
+// (newConsumerFactory) so both reach the same cluster the same way.
+func franzConfig(cfg config.Config) franz.Config {
+	return franz.Config{
+		Bootstrap:      cfg.Kafka.Bootstrap,
+		RequestTimeout: cfg.Kafka.RequestTimeout,
+		TLS: franz.TLSConfig{
+			Enabled:  cfg.Kafka.TLS.Enabled,
+			CAFile:   cfg.Kafka.TLS.CAFile,
+			CertFile: cfg.Kafka.TLS.CertFile,
+			KeyFile:  cfg.Kafka.TLS.KeyFile,
+		},
+		SASL: franz.SASLConfig{
+			Mechanism: cfg.Kafka.SASL.Mechanism,
+			Username:  cfg.Kafka.SASL.Username,
+			Password:  cfg.Kafka.SASL.Password,
+		},
+	}
+}
+
+// newConsumerFactory returns a message.ConsumerFactory building a fresh,
+// dedicated kgo.Client per scan (TECH-SPEC §2.3), at cfg's configured
+// isolation level (TECH-SPEC C4).
+func newConsumerFactory(cfg config.Config) message.ConsumerFactory {
+	return func() (kafka.Consumer, error) {
+		return franz.NewConsumer(franzConfig(cfg), cfg.Kafka.Consumer.IsolationLevel)
+	}
 }
 
 // auditStatus reports the configured sink as healthy: the real audit sink

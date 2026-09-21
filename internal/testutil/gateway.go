@@ -9,12 +9,15 @@ import (
 	"crypto/sha256"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/misterkafkagod/kafka3o/internal/api"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
+	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/fake"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
+	"github.com/misterkafkagod/kafka3o/internal/service/message"
 )
 
 // DefaultOperatorKey is the presented (unhashed) API key NewTestGateway
@@ -79,6 +82,11 @@ func defaultSettings() settings {
 			},
 			AuthEnabled: true,
 			PageBounds:  apitopic.PageBounds{Default: 50, Ceiling: 500},
+			MessageBounds: message.Bounds{
+				Limit:    message.Range{Default: 100, Ceiling: 1000},
+				MaxBytes: message.RangeBytes{Default: 10 * 1024 * 1024, Ceiling: 100 * 1024 * 1024},
+				MaxTime:  message.RangeDuration{Default: 10 * time.Second, Ceiling: 60 * time.Second},
+			},
 		},
 	}
 }
@@ -96,6 +104,7 @@ func NewTestGateway(t *testing.T, opts ...Option) *Gateway {
 	f := fake.New(s.fakeOpts...)
 	s.deps.Cluster = f
 	s.deps.Admin = f
+	s.deps.NewConsumer = func() (kafka.Consumer, error) { return f, nil }
 	for _, hook := range s.hooks {
 		hook(&s.deps, f)
 	}

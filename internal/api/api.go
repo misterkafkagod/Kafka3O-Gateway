@@ -18,10 +18,12 @@ import (
 	apicluster "github.com/misterkafkagod/kafka3o/internal/api/cluster"
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
+	apimessage "github.com/misterkafkagod/kafka3o/internal/api/message"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/service/cluster"
+	"github.com/misterkafkagod/kafka3o/internal/service/message"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
 )
@@ -40,6 +42,10 @@ type Deps struct {
 	Admin kafka.Admin
 	// PageBounds is the configured ?pageSize= default and ceiling (FUNC-SPEC §8.8).
 	PageBounds apitopic.PageBounds
+	// NewConsumer builds a fresh kafka.Consumer per scan (TECH-SPEC §2.3).
+	NewConsumer message.ConsumerFactory
+	// MessageBounds are the configured M1 limit/maxBytes/maxTimeMs bounds (FUNC-SPEC §8.8).
+	MessageBounds message.Bounds
 	// AuditStatus reports the configured audit sink's health (TECH-SPEC B5).
 	AuditStatus health.AuditStatus
 	// Keys are the configured API keys (TECH-SPEC B4). Ignored when
@@ -72,6 +78,7 @@ func New(deps Deps) http.Handler {
 	registerHealth(humaAPI, deps)
 	apicluster.Register(humaAPI, cluster.New(deps.Admin))
 	apitopic.Register(humaAPI, topic.New(deps.Admin), deps.PageBounds)
+	apimessage.Register(humaAPI, message.New(deps.Admin, deps.NewConsumer, deps.MessageBounds))
 
 	var handler http.Handler = mux
 	handler = telemetry.HTTPMiddleware("gateway", func(r *http.Request) string {

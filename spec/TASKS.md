@@ -353,14 +353,14 @@
   - `TestMessageService_Read_NoCommitsNoGroupJoin` — VC O4
 
 ### Task 3.4: Routes, parsers, tests, fuzz, benchmarks (M1, M2)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.2, §4.5 (O3, Scan, Decoding), §4.6 (fuzz), §4.7 (benchmarks), §4.8
 - **Subtasks:**
-  - [ ] 3.4.1 `internal/api/message/routes.go`: `GET /v1/topics/{name}/messages`, `GET /v1/topics/{name}/partitions/{partition}/messages/{offset}`; `from=`/`to=` parser (`beginning|latest|offset:<n>|timestamp:<ms|iso>`) — TECH §6.2; FUNC §8.7 M1
-  - [ ] 3.4.2 Component tests: O3 rows (limit > ceiling, `maxMessages`, `maxBytes`, `maxTime` via `Latency` + clock), decoding rows, M2 404 — TECH §4.5
-  - [ ] 3.4.3 Fuzz targets: `scan.Decode`, header encoding, `from=`/`to=` parser; seed corpora in `testdata/fuzz/` — TECH §4.6
-  - [ ] 3.4.4 `BenchmarkScanRun/{1k,10k}records`, `BenchmarkDecode/{json,string,binary}`, `BenchmarkEncodeScanEnvelope` — TECH §4.7
-  - [ ] 3.4.5 Acceptance tests M1, M2; remove from `pending` — TECH §4.8
+  - [x] 3.4.1 `internal/api/message/routes.go`: `GET /v1/topics/{name}/messages`, `GET /v1/topics/{name}/partitions/{partition}/messages/{offset}`; `from=`/`to=` parser (`beginning|latest|offset:<n>|timestamp:<ms|iso>`) — TECH §6.2; FUNC §8.7 M1
+  - [x] 3.4.2 Component tests: O3 rows (limit > ceiling, `maxMessages`, `maxBytes`, `maxTime` via `Latency` + clock), decoding rows, M2 404 — TECH §4.5
+  - [x] 3.4.3 Fuzz targets: `scan.Decode`, header encoding, `from=`/`to=` parser; seed corpora in `testdata/fuzz/` — TECH §4.6 (seeds via `f.Add`, matching Task 1.8's `FuzzAPIKeyHeader` precedent — no crashers found, so no `testdata/fuzz/` files were generated)
+  - [x] 3.4.4 `BenchmarkScanRun/{1k,10k}records`, `BenchmarkDecode/{json,string,binary}`, `BenchmarkEncodeScanEnvelope` — TECH §4.7
+  - [x] 3.4.5 Acceptance tests M1, M2; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestParseFrom_AllForms` (`beginning`, `latest`, `offset:n`, `timestamp:ms`, `timestamp:iso`, invalid → `VALIDATION_FAILED`) — FUNC §8.7 M1
   - `TestAPI_M1_LimitAboveCeiling400BoundExceeded`, `TestAPI_M1_StoppedByMaxMessagesWithContinuation`, `TestAPI_M1_StoppedByMaxBytes`, `TestAPI_M1_StoppedByMaxTime`, `TestAPI_M1_LatestOrdering`, `TestAPI_M1_FormatBase64` — VC O3; 4.5 Decoding
