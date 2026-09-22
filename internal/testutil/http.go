@@ -24,6 +24,14 @@ func (gw *Gateway) Do(t *testing.T, method, path string, body any) *http.Respons
 // configure).
 func (gw *Gateway) DoWithKey(t *testing.T, method, path string, body any, apiKey string) *http.Response {
 	t.Helper()
+	return gw.DoWithHeaders(t, method, path, body, apiKey, nil)
+}
+
+// DoWithHeaders is DoWithKey, also setting every header in extra (e.g.
+// X-Break-Glass-Reason) — for tests exercising request headers beyond the
+// API key itself.
+func (gw *Gateway) DoWithHeaders(t *testing.T, method, path string, body any, apiKey string, extra map[string]string) *http.Response {
+	t.Helper()
 
 	var reader io.Reader
 	if body != nil {
@@ -43,6 +51,9 @@ func (gw *Gateway) DoWithKey(t *testing.T, method, path string, body any, apiKey
 	}
 	if apiKey != "" {
 		req.Header.Set(middleware.HeaderAPIKey, apiKey)
+	}
+	for name, value := range extra {
+		req.Header.Set(name, value)
 	}
 
 	resp, err := gw.Server.Client().Do(req)

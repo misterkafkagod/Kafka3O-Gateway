@@ -548,11 +548,11 @@
   - `TestPolicy_FromConfigSwitches` — FUNC §8.2
 
 ### Task 6.2: Tests and acceptance for F2 / F6
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.5 (O9 rows, §9.5 row), §4.8
 - **Subtasks:**
-  - [ ] 6.2.1 Component tests: F2 → every implemented `W` → 403; F6 → M1–M7 → 403; operator + header → 200 + HIGH; reader + header → 403 + HIGH; header ignored under F2; reason truncation — TECH §4.5 O9
-  - [ ] 6.2.2 Acceptance tests for lock and read-only behaviour (config-driven runs) — TECH §4.8
+  - [x] 6.2.1 Component tests: F2 → every implemented `W` → 403; F6 → M1–M7 → 403; operator + header → 200 + HIGH; reader + header → 403 + HIGH; header ignored under F2; reason truncation — TECH §4.5 O9 — reason truncation already covered by the pre-existing `TestSanitizeBreakGlass`
+  - [x] 6.2.2 Acceptance tests for lock and read-only behaviour (config-driven runs) — TECH §4.8 — each starts its own second gateway instance with the switch set, since the shared acceptance instance runs with every switch off
 - **Tests (Definition of Done):**
   - `TestAPI_ReadOnly_EveryImplementedWIs403ReadOnlyMode` (iterates `command.Table` W entries with a route) — VC O9
   - `TestAPI_ReadOnly_RRoutesUnaffected` — VC O9

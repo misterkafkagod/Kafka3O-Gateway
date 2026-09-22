@@ -17,10 +17,11 @@ import (
 // every one of them is an R command, reachable by either tier (FUNC-SPEC §9.1).
 const readerSecret = "test-reader-secret"
 
-func readerGateway(t *testing.T) *testutil.Gateway {
+func readerGateway(t *testing.T, extra ...testutil.Option) *testutil.Gateway {
 	t.Helper()
 	key := middleware.Key{ID: "test-reader", Tier: core.TierReader, SHA256: sha256.Sum256([]byte(readerSecret))}
-	return testutil.NewTestGateway(t, testutil.WithKeys(key))
+	opts := append([]testutil.Option{testutil.WithKeys(key)}, extra...)
+	return testutil.NewTestGateway(t, opts...)
 }
 
 func TestAPI_ErrorMapping_EveryKindThroughHTTP(t *testing.T) {

@@ -84,6 +84,23 @@ func WithMaxBulkBodyBytes(n int64) Option {
 	}
 }
 
+// WithReadOnlyMode turns on F2 (FUNC-SPEC §8.2): every W command is blocked,
+// break-glass or not (FUNC-SPEC §9.1 rules C1).
+func WithReadOnlyMode() Option {
+	return func(s *settings) {
+		s.hooks = append(s.hooks, func(deps *api.Deps, _ *fake.Fake) { deps.Policy.ReadOnly = true })
+	}
+}
+
+// WithDataPlaneLock turns on F6 (FUNC-SPEC §9.5): every data-plane command
+// (M1-M8) is blocked, unless an operator caller presents a break-glass
+// reason.
+func WithDataPlaneLock() Option {
+	return func(s *settings) {
+		s.hooks = append(s.hooks, func(deps *api.Deps, _ *fake.Fake) { deps.Policy.DataPlaneLock = true })
+	}
+}
+
 // WithAuditUnhealthy makes /health/ready's audit sub-object report
 // unhealthy, without affecting readiness itself (TECH-SPEC §6.1 B5).
 func WithAuditUnhealthy() Option {
