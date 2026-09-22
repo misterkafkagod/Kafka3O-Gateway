@@ -741,7 +741,7 @@
 ---
 
 ## Phase 11: Replay
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can copy a bounded range of records from one topic to another and resume from a cursor.
 - **Manual Test Plan:**
   1. Seed 2 500 records into `src`; create `dst` with the same partition count.
