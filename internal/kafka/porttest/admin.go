@@ -530,4 +530,82 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 			t.Fatal("CreatePartitions(decrease) = nil, want an error")
 		}
 	})
+
+	t.Run("Admin_DeleteTopics_RemovesTopic", func(t *testing.T) {
+		name := "porttest-delete-topic"
+		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 1, ReplicationFactor: 1},
+		}, false); err != nil {
+			t.Fatalf("CreateTopics() error: %v", err)
+		}
+
+		results, err := port.DeleteTopics(context.Background(), []string{name})
+		if err != nil {
+			t.Fatalf("DeleteTopics() error: %v", err)
+		}
+		if len(results) != 1 || results[0].Name != name || results[0].Err != nil {
+			t.Fatalf("DeleteTopics() results = %+v, want one clean result for %q", results, name)
+		}
+
+		if _, err := port.DescribeTopics(context.Background(), name); err == nil {
+			t.Error("DescribeTopics() after delete = nil error, want NotFound")
+		}
+	})
+
+	t.Run("Admin_DeleteTopics_MissingIsNotFound", func(t *testing.T) {
+		results, err := port.DeleteTopics(context.Background(), []string{"porttest-delete-missing"})
+		if err != nil {
+			t.Fatalf("DeleteTopics() error: %v", err)
+		}
+		if len(results) != 1 {
+			t.Fatalf("DeleteTopics() results = %+v, want exactly one", results)
+		}
+		var ke *kafka.Error
+		if !errors.As(results[0].Err, &ke) || ke.Kind != kafka.KindNotFound {
+			t.Errorf("DeleteTopics() result.Err = %v, want *kafka.Error{Kind: KindNotFound}", results[0].Err)
+		}
+	})
+
+	t.Run("Admin_DeleteRecords_RaisesBeginOffset", func(t *testing.T) {
+		ts, ok := port.(topicSeeder)
+		if !ok {
+			t.Skip("port does not implement the topic seeding capability")
+		}
+		ts.SeedTopic("porttest-delete-records", 1,
+			kafka.Record{Partition: 0, Value: []byte("a")},
+			kafka.Record{Partition: 0, Value: []byte("b")},
+			kafka.Record{Partition: 0, Value: []byte("c")},
+			kafka.Record{Partition: 0, Value: []byte("d")},
+		)
+
+		results, err := port.DeleteRecords(context.Background(), "porttest-delete-records", map[int32]int64{0: 2})
+		if err != nil {
+			t.Fatalf("DeleteRecords() error: %v", err)
+		}
+		if len(results) != 1 || results[0].Partition != 0 || results[0].LowWatermark != 2 {
+			t.Fatalf("DeleteRecords() results = %+v, want one {partition:0 lowWatermark:2}", results)
+		}
+
+		start, err := port.ListStartOffsets(context.Background(), "porttest-delete-records")
+		if err != nil {
+			t.Fatalf("ListStartOffsets() error: %v", err)
+		}
+		if start[0] != 2 {
+			t.Errorf("ListStartOffsets()[0] = %d, want 2 (begin offset raised)", start[0])
+		}
+	})
+
+	t.Run("Admin_DeleteRecords_BeyondEndIsError", func(t *testing.T) {
+		ts, ok := port.(topicSeeder)
+		if !ok {
+			t.Skip("port does not implement the topic seeding capability")
+		}
+		ts.SeedTopic("porttest-delete-records-beyond-end", 1,
+			kafka.Record{Partition: 0, Value: []byte("a")},
+		)
+
+		if _, err := port.DeleteRecords(context.Background(), "porttest-delete-records-beyond-end", map[int32]int64{0: 999}); err == nil {
+			t.Fatal("DeleteRecords(truncateTo beyond end) = nil, want an error")
+		}
+	})
 }

@@ -418,6 +418,62 @@ func (c *Client) CreatePartitions(ctx context.Context, topic string, total int32
 	return nil
 }
 
+// DeleteTopics deletes every named topic via kadm.DeleteTopics (FUNC-SPEC
+// §8.7 T7, T8). Each topic's own error (e.g. NotFound) surfaces on its own
+// result; one missing topic never fails the rest of the batch.
+func (c *Client) DeleteTopics(ctx context.Context, topics []string) ([]kafka.TopicDeleteResult, error) {
+	resp, err := c.kadm.DeleteTopics(ctx, topics...)
+	if err != nil {
+		return nil, wrapErr("topic", err)
+	}
+
+	out := make([]kafka.TopicDeleteResult, len(topics))
+	for i, name := range topics {
+		r, rerr := resp.On(name, nil)
+		if rerr != nil {
+			out[i] = kafka.TopicDeleteResult{Name: name, Err: wrapErr("topic", rerr)}
+			continue
+		}
+		if r.Err != nil {
+			out[i] = kafka.TopicDeleteResult{Name: name, Err: wrapErr("topic", r.Err)}
+			continue
+		}
+		out[i] = kafka.TopicDeleteResult{Name: name}
+	}
+	return out, nil
+}
+
+// DeleteRecords truncates topic's partitions to truncateTo via
+// kadm.DeleteRecords (FUNC-SPEC §8.7 T11, T12). A truncateTo beyond a
+// partition's current end offset surfaces as that call's own error.
+func (c *Client) DeleteRecords(ctx context.Context, topic string, truncateTo map[int32]int64) ([]kafka.PartitionLowWatermark, error) {
+	offsets := make(kadm.Offsets, 1)
+	partitions := make(map[int32]kadm.Offset, len(truncateTo))
+	for partition, at := range truncateTo {
+		partitions[partition] = kadm.Offset{Topic: topic, Partition: partition, At: at}
+	}
+	offsets[topic] = partitions
+
+	resp, err := c.kadm.DeleteRecords(ctx, offsets)
+	if err != nil {
+		return nil, wrapErr("topic", err)
+	}
+
+	out := make([]kafka.PartitionLowWatermark, 0, len(truncateTo))
+	for partition := range truncateTo {
+		r, ok := resp.Lookup(topic, partition)
+		if !ok {
+			return nil, &kafka.Error{Kind: kafka.KindBroker, Resource: "topic"}
+		}
+		if r.Err != nil {
+			return nil, wrapErr("topic", r.Err)
+		}
+		out = append(out, kafka.PartitionLowWatermark{Partition: partition, LowWatermark: r.LowWatermark})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Partition < out[j].Partition })
+	return out, nil
+}
+
 // toDomainBroker converts one kadm broker into the port's Broker shape.
 func toDomainBroker(b kadm.BrokerDetail) kafka.Broker {
 	var rack string

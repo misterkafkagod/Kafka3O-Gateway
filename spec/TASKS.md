@@ -676,11 +676,11 @@
   - `BenchmarkPlanToken/1target`, `BenchmarkPlanToken/1000targets` run under `make bench` — TECH §4.7 (Step 11 G1)
 
 ### Task 9.2: Port and adapters for deletion
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 T7, T8, T11, T12; TECH L1–L4
 - **Subtasks:**
-  - [ ] 9.2.1 Port: `DeleteTopics`, `DeleteRecords(map[partition]offset)` — FUNC §8.7
-  - [ ] 9.2.2 `franz`, `fake` (raises begin offset; `truncateTo > end` error), `porttest` cases — TECH §4.3, L2
+  - [x] 9.2.1 Port: `DeleteTopics`, `DeleteRecords(map[partition]offset)` — FUNC §8.7
+  - [x] 9.2.2 `franz`, `fake` (raises begin offset; `truncateTo > end` error), `porttest` cases — TECH §4.3, L2
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_DeleteTopics_RemovesTopic`, `Admin_DeleteTopics_MissingIsNotFound`, `Admin_DeleteRecords_RaisesBeginOffset`, `Admin_DeleteRecords_BeyondEndIsError` — TECH L2
 

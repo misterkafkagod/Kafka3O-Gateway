@@ -83,6 +83,20 @@ type Admin interface {
 	// current count is checked at the service layer as PARTITION_MISMATCH
 	// (FUNC-SPEC §8.6) before this is ever called.
 	CreatePartitions(ctx context.Context, topic string, total int32) error
+
+	// DeleteTopics deletes every named topic. Each topic's own result
+	// carries its own error (e.g. NotFound); one missing topic never fails
+	// the rest of the batch (T7, T8).
+	DeleteTopics(ctx context.Context, topics []string) ([]TopicDeleteResult, error)
+
+	// DeleteRecords truncates topic's partitions so each partition's new
+	// begin (low watermark) offset is truncateTo[partition] (T11; T12 purge
+	// is the service layer calling this with every partition's current end
+	// offset). A truncateTo beyond its partition's current end offset is
+	// rejected — the service layer normally catches this earlier while
+	// building the plan (FUNC-SPEC §8.6), but the port itself still refuses
+	// to silently accept it.
+	DeleteRecords(ctx context.Context, topic string, truncateTo map[int32]int64) ([]PartitionLowWatermark, error)
 }
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,

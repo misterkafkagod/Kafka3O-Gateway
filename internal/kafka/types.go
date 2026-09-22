@@ -191,3 +191,18 @@ type ConfigChange struct {
 	Name  string
 	Value *string
 }
+
+// TopicDeleteResult is one topic's outcome of DeleteTopics (FUNC-SPEC §8.7
+// T7, T8). Err is set per-topic when only that topic was rejected (e.g. it
+// does not exist); it never fails the rest of the batch.
+type TopicDeleteResult struct {
+	Name string
+	Err  error
+}
+
+// PartitionLowWatermark is one partition's new begin offset after
+// DeleteRecords truncates it (FUNC-SPEC §8.7 T11, T12).
+type PartitionLowWatermark struct {
+	Partition    int32
+	LowWatermark int64
+}

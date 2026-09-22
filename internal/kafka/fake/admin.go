@@ -391,6 +391,79 @@ func (f *Fake) CreatePartitions(ctx context.Context, topic string, total int32) 
 	return err
 }
 
+// DeleteTopics deletes every named topic (FUNC-SPEC §8.7 T7, T8). A missing
+// topic reports NotFound on its own result; it never fails the rest of the
+// batch.
+func (f *Fake) DeleteTopics(ctx context.Context, topics []string) ([]kafka.TopicDeleteResult, error) {
+	return invoke(f, ctx, "DeleteTopics", true, func() ([]kafka.TopicDeleteResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		out := make([]kafka.TopicDeleteResult, len(topics))
+		for i, name := range topics {
+			if f.model.topics[name] == nil {
+				out[i] = kafka.TopicDeleteResult{Name: name, Err: &kafka.Error{Kind: kafka.KindNotFound, Resource: "topic"}}
+				continue
+			}
+			delete(f.model.topics, name)
+			out[i] = kafka.TopicDeleteResult{Name: name}
+		}
+		return out, nil
+	})
+}
+
+// DeleteRecords truncates topic's partitions to truncateTo (FUNC-SPEC §8.7
+// T11, T12): each named partition's begin offset advances to truncateTo,
+// dropping any records now below it, keeping the beginOffset +
+// len(records) == end invariant intact (mirrors SeedCompactAway). A
+// truncateTo beyond a partition's current end offset → a broker-side error
+// (the fake's own safety net — the service layer already checks this while
+// building the plan).
+func (f *Fake) DeleteRecords(ctx context.Context, topic string, truncateTo map[int32]int64) ([]kafka.PartitionLowWatermark, error) {
+	return invoke(f, ctx, "DeleteRecords", true, func() ([]kafka.PartitionLowWatermark, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		t := f.model.topics[topic]
+		if t == nil {
+			return nil, &kafka.Error{Kind: kafka.KindNotFound, Resource: "topic"}
+		}
+
+		for partition, at := range truncateTo {
+			if int(partition) < 0 || int(partition) >= len(t.partitions) {
+				return nil, &kafka.Error{Kind: kafka.KindNotFound, Resource: "partition"}
+			}
+			p := &t.partitions[partition]
+			end := p.beginOffset + int64(len(p.records))
+			if at > end {
+				return nil, &kafka.Error{Kind: kafka.KindBroker, Resource: "topic"}
+			}
+		}
+
+		out := make([]kafka.PartitionLowWatermark, 0, len(truncateTo))
+		partitions := make([]int32, 0, len(truncateTo))
+		for partition := range truncateTo {
+			partitions = append(partitions, partition)
+		}
+		sort.Slice(partitions, func(i, j int) bool { return partitions[i] < partitions[j] })
+
+		for _, partition := range partitions {
+			at := truncateTo[partition]
+			p := &t.partitions[partition]
+			kept := p.records[:0:0]
+			for _, r := range p.records {
+				if r.Offset >= at {
+					kept = append(kept, r)
+				}
+			}
+			p.records = kept
+			p.beginOffset = at
+			out = append(out, kafka.PartitionLowWatermark{Partition: partition, LowWatermark: at})
+		}
+		return out, nil
+	})
+}
+
 // sortedGroups returns every seeded group, ordered by id for stable listing
 // (FUNC-SPEC §9.7 Pagination "stable name ordering"). Callers must hold f.mu.
 func (f *Fake) sortedGroups() []*fakeGroup {

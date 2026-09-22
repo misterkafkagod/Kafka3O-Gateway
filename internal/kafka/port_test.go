@@ -44,6 +44,12 @@ func (nopAdmin) IncrementalAlterTopicConfigs(context.Context, string, []ConfigCh
 	return nil
 }
 func (nopAdmin) CreatePartitions(context.Context, string, int32) error { return nil }
+func (nopAdmin) DeleteTopics(context.Context, []string) ([]TopicDeleteResult, error) {
+	return nil, nil
+}
+func (nopAdmin) DeleteRecords(context.Context, string, map[int32]int64) ([]PartitionLowWatermark, error) {
+	return nil, nil
+}
 
 type nopConsumer struct{}
 
@@ -129,7 +135,7 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[Partition](), reflect.TypeFor[TopicPartition](), reflect.TypeFor[Record](),
 		reflect.TypeFor[Header](), reflect.TypeFor[Group](), reflect.TypeFor[GroupMember](),
 		reflect.TypeFor[GroupSummary](), reflect.TypeFor[TopicSpec](), reflect.TypeFor[TopicCreateResult](),
-		reflect.TypeFor[ConfigChange](),
+		reflect.TypeFor[ConfigChange](), reflect.TypeFor[TopicDeleteResult](), reflect.TypeFor[PartitionLowWatermark](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),
