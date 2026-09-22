@@ -441,13 +441,13 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ (rejection-audit expectation moved to Phase 6 — F2) · automated coverage ✓
 
 ### Task 5.1: Producer port and adapters
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.1 (Producer surface), §8.7 M5; TECH C4 (`acks=all`, idempotent), L1–L4
 - **Subtasks:**
-  - [ ] 5.1.1 Port `Producer.Produce(ctx, records) ([]ProduceResult, error)` with per-record key/value/headers/partition/timestamp — FUNC §8.7 M5
-  - [ ] 5.1.2 `franz/producer.go`: shared `kgo.Client` with `RequiredAcks(AllISRAcks)`, idempotence, `ProduceSync` — TECH §2.3, C4
-  - [ ] 5.1.3 `fake/producer.go`: appends to the model with `now()` timestamp, honours `FailNext(Produce)` — TECH §4.3
-  - [ ] 5.1.4 `porttest/producer.go`: produce then read back; partition out of range → error kind — TECH L2
+  - [x] 5.1.1 Port `Producer.Produce(ctx, records) ([]ProduceResult, error)` with per-record key/value/headers/partition/timestamp — FUNC §8.7 M5
+  - [x] 5.1.2 `franz/producer.go`: shared `kgo.Client` with `RequiredAcks(AllISRAcks)`, idempotence, `ProduceSync` — TECH §2.3, C4
+  - [x] 5.1.3 `fake/producer.go`: appends to the model with `now()` timestamp, honours `FailNext(Produce)` — TECH §4.3
+  - [x] 5.1.4 `porttest/producer.go`: produce then read back; partition out of range → error kind — TECH L2
 - **Tests (Definition of Done):**
   - `porttest` cases `Producer_ProduceThenReadBackByteEqual`, `Producer_ExplicitPartitionHonoured`, `Producer_PartitionOutOfRangeIsError`, `Producer_TimestampPreservedOrNow` — TECH L2
   - `TestFranzProducer_OptionsAcksAllIdempotent` (unit: option construction) — TECH C4

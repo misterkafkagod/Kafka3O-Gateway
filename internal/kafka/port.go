@@ -67,5 +67,11 @@ type Consumer interface {
 }
 
 // Producer is the message-writing surface (FUNC-SPEC §8.1: M5–M8 target and
-// the F5 audit sink). Methods arrive with Phase 5 (Task 5.1).
-type Producer interface{}
+// the F5 audit sink).
+type Producer interface {
+	// Produce writes records to topic, returning one ProduceResult per
+	// record in the same order (FUNC-SPEC §8.7 M5). A record with an
+	// explicit Partition the topic doesn't have reports that record's own
+	// Err; it never fails the rest of the batch.
+	Produce(ctx context.Context, topic string, records []ProduceRequest) ([]ProduceResult, error)
+}

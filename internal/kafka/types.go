@@ -132,3 +132,27 @@ type ClusterMetadata struct {
 	Brokers []Broker
 	Topics  []Topic
 }
+
+// ProduceRequest is one record to produce (FUNC-SPEC §8.7 M5). A nil Value
+// is a tombstone (M7).
+type ProduceRequest struct {
+	Key     []byte
+	Value   []byte
+	Headers []Header
+	// Partition selects an exact partition; nil lets the adapter choose
+	// (FUNC-SPEC §8.7 M5 "partition?").
+	Partition *int32
+	// Timestamp is preserved verbatim when non-zero; a zero value asks the
+	// adapter to stamp the current time (FUNC-SPEC §8.7 M5 "timestampMs?").
+	Timestamp time.Time
+}
+
+// ProduceResult is one record's outcome (FUNC-SPEC §8.7 M5). Err is set
+// per-record when only that record was rejected (e.g. an out-of-range
+// explicit partition); it never fails the rest of the batch.
+type ProduceResult struct {
+	Partition int32
+	Offset    int64
+	Timestamp time.Time
+	Err       error
+}

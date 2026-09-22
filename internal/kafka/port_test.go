@@ -39,10 +39,16 @@ func (nopConsumer) Assign(context.Context, string, []int32, map[int32]int64) err
 func (nopConsumer) Poll(context.Context) ([]Record, error)                         { return nil, nil }
 func (nopConsumer) Close()                                                         {}
 
+type nopProducer struct{}
+
+func (nopProducer) Produce(context.Context, string, []ProduceRequest) ([]ProduceResult, error) {
+	return nil, nil
+}
+
 var (
 	_ Admin    = nopAdmin{}
 	_ Consumer = nopConsumer{}
-	_ Producer = struct{}{}
+	_ Producer = nopProducer{}
 )
 
 func TestError_ErrorsAsExposesKindCodeName(t *testing.T) {
@@ -112,6 +118,7 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[Header](), reflect.TypeFor[Group](), reflect.TypeFor[GroupMember](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
+		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),
 	}
 	for _, typ := range types {
 		for i := range typ.NumField() {

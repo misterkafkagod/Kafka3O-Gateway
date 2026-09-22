@@ -38,6 +38,11 @@ func New(c Config) (*Client, error) {
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(c.Bootstrap...),
 		kgo.WithHooks(kotelHooks()...),
+		// Producer defaults for M5-M8 (TECH-SPEC C4): acks=all; idempotence
+		// is kgo's own default and is never disabled here. explicitOrDefaultPartitioner
+		// honours a ProduceRequest's explicit Partition when set (Task 5.1).
+		kgo.RequiredAcks(kgo.AllISRAcks()),
+		kgo.RecordPartitioner(explicitOrDefaultPartitioner{}),
 	}
 	if c.RequestTimeout > 0 {
 		opts = append(opts, kgo.RequestTimeoutOverhead(c.RequestTimeout))
