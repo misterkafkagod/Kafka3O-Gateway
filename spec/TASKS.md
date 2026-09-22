@@ -519,7 +519,7 @@
 ---
 
 ## Phase 6: Read-only mode and the data-plane lock
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can freeze all mutations (F2) or lock the message data plane (F6) by configuration, and break glass per request with a HIGH audit trail.
 - **Manual Test Plan:**
   1. CS2 with `readOnlyMode: true` → CS3 produce → `403 READ_ONLY_MODE`; `GET /v1/topics` → `200`.
