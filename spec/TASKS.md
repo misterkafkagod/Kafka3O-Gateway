@@ -704,7 +704,7 @@
 ---
 
 ## Phase 10: Consumer-group administration
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can reset, delete, evict members from, and clone offsets between consumer groups, with `GROUP_ACTIVE` protection.
 - **Manual Test Plan:**
   1. With a live consumer in `g1`: CS3 `POST /v1/consumer-groups/g1/reset-offsets` `{"confirm":"g1","target":{"mode":"earliest"}}` → `409 GROUP_ACTIVE`.
