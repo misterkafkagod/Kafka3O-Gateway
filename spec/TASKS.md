@@ -781,7 +781,7 @@
 ---
 
 ## Phase 12: Advanced cluster operations
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can inspect KRaft quorum, log dirs, reassignments, throughput; export and import topic definitions; alter broker config; run reassignments and leader elections.
 - **Manual Test Plan:**
   1. CS3 `GET /v1/cluster/quorum` → `leaderId`, `voters[]` (KRaft cluster).
