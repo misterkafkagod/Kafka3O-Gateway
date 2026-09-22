@@ -552,6 +552,217 @@ func (f *Fake) LeaveGroup(ctx context.Context, group string, members []string) (
 	})
 }
 
+// DescribeQuorum returns the seeded KRaft quorum status (FUNC-SPEC §8.7 C6).
+// To simulate a cluster still on ZooKeeper, use
+// FailNext/FailAlways("DescribeQuorum", kafka.KindUnsupported).
+func (f *Fake) DescribeQuorum(ctx context.Context) (kafka.QuorumStatus, error) {
+	return invoke(f, ctx, "DescribeQuorum", false, func() (kafka.QuorumStatus, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		q := f.model.quorum
+		return kafka.QuorumStatus{
+			LeaderID: q.leaderID, Epoch: q.epoch,
+			Voters:    append([]kafka.QuorumReplicaState(nil), q.voters...),
+			Observers: append([]kafka.QuorumReplicaState(nil), q.observers...),
+		}, nil
+	})
+}
+
+// ListReassignments returns every partition, cluster-wide, that currently
+// has a non-nil addingReplicas or removingReplicas (FUNC-SPEC §8.7 C7).
+func (f *Fake) ListReassignments(ctx context.Context) ([]kafka.PartitionReassignment, error) {
+	return invoke(f, ctx, "ListReassignments", false, func() ([]kafka.PartitionReassignment, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		var out []kafka.PartitionReassignment
+		for name, t := range f.model.topics {
+			for i, p := range t.partitions {
+				if len(p.addingReplicas) == 0 && len(p.removingReplicas) == 0 {
+					continue
+				}
+				out = append(out, kafka.PartitionReassignment{
+					Topic: name, Partition: int32(i),
+					Replicas:         append([]int32(nil), p.replicas...),
+					AddingReplicas:   append([]int32(nil), p.addingReplicas...),
+					RemovingReplicas: append([]int32(nil), p.removingReplicas...),
+				})
+			}
+		}
+		sort.Slice(out, func(i, j int) bool {
+			if out[i].Topic != out[j].Topic {
+				return out[i].Topic < out[j].Topic
+			}
+			return out[i].Partition < out[j].Partition
+		})
+		return out, nil
+	})
+}
+
+// AlterPartitionAssignments moves partitions' replicas, applying the change
+// immediately (the fake has no background ISR-catch-up process), or clears
+// a partition's pending reassignment given a nil replica set (FUNC-SPEC
+// §8.7 C9 reassign, cancel). Each partition's own error surfaces on its own
+// result; one failure never fails the rest of the batch.
+func (f *Fake) AlterPartitionAssignments(ctx context.Context, moves map[kafka.TopicPartition][]int32) ([]kafka.ReassignResult, error) {
+	return invoke(f, ctx, "AlterPartitionAssignments", true, func() ([]kafka.ReassignResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		tps := make([]kafka.TopicPartition, 0, len(moves))
+		for tp := range moves {
+			tps = append(tps, tp)
+		}
+		sort.Slice(tps, func(i, j int) bool {
+			if tps[i].Topic != tps[j].Topic {
+				return tps[i].Topic < tps[j].Topic
+			}
+			return tps[i].Partition < tps[j].Partition
+		})
+
+		out := make([]kafka.ReassignResult, len(tps))
+		for i, tp := range tps {
+			t := f.model.topics[tp.Topic]
+			if t == nil || int(tp.Partition) < 0 || int(tp.Partition) >= len(t.partitions) {
+				out[i] = kafka.ReassignResult{Topic: tp.Topic, Partition: tp.Partition, Err: &kafka.Error{Kind: kafka.KindNotFound, Resource: "partition"}}
+				continue
+			}
+			p := &t.partitions[tp.Partition]
+			newReplicas := moves[tp]
+			if newReplicas == nil {
+				p.addingReplicas = nil
+				p.removingReplicas = nil
+			} else {
+				p.addingReplicas = replicasOnlyIn(newReplicas, p.replicas)
+				p.removingReplicas = replicasOnlyIn(p.replicas, newReplicas)
+				p.replicas = newReplicas
+			}
+			out[i] = kafka.ReassignResult{Topic: tp.Topic, Partition: tp.Partition}
+		}
+		return out, nil
+	})
+}
+
+// replicasOnlyIn returns the elements of a not present in b.
+func replicasOnlyIn(a, b []int32) []int32 {
+	inB := make(map[int32]bool, len(b))
+	for _, r := range b {
+		inB[r] = true
+	}
+	var out []int32
+	for _, r := range a {
+		if !inB[r] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// ElectLeaders sets each named partition's leader to its first replica —
+// the fake models no ISR or broker-liveness state, so preferred and unclean
+// election have the same observable effect here (FUNC-SPEC §8.7 C9 elect).
+// Each partition's own error surfaces on its own result; one failure never
+// fails the rest of the batch.
+func (f *Fake) ElectLeaders(ctx context.Context, preferred bool, partitions []kafka.TopicPartition) ([]kafka.ElectLeaderResult, error) {
+	return invoke(f, ctx, "ElectLeaders", true, func() ([]kafka.ElectLeaderResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		out := make([]kafka.ElectLeaderResult, len(partitions))
+		for i, tp := range partitions {
+			t := f.model.topics[tp.Topic]
+			if t == nil || int(tp.Partition) < 0 || int(tp.Partition) >= len(t.partitions) {
+				out[i] = kafka.ElectLeaderResult{Topic: tp.Topic, Partition: tp.Partition, Err: &kafka.Error{Kind: kafka.KindNotFound, Resource: "partition"}}
+				continue
+			}
+			p := &t.partitions[tp.Partition]
+			if len(p.replicas) > 0 {
+				p.leader = p.replicas[0]
+			}
+			out[i] = kafka.ElectLeaderResult{Topic: tp.Topic, Partition: tp.Partition}
+		}
+		return out, nil
+	})
+}
+
+// IncrementalAlterBrokerConfigs applies changes to brokerID's configuration
+// (FUNC-SPEC §8.7 C5): a non-nil Value sets that key to Dynamic source, a
+// nil Value resets an already-set key to Default source (the fake models no
+// broker-level default catalog, the same simplification
+// IncrementalAlterTopicConfigs makes). Unknown brokerID → NotFound.
+func (f *Fake) IncrementalAlterBrokerConfigs(ctx context.Context, brokerID int32, changes []kafka.ConfigChange) error {
+	_, err := invoke(f, ctx, "IncrementalAlterBrokerConfigs", true, func() (struct{}, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if !f.hasBroker(brokerID) {
+			return struct{}{}, &kafka.Error{Kind: kafka.KindNotFound, Resource: "broker"}
+		}
+		configs := f.model.brokerConfigs[brokerID]
+		byName := make(map[string]int, len(configs))
+		for i, c := range configs {
+			byName[c.Name] = i
+		}
+		for _, ch := range changes {
+			if i, ok := byName[ch.Name]; ok {
+				if ch.Value != nil {
+					configs[i].Value = *ch.Value
+					configs[i].Source = kafka.SourceDynamic
+				} else {
+					configs[i].Source = kafka.SourceDefault
+				}
+				continue
+			}
+			if ch.Value != nil {
+				configs = append(configs, kafka.ConfigEntry{Name: ch.Name, Value: *ch.Value, Source: kafka.SourceDynamic})
+			}
+		}
+		f.model.brokerConfigs[brokerID] = configs
+		return struct{}{}, nil
+	})
+	return err
+}
+
+// DescribeAllLogDirs aggregates every seeded per-partition, per-replica log
+// directory into one entry per (broker, directory) (FUNC-SPEC §8.7 C8).
+func (f *Fake) DescribeAllLogDirs(ctx context.Context) ([]kafka.BrokerLogDir, error) {
+	return invoke(f, ctx, "DescribeAllLogDirs", false, func() ([]kafka.BrokerLogDir, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		type key struct {
+			broker int32
+			dir    string
+		}
+		agg := map[key]*kafka.BrokerLogDir{}
+		for _, t := range f.model.topics {
+			for _, p := range t.partitions {
+				for brokerID, entry := range p.logDir {
+					k := key{broker: brokerID, dir: entry.dir}
+					d, ok := agg[k]
+					if !ok {
+						d = &kafka.BrokerLogDir{BrokerID: brokerID, LogDir: entry.dir}
+						agg[k] = d
+					}
+					d.TotalBytes += entry.bytes
+					d.PartitionCount++
+				}
+			}
+		}
+		out := make([]kafka.BrokerLogDir, 0, len(agg))
+		for _, d := range agg {
+			out = append(out, *d)
+		}
+		sort.Slice(out, func(i, j int) bool {
+			if out[i].BrokerID != out[j].BrokerID {
+				return out[i].BrokerID < out[j].BrokerID
+			}
+			return out[i].LogDir < out[j].LogDir
+		})
+		return out, nil
+	})
+}
+
 // sortedGroups returns every seeded group, ordered by id for stable listing
 // (FUNC-SPEC §9.7 Pagination "stable name ordering"). Callers must hold f.mu.
 func (f *Fake) sortedGroups() []*fakeGroup {

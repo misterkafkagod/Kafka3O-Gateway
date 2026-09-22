@@ -3,11 +3,10 @@ package fake
 import "github.com/misterkafkagod/kafka3o/internal/kafka"
 
 // model is the in-memory cluster state (TECH-SPEC §4.3 Model row). Phase 1,
-// Task 2.1, and Task 7.1 model what DescribeCluster, the inspection commands
-// (C2, C4, T1-T4), and the group commands (G1-G3) need now. SCRAM users,
-// client quotas, in-progress reassignments, and KRaft quorum state are added
-// by the tasks that implement the commands reading them (Tasks 12.1.3,
-// 13.1.2) — nothing here yet reads or sets them.
+// Task 2.1, Task 7.1, and Task 12.1.3 model what DescribeCluster, the
+// inspection commands (C2, C4, T1-T4), the group commands (G1-G3), and the
+// advanced cluster commands (C5-C9) need now. SCRAM users and client quotas
+// are added by Task 13.1.2 — nothing here yet reads or sets them.
 type model struct {
 	clusterID     string
 	controllerID  int32
@@ -16,6 +15,19 @@ type model struct {
 	brokerConfigs map[int32][]kafka.ConfigEntry
 	topics        map[string]*fakeTopic
 	groups        map[string]*fakeGroup
+	quorum        fakeQuorum
+}
+
+// fakeQuorum is the seeded KRaft quorum status (Task 12.1.3 C6). Its zero
+// value describes an empty quorum (leader 0, no voters) — DescribeQuorum
+// never itself reports KindUnsupported; a test simulating a ZooKeeper-mode
+// cluster does so via FailNext/FailAlways("DescribeQuorum", KindUnsupported),
+// the same fault-injection primitives every other command uses (TECH-SPEC §4.3).
+type fakeQuorum struct {
+	leaderID  int32
+	epoch     int32
+	voters    []kafka.QuorumReplicaState
+	observers []kafka.QuorumReplicaState
 }
 
 // fakeTopic is one seeded topic and its partitions.
@@ -41,6 +53,14 @@ type fakePartition struct {
 	isr      []int32
 	// logDir maps a replica's broker id to its on-disk footprint (Task 2.1 T3).
 	logDir map[int32]fakeLogDirEntry
+	// addingReplicas/removingReplicas are non-nil while a reassignment this
+	// partition is mid-flight (Task 12.1.3 C7, C9): AlterPartitionAssignments
+	// sets them and applies the new replica set immediately (the fake has no
+	// background ISR-catch-up process to simulate), leaving them populated
+	// until a later AlterPartitionAssignments call — real or cancelling —
+	// clears them.
+	addingReplicas   []int32
+	removingReplicas []int32
 }
 
 // fakeLogDirEntry is one replica's seeded log directory and size.

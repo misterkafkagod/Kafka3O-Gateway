@@ -57,6 +57,20 @@ func (nopAdmin) DeleteGroups(context.Context, []string) ([]GroupDeleteResult, er
 func (nopAdmin) LeaveGroup(context.Context, string, []string) ([]LeaveGroupResult, error) {
 	return nil, nil
 }
+func (nopAdmin) DescribeQuorum(context.Context) (QuorumStatus, error) { return QuorumStatus{}, nil }
+func (nopAdmin) ListReassignments(context.Context) ([]PartitionReassignment, error) {
+	return nil, nil
+}
+func (nopAdmin) AlterPartitionAssignments(context.Context, map[TopicPartition][]int32) ([]ReassignResult, error) {
+	return nil, nil
+}
+func (nopAdmin) ElectLeaders(context.Context, bool, []TopicPartition) ([]ElectLeaderResult, error) {
+	return nil, nil
+}
+func (nopAdmin) IncrementalAlterBrokerConfigs(context.Context, int32, []ConfigChange) error {
+	return nil
+}
+func (nopAdmin) DescribeAllLogDirs(context.Context) ([]BrokerLogDir, error) { return nil, nil }
 
 type nopConsumer struct{}
 
@@ -144,6 +158,8 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[GroupSummary](), reflect.TypeFor[TopicSpec](), reflect.TypeFor[TopicCreateResult](),
 		reflect.TypeFor[ConfigChange](), reflect.TypeFor[TopicDeleteResult](), reflect.TypeFor[PartitionLowWatermark](),
 		reflect.TypeFor[GroupDeleteResult](), reflect.TypeFor[LeaveGroupResult](),
+		reflect.TypeFor[QuorumReplicaState](), reflect.TypeFor[QuorumStatus](), reflect.TypeFor[PartitionReassignment](),
+		reflect.TypeFor[ReassignResult](), reflect.TypeFor[ElectLeaderResult](), reflect.TypeFor[BrokerLogDir](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),

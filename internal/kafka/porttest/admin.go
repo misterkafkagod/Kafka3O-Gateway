@@ -73,6 +73,20 @@ type groupMemberSeeder interface {
 	SeedGroupMember(id string, member kafka.GroupMember)
 }
 
+// quorumSeeder is the optional capability internal/kafka/fake exposes to set
+// the KRaft quorum's leader, epoch, voters, and observers (Task 12.1.3).
+type quorumSeeder interface {
+	SeedQuorum(leaderID, epoch int32, voters, observers []kafka.QuorumReplicaState)
+}
+
+// faultInjector is the optional capability internal/kafka/fake exposes to
+// fail the next call to method with kind (TECH-SPEC §4.3) — used here to
+// simulate a cluster still on ZooKeeper for DescribeQuorum, which has no
+// dedicated "unsupported" seeding knob of its own.
+type faultInjector interface {
+	FailNext(method string, kind kafka.Kind)
+}
+
 // RunAdmin exercises kafka.Admin (FUNC-SPEC §8.1, C1).
 func RunAdmin(t *testing.T, port kafka.Admin) {
 	t.Helper()
@@ -719,6 +733,199 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		}
 		if found["m1"] || !found["m2"] {
 			t.Errorf("group members = %v, want m1 removed and m2 remaining", groups[0].Members)
+		}
+	})
+
+	t.Run("Admin_DescribeQuorum_LeaderAndVoters", func(t *testing.T) {
+		qs, ok := port.(quorumSeeder)
+		if !ok {
+			t.Skip("port does not implement the quorum seeding capability")
+		}
+		qs.SeedQuorum(1, 5,
+			[]kafka.QuorumReplicaState{{ID: 1, LogEndOffset: 100}, {ID: 2, LogEndOffset: 98, LagMs: 50}},
+			[]kafka.QuorumReplicaState{{ID: 3, LogEndOffset: 90, LagMs: 200}},
+		)
+
+		status, err := port.DescribeQuorum(context.Background())
+		if err != nil {
+			t.Fatalf("DescribeQuorum() error: %v", err)
+		}
+		if status.LeaderID != 1 || status.Epoch != 5 || len(status.Voters) != 2 || len(status.Observers) != 1 {
+			t.Fatalf("DescribeQuorum() = %+v, want LeaderID 1, Epoch 5, 2 voters, 1 observer", status)
+		}
+	})
+
+	t.Run("Admin_DescribeQuorum_UnsupportedIsKindUnsupported", func(t *testing.T) {
+		fi, ok := port.(faultInjector)
+		if !ok {
+			t.Skip("port does not implement the fault injection capability")
+		}
+		fi.FailNext("DescribeQuorum", kafka.KindUnsupported)
+
+		_, err := port.DescribeQuorum(context.Background())
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindUnsupported {
+			t.Fatalf("DescribeQuorum() error = %v, want *kafka.Error{Kind: KindUnsupported}", err)
+		}
+	})
+
+	t.Run("Admin_Reassignments_ListAfterAlter", func(t *testing.T) {
+		ts, ok := port.(topicSeeder)
+		if !ok {
+			t.Skip("port does not implement the topic seeding capability")
+		}
+		name := "porttest-reassign-list"
+		ts.SeedTopic(name, 1)
+
+		results, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
+			{Topic: name, Partition: 0}: {1, 2, 3},
+		})
+		if err != nil {
+			t.Fatalf("AlterPartitionAssignments() error: %v", err)
+		}
+		if len(results) != 1 || results[0].Err != nil {
+			t.Fatalf("AlterPartitionAssignments() results = %+v, want one clean result", results)
+		}
+
+		reassignments, err := port.ListReassignments(context.Background())
+		if err != nil {
+			t.Fatalf("ListReassignments() error: %v", err)
+		}
+		found := false
+		for _, r := range reassignments {
+			if r.Topic == name && r.Partition == 0 {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("ListReassignments() = %+v, want %s/0 listed", reassignments, name)
+		}
+	})
+
+	t.Run("Admin_Reassignments_Cancel", func(t *testing.T) {
+		ts, ok := port.(topicSeeder)
+		if !ok {
+			t.Skip("port does not implement the topic seeding capability")
+		}
+		name := "porttest-reassign-cancel"
+		ts.SeedTopic(name, 1)
+
+		if _, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
+			{Topic: name, Partition: 0}: {1, 2, 3},
+		}); err != nil {
+			t.Fatalf("AlterPartitionAssignments(move) error: %v", err)
+		}
+		if _, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
+			{Topic: name, Partition: 0}: nil,
+		}); err != nil {
+			t.Fatalf("AlterPartitionAssignments(cancel) error: %v", err)
+		}
+
+		reassignments, err := port.ListReassignments(context.Background())
+		if err != nil {
+			t.Fatalf("ListReassignments() error: %v", err)
+		}
+		for _, r := range reassignments {
+			if r.Topic == name && r.Partition == 0 {
+				t.Errorf("ListReassignments() still lists %s/0 after cancel", name)
+			}
+		}
+	})
+
+	t.Run("Admin_ElectLeaders_PreferredAndUnclean", func(t *testing.T) {
+		ts, ok := port.(topicSeeder)
+		if !ok {
+			t.Skip("port does not implement the topic seeding capability")
+		}
+		name := "porttest-elect"
+		ts.SeedTopic(name, 1)
+		if _, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
+			{Topic: name, Partition: 0}: {2, 1},
+		}); err != nil {
+			t.Fatalf("AlterPartitionAssignments() error: %v", err)
+		}
+
+		for _, preferred := range []bool{true, false} {
+			results, err := port.ElectLeaders(context.Background(), preferred, []kafka.TopicPartition{{Topic: name, Partition: 0}})
+			if err != nil {
+				t.Fatalf("ElectLeaders(preferred=%v) error: %v", preferred, err)
+			}
+			if len(results) != 1 || results[0].Err != nil {
+				t.Fatalf("ElectLeaders(preferred=%v) results = %+v, want one clean result", preferred, results)
+			}
+		}
+	})
+
+	t.Run("Admin_IncrementalAlterBrokerConfigs_SetAndReset", func(t *testing.T) {
+		as, ok := port.(adminSeeder)
+		bs, ok2 := port.(brokerConfigSeeder)
+		if !ok || !ok2 {
+			t.Skip("port does not implement the broker seeding capabilities")
+		}
+		as.SeedBroker(101, "broker-101", 9092, "")
+		bs.SeedBrokerConfigs(101, kafka.ConfigEntry{Name: "log.retention.hours", Value: "168", Source: kafka.SourceDefault})
+
+		newValue := "72"
+		if err := port.IncrementalAlterBrokerConfigs(context.Background(), 101, []kafka.ConfigChange{
+			{Name: "log.retention.hours", Value: &newValue},
+		}); err != nil {
+			t.Fatalf("IncrementalAlterBrokerConfigs(set) error: %v", err)
+		}
+		configs, err := port.DescribeBrokerConfigs(context.Background(), 101)
+		if err != nil {
+			t.Fatalf("DescribeBrokerConfigs() error: %v", err)
+		}
+		found := false
+		for _, c := range configs {
+			if c.Name == "log.retention.hours" {
+				found = true
+				if c.Value != "72" || c.Source != kafka.SourceDynamic {
+					t.Errorf("log.retention.hours = %+v, want value 72 source dynamic", c)
+				}
+			}
+		}
+		if !found {
+			t.Fatal("log.retention.hours missing after set")
+		}
+
+		if err := port.IncrementalAlterBrokerConfigs(context.Background(), 101, []kafka.ConfigChange{
+			{Name: "log.retention.hours"},
+		}); err != nil {
+			t.Fatalf("IncrementalAlterBrokerConfigs(reset) error: %v", err)
+		}
+		configs, err = port.DescribeBrokerConfigs(context.Background(), 101)
+		if err != nil {
+			t.Fatalf("DescribeBrokerConfigs() error: %v", err)
+		}
+		for _, c := range configs {
+			if c.Name == "log.retention.hours" && c.Source != kafka.SourceDefault {
+				t.Errorf("log.retention.hours.Source after reset = %v, want default", c.Source)
+			}
+		}
+	})
+
+	t.Run("Admin_DescribeLogDirs_AllBrokers", func(t *testing.T) {
+		ts, ok := port.(topicSeeder)
+		lds, ok2 := port.(logDirSeeder)
+		if !ok || !ok2 {
+			t.Skip("port does not implement the topic/log-dir seeding capabilities")
+		}
+		name := "porttest-alldirs"
+		ts.SeedTopic(name, 1)
+		lds.SeedLogDir(name, 0, 1, "/var/kafka/data", 1024)
+
+		dirs, err := port.DescribeAllLogDirs(context.Background())
+		if err != nil {
+			t.Fatalf("DescribeAllLogDirs() error: %v", err)
+		}
+		found := false
+		for _, d := range dirs {
+			if d.BrokerID == 1 && d.LogDir == "/var/kafka/data" && d.TotalBytes >= 1024 {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("DescribeAllLogDirs() = %+v, want a broker 1 /var/kafka/data entry with totalBytes >= 1024", dirs)
 		}
 	})
 }

@@ -627,5 +627,145 @@ func toOffsetMap(topic string, lo kadm.ListedOffsets) (map[int32]int64, error) {
 	return out, nil
 }
 
+// ListReassignments returns every partition cluster-wide with a
+// reassignment in progress via a raw kmsg.ListPartitionReassignmentsRequest
+// (FUNC-SPEC §8.7 C7): kadm.ListPartitionReassignments short-circuits an
+// empty input set to "list nothing," but the protocol itself defines a nil
+// Topics list as "list everything" — exactly what C7's own no-input
+// contract needs, so this bypasses the kadm wrapper.
+func (c *Client) ListReassignments(ctx context.Context) ([]kafka.PartitionReassignment, error) {
+	req := kmsg.NewPtrListPartitionReassignmentsRequest()
+	resp, err := req.RequestWith(ctx, c.kgo)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+	if err := kerr.ErrorForCode(resp.ErrorCode); err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	var out []kafka.PartitionReassignment
+	for _, t := range resp.Topics {
+		for _, p := range t.Partitions {
+			out = append(out, kafka.PartitionReassignment{
+				Topic: t.Topic, Partition: p.Partition,
+				Replicas: p.Replicas, AddingReplicas: p.AddingReplicas, RemovingReplicas: p.RemovingReplicas,
+			})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Topic != out[j].Topic {
+			return out[i].Topic < out[j].Topic
+		}
+		return out[i].Partition < out[j].Partition
+	})
+	return out, nil
+}
+
+// AlterPartitionAssignments moves partitions' replicas, or cancels an
+// in-progress reassignment for a partition given a nil replica set
+// (FUNC-SPEC §8.7 C9 reassign, cancel) via kadm.AlterPartitionAssignments.
+// Each partition's own error surfaces on its own result; one failure never
+// fails the rest of the batch.
+func (c *Client) AlterPartitionAssignments(ctx context.Context, moves map[kafka.TopicPartition][]int32) ([]kafka.ReassignResult, error) {
+	var req kadm.AlterPartitionAssignmentsReq
+	for tp, replicas := range moves {
+		req.Assign(tp.Topic, tp.Partition, replicas)
+	}
+
+	resp, err := c.kadm.AlterPartitionAssignments(ctx, req)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	out := make([]kafka.ReassignResult, 0, len(moves))
+	for tp := range moves {
+		r := resp[tp.Topic][tp.Partition]
+		out = append(out, kafka.ReassignResult{Topic: tp.Topic, Partition: tp.Partition, Err: wrapErr("topic", r.Err)})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Topic != out[j].Topic {
+			return out[i].Topic < out[j].Topic
+		}
+		return out[i].Partition < out[j].Partition
+	})
+	return out, nil
+}
+
+// ElectLeaders triggers a leader election for the given partitions
+// (FUNC-SPEC §8.7 C9 elect) via kadm.ElectLeaders. Each partition's own
+// error surfaces on its own result; one failure never fails the rest of the
+// batch.
+func (c *Client) ElectLeaders(ctx context.Context, preferred bool, partitions []kafka.TopicPartition) ([]kafka.ElectLeaderResult, error) {
+	how := kadm.ElectPreferredReplica
+	if !preferred {
+		how = kadm.ElectLiveReplica
+	}
+	var set kadm.TopicsSet
+	for _, tp := range partitions {
+		set.Add(tp.Topic, tp.Partition)
+	}
+
+	resp, err := c.kadm.ElectLeaders(ctx, how, set)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	out := make([]kafka.ElectLeaderResult, len(partitions))
+	for i, tp := range partitions {
+		r := resp[tp.Topic][tp.Partition]
+		out[i] = kafka.ElectLeaderResult{Topic: tp.Topic, Partition: tp.Partition, Err: wrapErr("topic", r.Err)}
+	}
+	return out, nil
+}
+
+// IncrementalAlterBrokerConfigs applies changes to brokerID's configuration
+// (FUNC-SPEC §8.7 C5) via kadm.AlterBrokerConfigs.
+func (c *Client) IncrementalAlterBrokerConfigs(ctx context.Context, brokerID int32, changes []kafka.ConfigChange) error {
+	kadmChanges := make([]kadm.AlterConfig, len(changes))
+	for i, ch := range changes {
+		if ch.Value != nil {
+			kadmChanges[i] = kadm.AlterConfig{Op: kadm.SetConfig, Name: ch.Name, Value: ch.Value}
+		} else {
+			kadmChanges[i] = kadm.AlterConfig{Op: kadm.DeleteConfig, Name: ch.Name}
+		}
+	}
+
+	resp, err := c.kadm.AlterBrokerConfigs(ctx, kadmChanges, brokerID)
+	if err != nil {
+		return wrapErr("broker", err)
+	}
+	for _, r := range resp {
+		if r.Err != nil {
+			return wrapErr("broker", r.Err)
+		}
+	}
+	return nil
+}
+
+// DescribeAllLogDirs returns every broker's log directory usage,
+// cluster-wide (FUNC-SPEC §8.7 C8), via kadm.DescribeAllLogDirs(ctx, nil) —
+// a nil input set describes every log directory on every broker.
+func (c *Client) DescribeAllLogDirs(ctx context.Context) ([]kafka.BrokerLogDir, error) {
+	described, err := c.kadm.DescribeAllLogDirs(ctx, nil)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	out := make([]kafka.BrokerLogDir, 0, len(described))
+	for _, d := range described.Sorted() {
+		if d.Err != nil {
+			return nil, wrapErr("", d.Err)
+		}
+		partitionCount := 0
+		for _, ps := range d.Topics {
+			partitionCount += len(ps)
+		}
+		out = append(out, kafka.BrokerLogDir{
+			BrokerID: d.Broker, LogDir: d.Dir, TotalBytes: d.Size(), PartitionCount: partitionCount,
+		})
+	}
+	return out, nil
+}
+
 // compile-time proof that Client satisfies the Admin surface it implements so far.
 var _ kafka.Admin = (*Client)(nil)

@@ -796,12 +796,12 @@
 - **Step 10 verification:** concrete ✓ (explicit elections dry-run — F5) · self-contained ✓ · automated coverage ✓
 
 ### Task 12.1: Port and adapters for advanced operations
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 C5–C9; TECH §1.1 (kadm coverage, `kmsg.DescribeQuorumRequest`), C3 (`UNSUPPORTED_VERSION` mapping), L1–L4
 - **Subtasks:**
-  - [ ] 12.1.1 Port: `DescribeQuorum`, `ListPartitionReassignments`, `AlterPartitionAssignments`, `CancelPartitionReassignments`, `ElectLeaders(type, partitions)`, `IncrementalAlterBrokerConfigs`, `DescribeLogDirs` (all brokers) — FUNC §8.7
-  - [ ] 12.1.2 `franz/quorum.go` via raw `kmsg.DescribeQuorumRequest`; `UNSUPPORTED_VERSION` → `KindUnsupported` (502 with `kafkaError.name`) — TECH §1.1, C3
-  - [ ] 12.1.3 `fake` model for quorum, reassignments, broker configs; `porttest` cases — TECH §4.3
+  - [x] 12.1.1 Port: `DescribeQuorum`, `ListPartitionReassignments`, `AlterPartitionAssignments`, `CancelPartitionReassignments`, `ElectLeaders(type, partitions)`, `IncrementalAlterBrokerConfigs`, `DescribeLogDirs` (all brokers) — FUNC §8.7
+  - [x] 12.1.2 `franz/quorum.go` via raw `kmsg.DescribeQuorumRequest`; `UNSUPPORTED_VERSION` → `KindUnsupported` (502 with `kafkaError.name`) — TECH §1.1, C3
+  - [x] 12.1.3 `fake` model for quorum, reassignments, broker configs; `porttest` cases — TECH §4.3
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_DescribeQuorum_LeaderAndVoters`, `Admin_DescribeQuorum_UnsupportedIsKindUnsupported`, `Admin_Reassignments_ListAfterAlter`, `Admin_Reassignments_Cancel`, `Admin_ElectLeaders_PreferredAndUnclean`, `Admin_IncrementalAlterBrokerConfigs_SetAndReset`, `Admin_DescribeLogDirs_AllBrokers` — TECH L2, C3
   - `TestFranz_QuorumRequestBuiltFromKmsg` (unit: request construction) — TECH §1.1

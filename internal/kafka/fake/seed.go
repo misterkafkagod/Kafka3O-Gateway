@@ -186,3 +186,15 @@ func (f *Fake) SeedGroupMember(id string, member kafka.GroupMember) {
 	}
 	g.members = append(g.members, member)
 }
+
+// SeedQuorum sets the KRaft quorum's leader, epoch, voters, and observers
+// (Task 12.1.3 C6). To simulate a ZooKeeper-mode cluster instead, use
+// FailNext/FailAlways("DescribeQuorum", kafka.KindUnsupported).
+func (f *Fake) SeedQuorum(leaderID, epoch int32, voters, observers []kafka.QuorumReplicaState) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.model.quorum = fakeQuorum{
+		leaderID: leaderID, epoch: epoch,
+		voters: append([]kafka.QuorumReplicaState(nil), voters...), observers: append([]kafka.QuorumReplicaState(nil), observers...),
+	}
+}

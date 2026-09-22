@@ -223,3 +223,61 @@ type LeaveGroupResult struct {
 	MemberID string
 	Err      error
 }
+
+// QuorumReplicaState is one voter or observer's replication state in a
+// KRaft quorum (FUNC-SPEC §8.7 C6).
+type QuorumReplicaState struct {
+	ID           int32
+	LogEndOffset int64
+	// LagMs is how long ago this replica last fully caught up to the
+	// leader's log, in milliseconds; 0 for the leader's own entry.
+	LagMs int64
+}
+
+// QuorumStatus is the KRaft quorum's current leader, epoch, voters, and
+// observers (FUNC-SPEC §8.7 C6). A ZooKeeper-mode cluster has none of this —
+// DescribeQuorum reports *Error{Kind: KindUnsupported} instead.
+type QuorumStatus struct {
+	LeaderID  int32
+	Epoch     int32
+	Voters    []QuorumReplicaState
+	Observers []QuorumReplicaState
+}
+
+// PartitionReassignment is one partition with a reassignment currently in
+// progress (FUNC-SPEC §8.7 C7).
+type PartitionReassignment struct {
+	Topic            string
+	Partition        int32
+	Replicas         []int32
+	AddingReplicas   []int32
+	RemovingReplicas []int32
+}
+
+// ReassignResult is one partition's outcome of AlterPartitionAssignments
+// (FUNC-SPEC §8.7 C9 reassign and cancel — cancel is this same call with a
+// nil Replicas). Err is set per-partition when only that one was rejected;
+// it never fails the rest of the batch.
+type ReassignResult struct {
+	Topic     string
+	Partition int32
+	Err       error
+}
+
+// ElectLeaderResult is one partition's outcome of ElectLeaders (FUNC-SPEC
+// §8.7 C9 elect). Err is set per-partition when only that one was rejected;
+// it never fails the rest of the batch.
+type ElectLeaderResult struct {
+	Topic     string
+	Partition int32
+	Err       error
+}
+
+// BrokerLogDir is one broker's one log directory's aggregate usage
+// (FUNC-SPEC §8.7 C8).
+type BrokerLogDir struct {
+	BrokerID       int32
+	LogDir         string
+	TotalBytes     int64
+	PartitionCount int
+}

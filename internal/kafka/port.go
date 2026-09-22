@@ -114,6 +114,35 @@ type Admin interface {
 	// it is not currently part of the group); one failure never fails the
 	// rest of the batch.
 	LeaveGroup(ctx context.Context, group string, members []string) ([]LeaveGroupResult, error)
+
+	// DescribeQuorum returns the KRaft quorum's current status (C6). A
+	// cluster still on ZooKeeper reports *Error{Kind: KindUnsupported}.
+	DescribeQuorum(ctx context.Context) (QuorumStatus, error)
+
+	// ListReassignments returns every partition cluster-wide with a
+	// reassignment currently in progress (C7).
+	ListReassignments(ctx context.Context) ([]PartitionReassignment, error)
+
+	// AlterPartitionAssignments moves each named partition's replicas to
+	// the given set (C9 reassign); a nil replica set for a partition
+	// cancels its in-progress reassignment instead (C9 cancel). Each
+	// partition's own result carries its own error; one failure never
+	// fails the rest of the batch.
+	AlterPartitionAssignments(ctx context.Context, moves map[TopicPartition][]int32) ([]ReassignResult, error)
+
+	// ElectLeaders triggers a leader election for the given partitions —
+	// preferred-replica when preferred is true, unclean otherwise (C9
+	// elect). Each partition's own result carries its own error; one
+	// failure never fails the rest of the batch.
+	ElectLeaders(ctx context.Context, preferred bool, partitions []TopicPartition) ([]ElectLeaderResult, error)
+
+	// IncrementalAlterBrokerConfigs applies changes to brokerID's
+	// configuration (C5). Unknown brokerID → *Error{Kind: NotFound}.
+	IncrementalAlterBrokerConfigs(ctx context.Context, brokerID int32, changes []ConfigChange) error
+
+	// DescribeAllLogDirs returns every broker's log directory usage,
+	// cluster-wide (C8).
+	DescribeAllLogDirs(ctx context.Context) ([]BrokerLogDir, error)
 }
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,
