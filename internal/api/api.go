@@ -92,12 +92,14 @@ func New(deps Deps) http.Handler {
 	runner := core.Runner{Policy: deps.Policy, Check: gates.Check}
 	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor, runner))
 
+	routeLookup := buildRouteLookup(mux, humaAPI)
+
 	var handler http.Handler = mux
 	handler = telemetry.HTTPMiddleware("gateway", func(r *http.Request) string {
 		return apierrors.RequestIDFrom(r.Context())
 	})(handler)
 	handler = middleware.CORS(deps.CORSOrigins, deps.AuthEnabled)(handler)
-	handler = middleware.APIKey(deps.Keys, deps.AuthEnabled)(handler)
+	handler = middleware.APIKey(deps.Keys, deps.AuthEnabled, routeLookup, deps.Auditor)(handler)
 	handler = middleware.ClientIP(deps.TrustedProxies)(handler)
 	handler = middleware.RequestID(handler)
 	return handler

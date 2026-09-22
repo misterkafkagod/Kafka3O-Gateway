@@ -19,11 +19,11 @@ func TestMessageService_Search_MaxMatchesStopsBeforeMaxScan(t *testing.T) {
 		records[i] = kafka.Record{Partition: 0, Value: []byte("MATCH")}
 	}
 	f.SeedTopic("t", 1, records...)
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, testRunner())
 
 	// testBounds: MaxMatches default 2, MaxScan default 10. Every record
 	// matches, so 2 matches arrive well before 10 records are scanned.
-	result, err := svc.Search(context.Background(), message.SearchParams{
+	result, err := svc.Search(context.Background(), core.Caller{}, message.SearchParams{
 		Topic: "t", From: message.From{Kind: message.FromBeginning}, Regex: "MATCH",
 	})
 	if err != nil {
@@ -45,12 +45,12 @@ func TestMessageService_Search_MaxScanStopsBeforeMaxMatches(t *testing.T) {
 		records[i] = kafka.Record{Partition: 0, Value: []byte("nope")}
 	}
 	f.SeedTopic("t", 1, records...)
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, testRunner())
 
 	// testBounds: MaxScan default 10, MaxMatches default 2. Nothing ever
 	// matches, so the scan is bounded by MaxScan before MaxMatches could
 	// ever be reached.
-	result, err := svc.Search(context.Background(), message.SearchParams{
+	result, err := svc.Search(context.Background(), core.Caller{}, message.SearchParams{
 		Topic: "t", From: message.From{Kind: message.FromBeginning}, Regex: "MATCH",
 	})
 	if err != nil {
@@ -71,9 +71,9 @@ func TestMessageService_Search_MaxMatchesAboveCeilingIsBoundExceeded(t *testing.
 	t.Parallel()
 	f := fake.New()
 	f.SeedTopic("t", 1, kafka.Record{Partition: 0, Value: []byte("a")})
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, testRunner())
 
-	_, err := svc.Search(context.Background(), message.SearchParams{
+	_, err := svc.Search(context.Background(), core.Caller{}, message.SearchParams{
 		Topic: "t", From: message.From{Kind: message.FromBeginning}, Regex: "a", MaxMatches: 999,
 	})
 	if !core.IsCode(err, core.BoundExceeded) {
@@ -90,9 +90,9 @@ func TestMessageService_Filter_SkippedCountedNotErrored(t *testing.T) {
 		{Partition: 0, Value: []byte(`{"status":"OK"}`)},
 	}
 	f.SeedTopic("t", 1, records...)
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, testRunner())
 
-	result, err := svc.Filter(context.Background(), message.FilterParams{
+	result, err := svc.Filter(context.Background(), core.Caller{}, message.FilterParams{
 		Topic: "t", From: message.From{Kind: message.FromBeginning},
 		Path: "$.status", Op: scan.OpEq, Value: "FAILED",
 	})

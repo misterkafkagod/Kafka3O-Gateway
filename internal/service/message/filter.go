@@ -34,8 +34,14 @@ type FilterParams struct {
 // *core.PolicyError{Code: core.BoundExceeded} (FUNC-SPEC §8.8). A record
 // whose value is not JSON, or whose selected node's type does not match Op,
 // is skipped or a plain non-match respectively — never an error (FUNC-SPEC
-// §9.2 Evaluate).
-func (s *Service) Filter(ctx context.Context, p FilterParams) (ReadResult, error) {
+// §9.2 Evaluate). Under the data-plane lock (FUNC-SPEC §9.5), only an
+// operator caller presenting a break-glass reason passes checkGate — which
+// then reports a single HIGH RESULT audit event on success.
+func (s *Service) Filter(ctx context.Context, caller core.Caller, p FilterParams) (ReadResult, error) {
+	if err := s.checkGate(ctx, caller, "M4", p.Topic); err != nil {
+		return ReadResult{}, err
+	}
+
 	maxScan, maxMatches, maxBytes, maxTime, err := s.resolveScanBounds(p.MaxScan, p.MaxMatches, p.MaxBytes, p.MaxTimeMs)
 	if err != nil {
 		return ReadResult{}, err
@@ -57,5 +63,10 @@ func (s *Service) Filter(ctx context.Context, p FilterParams) (ReadResult, error
 		Topic: p.Topic, Partitions: partitionSpecs, Latest: p.From.Kind == FromLatest,
 		MaxMessages: maxMatches, MaxScanned: maxScan, MaxBytes: maxBytes, MaxTime: maxTime, Format: p.Format,
 	}
-	return s.runScan(ctx, spec, matcher)
+	result, err := s.runScan(ctx, spec, matcher)
+	if err != nil {
+		return ReadResult{}, err
+	}
+	s.auditBreakGlassRead(ctx, caller, "M4", p.Topic)
+	return result, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/misterkafkagod/kafka3o/internal/scan"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
 
 // FromKind identifies how a read's starting (or, for To, ending) point was
@@ -52,8 +53,15 @@ type ReadResult struct {
 // `from=`/`to=` and the end snapshot via kafka.Admin, then runs
 // internal/scan.Run with a fresh, dedicated Consumer (TECH-SPEC §2.3).
 // limit, maxBytes, and maxTimeMs above their configured ceiling report
-// *core.PolicyError{Code: core.BoundExceeded} (FUNC-SPEC §8.8).
-func (s *Service) Read(ctx context.Context, p ReadParams) (ReadResult, error) {
+// *core.PolicyError{Code: core.BoundExceeded} (FUNC-SPEC §8.8). Under the
+// data-plane lock (FUNC-SPEC §9.5), only an operator caller presenting a
+// break-glass reason passes checkGate — which then reports a single HIGH
+// RESULT audit event on success, the one case a read is ever audited.
+func (s *Service) Read(ctx context.Context, caller core.Caller, p ReadParams) (ReadResult, error) {
+	if err := s.checkGate(ctx, caller, "M1", p.Topic); err != nil {
+		return ReadResult{}, err
+	}
+
 	limit, err := resolveIntBound("limit", p.Limit, s.bounds.Limit.Default, s.bounds.Limit.Ceiling)
 	if err != nil {
 		return ReadResult{}, err
@@ -78,5 +86,10 @@ func (s *Service) Read(ctx context.Context, p ReadParams) (ReadResult, error) {
 		Topic: p.Topic, Partitions: partitionSpecs, Latest: p.From.Kind == FromLatest,
 		MaxMessages: limit, MaxBytes: maxBytes, MaxTime: maxTime, Format: p.Format,
 	}
-	return s.runScan(ctx, spec, scan.MatchAll)
+	result, err := s.runScan(ctx, spec, scan.MatchAll)
+	if err != nil {
+		return ReadResult{}, err
+	}
+	s.auditBreakGlassRead(ctx, caller, "M1", p.Topic)
+	return result, nil
 }

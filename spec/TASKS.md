@@ -532,13 +532,13 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 6.1: Wire F2 and F6, break-glass, and rejection audit events
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §9.1 rules (rejection events; break-glass bypasses F6 only — C1), §9.5 (data-plane lock), D5, O9, F2, F6, §8.2 (`X-Break-Glass-Reason` cap — C2); TECH §2.0 P1
 - **Subtasks:**
-  - [ ] 6.1.1 `middleware/apikey.go`: parse `X-Break-Glass-Reason` (cap 512 bytes, strip control chars) into `Caller.BreakGlassReason` — FUNC §8.2 (C2)
-  - [ ] 6.1.2 `gates.Check` + `core.run`: emit `RESULT`/`REJECTED` audit on any 401/403 for `W` commands and on any break-glass attempt (WARN; HIGH when break-glass) — FUNC §9.1 rules
-  - [ ] 6.1.3 Break-glass reads (M1–M4) emit a `HIGH` `RESULT` event on success — FUNC §9.5
-  - [ ] 6.1.4 Config → `Policy` wiring for `readOnlyMode`, `dataPlaneLock` — FUNC §8.2 switches
+  - [x] 6.1.1 `middleware/apikey.go`: parse `X-Break-Glass-Reason` (cap 512 bytes, strip control chars) into `Caller.BreakGlassReason` — FUNC §8.2 (C2) — already implemented in Task 1.8; covered by the pre-existing `TestSanitizeBreakGlass`
+  - [x] 6.1.2 `gates.Check` + `core.run`: emit `RESULT`/`REJECTED` audit on any 401/403 for `W` commands and on any break-glass attempt (WARN; HIGH when break-glass) — FUNC §9.1 rules — 403 via new `core.CheckAudited` (message.Service's gate check for M1-M7); 401 via a new start-up-built route→command lookup (`internal/api/routelookup.go`) consulted from `middleware.APIKey`, since auth runs before Huma has routed the request
+  - [x] 6.1.3 Break-glass reads (M1–M4) emit a `HIGH` `RESULT` event on success — FUNC §9.5 — `message.Service`'s M1-M4 methods now take a `core.Caller`, run `checkGate`, and call the new `auditBreakGlassRead` on success
+  - [x] 6.1.4 Config → `Policy` wiring for `readOnlyMode`, `dataPlaneLock` — FUNC §8.2 switches — wired in Task 5.5 (`internal/app/mapping.go`'s `mapPolicy`, `api.Deps.Policy`)
 - **Tests (Definition of Done):**
   - `TestMiddleware_BreakGlassReason_CappedAt512AndControlCharsStripped` — TECH C2
   - `TestRun_WRejectionEmitsResultRejectedWarn` (401 and each 403 code on a `W` command) — FUNC §9.1 rules

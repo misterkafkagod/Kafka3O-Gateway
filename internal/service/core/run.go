@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/command"
 )
 
@@ -35,4 +36,29 @@ func run[T any](r Runner, ctx context.Context, caller Caller, descriptor command
 		return zero, err
 	}
 	return fn(ctx)
+}
+
+// CheckAudited is run's gate check alone (no fn), extended to emit a
+// REJECTED RESULT audit event on rejection (FUNC-SPEC §9.1 rules): WARN
+// normally, HIGH when break-glass was attempted (FUNC-SPEC §8.5 V6). attempt
+// is the event the caller has already built for this call (EventID, Target,
+// Caller, CommandID, ...) — building it is the caller's own job (audit
+// depends on neither core nor command, so it cannot build one itself);
+// CheckAudited only overwrites Outcome/Severity/Error before handing it to
+// auditor.Result, exactly as any other RESULT event is derived from its
+// ATTEMPT. A passing check returns nil without touching auditor at all — the
+// caller's own success path owns that event.
+func CheckAudited(ctx context.Context, r Runner, auditor *audit.Auditor, caller Caller, descriptor command.Descriptor, attempt audit.Event) error {
+	err := r.Check(caller, descriptor, r.Policy)
+	if err == nil {
+		return nil
+	}
+
+	code, _ := CodeOf(err)
+	result := attempt
+	result.Outcome = audit.OutcomeRejected
+	result.Severity = audit.SeverityFor(descriptor.ID, audit.OutcomeRejected, caller.BreakGlassReason != "")
+	result.Error = &audit.EventError{Code: code.String()}
+	auditor.Result(ctx, result)
+	return err
 }

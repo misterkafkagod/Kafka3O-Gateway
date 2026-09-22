@@ -31,8 +31,15 @@ type SearchParams struct {
 // internal/scan.Run with a compiled regex Matcher. An invalid pattern
 // reports *core.PolicyError{Code: core.InvalidRegex}; maxScan, maxMatches,
 // maxBytes, and maxTimeMs above their configured ceiling report
-// *core.PolicyError{Code: core.BoundExceeded} (FUNC-SPEC §8.8).
-func (s *Service) Search(ctx context.Context, p SearchParams) (ReadResult, error) {
+// *core.PolicyError{Code: core.BoundExceeded} (FUNC-SPEC §8.8). Under the
+// data-plane lock (FUNC-SPEC §9.5), only an operator caller presenting a
+// break-glass reason passes checkGate — which then reports a single HIGH
+// RESULT audit event on success.
+func (s *Service) Search(ctx context.Context, caller core.Caller, p SearchParams) (ReadResult, error) {
+	if err := s.checkGate(ctx, caller, "M3", p.Topic); err != nil {
+		return ReadResult{}, err
+	}
+
 	maxScan, maxMatches, maxBytes, maxTime, err := s.resolveScanBounds(p.MaxScan, p.MaxMatches, p.MaxBytes, p.MaxTimeMs)
 	if err != nil {
 		return ReadResult{}, err
@@ -54,7 +61,12 @@ func (s *Service) Search(ctx context.Context, p SearchParams) (ReadResult, error
 		Topic: p.Topic, Partitions: partitionSpecs, Latest: p.From.Kind == FromLatest,
 		MaxMessages: maxMatches, MaxScanned: maxScan, MaxBytes: maxBytes, MaxTime: maxTime, Format: p.Format,
 	}
-	return s.runScan(ctx, spec, matcher)
+	result, err := s.runScan(ctx, spec, matcher)
+	if err != nil {
+		return ReadResult{}, err
+	}
+	s.auditBreakGlassRead(ctx, caller, "M3", p.Topic)
+	return result, nil
 }
 
 // resolveScanBounds applies M3/M4's shared bound resolution: maxScan and

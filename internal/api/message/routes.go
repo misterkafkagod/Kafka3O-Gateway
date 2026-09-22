@@ -183,7 +183,8 @@ func searchMessages(svc *message.Service) func(context.Context, *SearchInput) (*
 			partitions = []int32{*body.Partition}
 		}
 
-		result, err := svc.Search(ctx, message.SearchParams{
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.Search(ctx, caller, message.SearchParams{
 			Topic: in.Name, Partitions: partitions, From: from, To: to,
 			Regex: body.Regex, Fields: fields, CaseInsensitive: body.CaseInsensitive,
 			MaxScan: body.MaxScan, MaxMatches: body.MaxMatches,
@@ -222,7 +223,8 @@ func filterMessages(svc *message.Service) func(context.Context, *FilterInput) (*
 			partitions = []int32{*body.Partition}
 		}
 
-		result, err := svc.Filter(ctx, message.FilterParams{
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.Filter(ctx, caller, message.FilterParams{
 			Topic: in.Name, Partitions: partitions, From: from, To: to,
 			Path: body.Filter.Path, Op: op, Value: body.Filter.Value,
 			MaxScan: body.MaxScan, MaxMatches: body.MaxMatches,
@@ -278,7 +280,8 @@ func readMessages(svc *message.Service) func(context.Context, *ReadMessagesInput
 			partitions = []int32{in.Partition}
 		}
 
-		result, err := svc.Read(ctx, message.ReadParams{
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.Read(ctx, caller, message.ReadParams{
 			Topic:      in.Name,
 			Partitions: partitions,
 			From:       from,
@@ -300,7 +303,8 @@ func readMessages(svc *message.Service) func(context.Context, *ReadMessagesInput
 
 func getMessage(svc *message.Service) func(context.Context, *GetMessageInput) (*GetMessageOutput, error) {
 	return func(ctx context.Context, in *GetMessageInput) (*GetMessageOutput, error) {
-		r, err := svc.Get(ctx, in.Name, in.Partition, in.Offset)
+		caller, _ := middleware.CallerFrom(ctx)
+		r, err := svc.Get(ctx, caller, in.Name, in.Partition, in.Offset)
 		if err != nil {
 			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
 		}

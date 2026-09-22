@@ -34,7 +34,7 @@ func TestMiddleware_APIKey_MissingIs401(t *testing.T) {
 
 	var caller core.Caller
 	var called bool
-	APIKey(testKeys(), true)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
+	APIKey(testKeys(), true, nil, nil)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", rec.Code)
@@ -53,7 +53,7 @@ func TestMiddleware_APIKey_UnknownIs401(t *testing.T) {
 
 	var caller core.Caller
 	var called bool
-	APIKey(testKeys(), true)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
+	APIKey(testKeys(), true, nil, nil)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", rec.Code)
@@ -79,7 +79,7 @@ func TestMiddleware_APIKey_ValidBuildsCallerWithTier(t *testing.T) {
 
 		var caller core.Caller
 		var called bool
-		APIKey(testKeys(), true)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
+		APIKey(testKeys(), true, nil, nil)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusOK || !called {
 			t.Fatalf("key %q: status=%d called=%v, want 200/true", tc.key, rec.Code, called)
@@ -104,7 +104,7 @@ func TestMiddleware_APIKey_AuthDisabledIsOperatorNilKeyID(t *testing.T) {
 
 	var caller core.Caller
 	var called bool
-	APIKey(nil, false)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
+	APIKey(nil, false, nil, nil)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK || !called {
 		t.Fatalf("status=%d called=%v, want 200/true", rec.Code, called)
@@ -125,7 +125,7 @@ func TestMiddleware_APIKey_HealthAndOpenAPINotExempt(t *testing.T) {
 
 		var caller core.Caller
 		var called bool
-		APIKey(testKeys(), true)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
+		APIKey(testKeys(), true, nil, nil)(handlerCapturingCaller(t, &caller, &called)).ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("path %s: status = %d, want 401 (no endpoint is exempt)", path, rec.Code)
@@ -142,7 +142,7 @@ func TestMiddleware_APIKey_PreflightBypassesAuth(t *testing.T) {
 	req := httptest.NewRequest(http.MethodOptions, "/v1/topics", nil)
 
 	var called bool
-	APIKey(testKeys(), true)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	APIKey(testKeys(), true, nil, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	})).ServeHTTP(rec, req)
 

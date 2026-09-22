@@ -5,11 +5,27 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
+	"time"
 	"unicode/utf8"
 
 	"github.com/misterkafkagod/kafka3o/internal/api/errors"
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
+
+// RouteCommand identifies which catalog command a request's matched route
+// maps to (TECH-SPEC O5) — just enough for APIKey to decide whether a 401
+// deserves a REJECTED audit line (W commands only, FUNC-SPEC §8.5 scope)
+// and, if so, which CommandID/CommandName to put on it.
+type RouteCommand struct {
+	CommandID   string
+	CommandName string
+	IsWrite     bool
+}
+
+// RouteLookup resolves a request to the RouteCommand its matched operation
+// carries; ok is false for a request no registered operation matches.
+type RouteLookup func(r *http.Request) (rc RouteCommand, ok bool)
 
 // Key is one configured API key (TECH-SPEC B4): only its SHA-256 digest is
 // ever held in memory. internal/api may not import internal/config
@@ -37,7 +53,10 @@ const breakGlassMaxBytes = 512
 // directly. This keeps the documented chain order (request-id → api-key →
 // CORS → otelhttp) intact while still letting a real cross-origin request
 // negotiate before it is authenticated.
-func APIKey(keys []Key, authEnabled bool) func(http.Handler) http.Handler {
+// lookup and auditor may be nil in isolation (e.g. a test exercising only
+// authentication itself): a nil auditor or lookup simply means a 401 is
+// never audited, the same as an unmatched route.
+func APIKey(keys []Key, authEnabled bool, lookup RouteLookup, auditor *audit.Auditor) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
@@ -60,6 +79,7 @@ func APIKey(keys []Key, authEnabled bool) func(http.Handler) http.Handler {
 
 			key, ok := matchKey(r.Header.Get(HeaderAPIKey), keys)
 			if !ok {
+				auditUnauthenticatedRejection(r, lookup, auditor, breakGlass)
 				writeUnauthenticated(w, r)
 				return
 			}
@@ -75,6 +95,40 @@ func APIKey(keys []Key, authEnabled bool) func(http.Handler) http.Handler {
 			})))
 		})
 	}
+}
+
+// auditUnauthenticatedRejection emits a REJECTED RESULT audit event for a
+// 401 on a W command's route (FUNC-SPEC §9.1 rules): R commands are never
+// audited (FUNC-SPEC §8.5 scope), and a route lookup miss (an unknown path,
+// or a non-catalog endpoint like /health) is silently skipped rather than
+// guessed at. There is no valid Caller for a 401 (TECH-SPEC C14: no key was
+// ever resolved), so this builds the event directly instead of going
+// through core.CheckAudited, which needs one.
+func auditUnauthenticatedRejection(r *http.Request, lookup RouteLookup, auditor *audit.Auditor, breakGlass string) {
+	if lookup == nil || auditor == nil {
+		return
+	}
+	rc, ok := lookup(r)
+	if !ok || !rc.IsWrite {
+		return
+	}
+
+	var bg *audit.BreakGlass
+	if breakGlass != "" {
+		bg = &audit.BreakGlass{Reason: breakGlass}
+	}
+	auditor.Result(r.Context(), audit.Event{
+		EventID:     audit.NewEventID(),
+		Timestamp:   time.Now(),
+		RequestID:   errors.RequestIDFrom(r.Context()),
+		CommandID:   rc.CommandID,
+		CommandName: rc.CommandName,
+		Target:      audit.Target{Type: "route", Name: r.URL.Path},
+		Caller:      audit.Caller{ClientIP: clientIPFrom(r.Context())},
+		BreakGlass:  bg,
+		Outcome:     audit.OutcomeRejected,
+		Severity:    audit.SeverityFor(rc.CommandID, audit.OutcomeRejected, bg != nil),
+	})
 }
 
 // matchKey hashes presented and compares it in constant time against every

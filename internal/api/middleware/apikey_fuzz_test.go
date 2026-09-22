@@ -26,7 +26,7 @@ func FuzzAPIKeyHeader(f *testing.F) {
 		req.Header.Set(HeaderAPIKey, presented)
 
 		var caller struct{ ran bool }
-		APIKey(keys, true)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		APIKey(keys, true, nil, nil)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			caller.ran = true
 		})).ServeHTTP(rec, req)
 

@@ -20,11 +20,10 @@ func errCodeOf(err error) string {
 	return "INTERNAL"
 }
 
-// newEvent builds the base audit.Event for one M5-M7 command invocation
-// (FUNC-SPEC §8.5): its ATTEMPT and RESULT share this EventID and Target/
-// Caller/BreakGlass, per the two-phase protocol (TECH audittest ordering
-// tests key off a shared EventID). commandID must name an M5-M7
-// command.Table entry.
+// newEvent builds the base audit.Event for one M1-M7 command invocation
+// (FUNC-SPEC §8.5): its ATTEMPT and RESULT (or, for a gate rejection or a
+// break-glass read, its one RESULT) share this EventID and Target/Caller/
+// BreakGlass. commandID must name an M1-M7 command.Table entry.
 func (s *Service) newEvent(caller core.Caller, commandID, topic string) audit.Event {
 	desc, _ := command.Lookup(commandID)
 
@@ -68,18 +67,26 @@ func (s *Service) resultEventOutcome(attempt audit.Event, outcome audit.Outcome,
 }
 
 // checkGate runs gates.Check for commandID (FUNC-SPEC §9.1 nodes F-K3),
-// before anything else in Produce/ProduceBulk/Tombstone runs. On rejection
-// it emits a single REJECTED RESULT audit event — no ATTEMPT, since the
-// command never ran — and returns the *core.PolicyError.
+// before anything else in Produce/ProduceBulk/Tombstone/Read/Search/
+// Filter/Get runs. On rejection it emits a single REJECTED RESULT audit
+// event via core.CheckAudited — no ATTEMPT, since the command never ran —
+// and returns the *core.PolicyError.
 func (s *Service) checkGate(ctx context.Context, caller core.Caller, commandID, topic string) error {
 	desc, _ := command.Lookup(commandID)
-	if err := s.runner.Check(caller, desc, s.runner.Policy); err != nil {
-		code, _ := core.CodeOf(err)
-		attempt := s.newEvent(caller, commandID, topic)
-		s.auditor.Result(ctx, s.resultEventOutcome(attempt, audit.OutcomeRejected, code.String()))
-		return err
+	return core.CheckAudited(ctx, s.runner, s.auditor, caller, desc, s.newEvent(caller, commandID, topic))
+}
+
+// auditBreakGlassRead emits a single HIGH RESULT event for a successful
+// M1-M4 read whose caller presented a break-glass reason (FUNC-SPEC §9.5):
+// reads are otherwise entirely unaudited (FUNC-SPEC §8.5 scope) — this is
+// the one exception, and it fires whenever the reason is present, whether
+// or not the lock this call passed through was actually engaged.
+func (s *Service) auditBreakGlassRead(ctx context.Context, caller core.Caller, commandID, topic string) {
+	if caller.BreakGlassReason == "" {
+		return
 	}
-	return nil
+	attempt := s.newEvent(caller, commandID, topic)
+	s.auditor.Result(ctx, s.resultEventOutcome(attempt, audit.OutcomeSucceeded, ""))
 }
 
 // resultEvent derives attempt's RESULT counterpart from a bulk operation's

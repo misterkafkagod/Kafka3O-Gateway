@@ -106,7 +106,7 @@ func TestMessageService_Produce_EncodingsApplied(t *testing.T) {
 		t.Fatalf("Produce() item = %+v, want SUCCEEDED", result.Items[0])
 	}
 
-	got, err := svc.Get(context.Background(), "t", result.Items[0].Partition, result.Items[0].Offset)
+	got, err := svc.Get(context.Background(), core.Caller{}, "t", result.Items[0].Partition, result.Items[0].Offset)
 	if err != nil {
 		t.Fatalf("Get() error: %v", err)
 	}
