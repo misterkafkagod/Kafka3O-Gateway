@@ -17,6 +17,7 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/api"
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/config"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/franz"
@@ -101,18 +102,22 @@ func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
 	}
 
 	admin := telemetry.NewTracedAdmin(client)
+	producer := telemetry.NewTracedProducer(client)
 	return api.New(api.Deps{
 		Cluster:     admin,
 		Admin:       admin,
+		Producer:    producer,
+		Auditor:     newAuditor(),
 		PageBounds:  apitopic.PageBounds{Default: cfg.Bounds.Page.Size.Default, Ceiling: cfg.Bounds.Page.Size.Ceiling},
 		NewConsumer: newConsumerFactory(cfg),
 		MessageBounds: message.Bounds{
-			Limit:        message.Range{Default: cfg.Bounds.Read.Limit.Default, Ceiling: cfg.Bounds.Read.Limit.Ceiling},
-			MaxScan:      message.Range{Default: cfg.Bounds.Scan.MaxScan.Default, Ceiling: cfg.Bounds.Scan.MaxScan.Ceiling},
-			MaxMatches:   message.Range{Default: cfg.Bounds.Scan.MaxMatches.Default, Ceiling: cfg.Bounds.Scan.MaxMatches.Ceiling},
-			MaxBytes:     message.RangeBytes{Default: int64(cfg.Bounds.Scan.MaxBytes.Default), Ceiling: int64(cfg.Bounds.Scan.MaxBytes.Ceiling)},
-			MaxTime:      message.RangeDuration{Default: cfg.Bounds.Scan.MaxTime.Default, Ceiling: cfg.Bounds.Scan.MaxTime.Ceiling},
-			RegexTimeout: cfg.Bounds.Scan.RegexTimeout,
+			Limit:            message.Range{Default: cfg.Bounds.Read.Limit.Default, Ceiling: cfg.Bounds.Read.Limit.Ceiling},
+			MaxScan:          message.Range{Default: cfg.Bounds.Scan.MaxScan.Default, Ceiling: cfg.Bounds.Scan.MaxScan.Ceiling},
+			MaxMatches:       message.Range{Default: cfg.Bounds.Scan.MaxMatches.Default, Ceiling: cfg.Bounds.Scan.MaxMatches.Ceiling},
+			MaxBytes:         message.RangeBytes{Default: int64(cfg.Bounds.Scan.MaxBytes.Default), Ceiling: int64(cfg.Bounds.Scan.MaxBytes.Ceiling)},
+			MaxTime:          message.RangeDuration{Default: cfg.Bounds.Scan.MaxTime.Default, Ceiling: cfg.Bounds.Scan.MaxTime.Ceiling},
+			RegexTimeout:     cfg.Bounds.Scan.RegexTimeout,
+			MaxBulkBodyBytes: int64(cfg.Bounds.BulkProduceBody),
 		},
 		AuditStatus:    auditStatus(cfg.Audit),
 		Keys:           keys,
@@ -159,4 +164,13 @@ func newConsumerFactory(cfg config.Config) message.ConsumerFactory {
 // function backed by the sink's actual writability check.
 func auditStatus(a config.Audit) health.AuditStatus {
 	return func() (string, bool) { return a.Sink, true }
+}
+
+// newAuditor builds the gateway's Auditor (FUNC-SPEC §8.5): the stdout/slog
+// sink always runs. The Kafka sink needs its own dedicated producer client
+// (TECH-SPEC C5) and a start-up topic-existence check (TECH-SPEC §6.1 B5)
+// that a later task wires in; until then, a "kafka"-configured sink still
+// gets a working Auditor, just without that second sink.
+func newAuditor() *audit.Auditor {
+	return audit.NewAuditor(audit.NewSlogSink(slog.Default()))
 }

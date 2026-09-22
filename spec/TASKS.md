@@ -474,12 +474,12 @@
   - `TestAuditor_Race` — TECH §4.9
 
 ### Task 5.3: Bulk semantics and message service (M5, M6, M7)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §9.4 (validate-all, then execute), V3, §8.3 (bulk envelope 200/207), §8.7 M5–M7, §8.8 (M6 body 10 MB); TECH §2.3
 - **Subtasks:**
-  - [ ] 5.3.1 `internal/service/core/bulk.go`: generic validate-all → `BulkValidationFailed{items}` (nothing executes, no ATTEMPT) → ATTEMPT → per-item execute → `BulkResult{items, summary}` → RESULT — FUNC §9.4
-  - [ ] 5.3.2 `message.Service.Produce` (single object or `records[]`; validation: encodings, partition range, timestamp), `ProduceBulk` (NDJSON / JSON array stream, body limit → 413), `Tombstone` — FUNC §8.7 M5–M7
-  - [ ] 5.3.3 Unit tests: one invalid item → nothing produced; injected per-item failure → 207 — TECH §4.5 V3
+  - [x] 5.3.1 `internal/service/core/bulk.go`: generic validate-all → `BulkValidationFailed{items}` (nothing executes, no ATTEMPT) → ATTEMPT → per-item execute → `BulkResult{items, summary}` → RESULT — FUNC §9.4
+  - [x] 5.3.2 `message.Service.Produce` (single object or `records[]`; validation: encodings, partition range, timestamp), `ProduceBulk` (NDJSON / JSON array stream, body limit → 413), `Tombstone` — FUNC §8.7 M5–M7
+  - [x] 5.3.3 Unit tests: one invalid item → nothing produced; injected per-item failure → 207 — TECH §4.5 V3
 - **Tests (Definition of Done):**
   - `TestBulk_OneInvalidItemNothingExecutesNoAttempt`, `TestBulk_AllValidAttemptThenExecuteThenResult`, `TestBulk_ExecutionFailureIsMixedWithPerItemStatus`, `TestBulk_SummaryCounts` — VC V3; FUNC §9.4
   - `TestMessageService_Produce_SingleObjectAndArrayAccepted`, `TestMessageService_Produce_PartitionOutOfRangeInvalid`, `TestMessageService_Produce_EncodingsApplied` — FUNC §8.7 M5

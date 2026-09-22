@@ -85,7 +85,10 @@ func Map(err error, requestID string) *Envelope {
 		if !ok {
 			m = httpMapping{500, "INTERNAL"}
 		}
-		return &Envelope{ErrorBody: Body{Code: m.Code, Message: pe.Error(), Status: m.Status, RequestID: requestID}}
+		return &Envelope{ErrorBody: Body{
+			Code: m.Code, Message: pe.Error(), Status: m.Status, RequestID: requestID,
+			Details: pe.Details,
+		}}
 	}
 
 	return FromInternal(requestID, err)

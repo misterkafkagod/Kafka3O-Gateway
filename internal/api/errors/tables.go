@@ -49,6 +49,9 @@ func codeTable() map[core.Code]httpMapping {
 		core.Validation:           {400, "VALIDATION_FAILED"},
 		core.InvalidRegex:         {400, "INVALID_REGEX"},
 		core.InvalidJSONPath:      {400, "INVALID_JSONPATH"},
+		core.BulkValidationFailed: {400, "BULK_VALIDATION_FAILED"},
+		core.AuditUnavailable:     {503, "AUDIT_UNAVAILABLE"},
+		core.PayloadTooLarge:      {413, "PAYLOAD_TOO_LARGE"},
 	}
 }
 

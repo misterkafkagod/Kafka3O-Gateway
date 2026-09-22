@@ -21,6 +21,7 @@ import (
 	apimessage "github.com/misterkafkagod/kafka3o/internal/api/message"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/service/cluster"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
@@ -44,6 +45,10 @@ type Deps struct {
 	PageBounds apitopic.PageBounds
 	// NewConsumer builds a fresh kafka.Consumer per scan (TECH-SPEC §2.3).
 	NewConsumer message.ConsumerFactory
+	// Producer is the shared Kafka producer M5-M7 write through (TECH-SPEC C4).
+	Producer kafka.Producer
+	// Auditor records M5-M7's two-phase ATTEMPT/RESULT audit trail (FUNC-SPEC §8.5).
+	Auditor *audit.Auditor
 	// MessageBounds are the configured M1 limit/maxBytes/maxTimeMs bounds (FUNC-SPEC §8.8).
 	MessageBounds message.Bounds
 	// AuditStatus reports the configured audit sink's health (TECH-SPEC B5).
@@ -78,7 +83,7 @@ func New(deps Deps) http.Handler {
 	registerHealth(humaAPI, deps)
 	apicluster.Register(humaAPI, cluster.New(deps.Admin))
 	apitopic.Register(humaAPI, topic.New(deps.Admin), deps.PageBounds)
-	apimessage.Register(humaAPI, message.New(deps.Admin, deps.NewConsumer, deps.MessageBounds))
+	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor))
 
 	var handler http.Handler = mux
 	handler = telemetry.HTTPMiddleware("gateway", func(r *http.Request) string {

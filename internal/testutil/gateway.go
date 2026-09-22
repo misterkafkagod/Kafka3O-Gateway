@@ -14,6 +14,8 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/api"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
+	"github.com/misterkafkagod/kafka3o/internal/audit"
+	"github.com/misterkafkagod/kafka3o/internal/audit/audittest"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/fake"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
@@ -28,6 +30,9 @@ const DefaultOperatorKey = "test-operator-secret"
 type Gateway struct {
 	Server *httptest.Server
 	Fake   *fake.Fake
+	// Audit records every event M5-M7 report, for tests asserting on the
+	// ATTEMPT/RESULT trail (FUNC-SPEC §8.5).
+	Audit *audittest.RecordingSink
 }
 
 // Option customises the gateway NewTestGateway builds: either the fake's
@@ -83,12 +88,13 @@ func defaultSettings() settings {
 			AuthEnabled: true,
 			PageBounds:  apitopic.PageBounds{Default: 50, Ceiling: 500},
 			MessageBounds: message.Bounds{
-				Limit:        message.Range{Default: 100, Ceiling: 1000},
-				MaxScan:      message.Range{Default: 10000, Ceiling: 100000},
-				MaxMatches:   message.Range{Default: 100, Ceiling: 1000},
-				MaxBytes:     message.RangeBytes{Default: 10 * 1024 * 1024, Ceiling: 100 * 1024 * 1024},
-				MaxTime:      message.RangeDuration{Default: 10 * time.Second, Ceiling: 60 * time.Second},
-				RegexTimeout: 100 * time.Millisecond,
+				Limit:            message.Range{Default: 100, Ceiling: 1000},
+				MaxScan:          message.Range{Default: 10000, Ceiling: 100000},
+				MaxMatches:       message.Range{Default: 100, Ceiling: 1000},
+				MaxBytes:         message.RangeBytes{Default: 10 * 1024 * 1024, Ceiling: 100 * 1024 * 1024},
+				MaxTime:          message.RangeDuration{Default: 10 * time.Second, Ceiling: 60 * time.Second},
+				RegexTimeout:     100 * time.Millisecond,
+				MaxBulkBodyBytes: 10 * 1024 * 1024,
 			},
 		},
 	}
@@ -105,8 +111,11 @@ func NewTestGateway(t *testing.T, opts ...Option) *Gateway {
 	}
 
 	f := fake.New(s.fakeOpts...)
+	rec := audittest.New()
 	s.deps.Cluster = f
 	s.deps.Admin = f
+	s.deps.Producer = f
+	s.deps.Auditor = audit.NewAuditor(rec)
 	s.deps.NewConsumer = func() (kafka.Consumer, error) { return f, nil }
 	for _, hook := range s.hooks {
 		hook(&s.deps, f)
@@ -114,5 +123,5 @@ func NewTestGateway(t *testing.T, opts ...Option) *Gateway {
 
 	srv := httptest.NewServer(api.New(s.deps))
 	t.Cleanup(srv.Close)
-	return &Gateway{Server: srv, Fake: f}
+	return &Gateway{Server: srv, Fake: f, Audit: rec}
 }

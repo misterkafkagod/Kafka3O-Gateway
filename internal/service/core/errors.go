@@ -28,6 +28,9 @@ const (
 	Validation
 	InvalidRegex
 	InvalidJSONPath
+	BulkValidationFailed
+	AuditUnavailable
+	PayloadTooLarge
 )
 
 // String returns the Code's FUNC-SPEC §8.4 wire name.
@@ -51,6 +54,12 @@ func (c Code) String() string {
 		return "INVALID_REGEX"
 	case InvalidJSONPath:
 		return "INVALID_JSONPATH"
+	case BulkValidationFailed:
+		return "BULK_VALIDATION_FAILED"
+	case AuditUnavailable:
+		return "AUDIT_UNAVAILABLE"
+	case PayloadTooLarge:
+		return "PAYLOAD_TOO_LARGE"
 	}
 	return fmt.Sprintf("code(%d)", int(c))
 }
@@ -61,15 +70,19 @@ func Codes() []Code {
 	return []Code{
 		TierForbidden, ReadOnlyMode, OperationDisabled, DataPlaneLocked,
 		ConfirmationMismatch, BoundExceeded, Validation, InvalidRegex, InvalidJSONPath,
+		BulkValidationFailed, AuditUnavailable, PayloadTooLarge,
 	}
 }
 
 // PolicyError is a gate or validation failure (FUNC-SPEC §8.4). Message, when
 // set, is additional detail for the caller (e.g. which field failed
-// validation); it is never required.
+// validation); it is never required. Details, when set, is rendered
+// verbatim as the error envelope's details object (FUNC-SPEC §8.4
+// BULK_VALIDATION_FAILED's `details.items[]`).
 type PolicyError struct {
 	Code    Code
 	Message string
+	Details map[string]any
 }
 
 // Error implements error.

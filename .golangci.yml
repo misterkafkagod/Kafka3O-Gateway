@@ -255,6 +255,7 @@ linters:
             - github.com/misterkafkagod/kafka3o/internal/command
             - github.com/misterkafkagod/kafka3o/internal/scan
             - github.com/misterkafkagod/kafka3o/internal/audit
+            - github.com/misterkafkagod/kafka3o/internal/audit/audittest
             - github.com/misterkafkagod/kafka3o/internal/service
             - github.com/google/go-cmp
           deny:
@@ -273,6 +274,7 @@ linters:
             - github.com/misterkafkagod/kafka3o/internal/service
             - github.com/misterkafkagod/kafka3o/internal/command
             - github.com/misterkafkagod/kafka3o/internal/api
+            - github.com/misterkafkagod/kafka3o/internal/audit
             - github.com/misterkafkagod/kafka3o/internal/telemetry
             - github.com/danielgtaylor/huma/v2
             - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
