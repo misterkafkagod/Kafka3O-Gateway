@@ -23,30 +23,40 @@ type routeFixture struct {
 
 // wRoutes covers every W command currently wired to a route (api.Pending()'s
 // complement, restricted to Access W). wRoutesComplete below fails loudly
-// the day a future phase adds a W route without an entry here.
+// the day a future phase adds a W route without an entry here. T5/T6 create
+// a fresh topic rather than acting on the given one, so their names are
+// derived from it to stay unique per call.
 func wRoutes(topic string) map[string]routeFixture {
 	return map[string]routeFixture{
 		"M5": {http.MethodPost, "/v1/topics/" + topic + "/messages", map[string]any{"value": "v"}},
 		"M6": {http.MethodPost, "/v1/topics/" + topic + "/messages/bulk", []map[string]any{{"value": "v"}}},
 		"M7": {http.MethodPost, "/v1/topics/" + topic + "/tombstones", map[string]any{"key": "k"}},
+		"T5": {http.MethodPost, "/v1/topics", map[string]any{"name": topic + "-t5", "partitions": 1, "replicationFactor": 1}},
+		"T6": {http.MethodPost, "/v1/batch/topics", map[string]any{
+			"topics": []map[string]any{{"name": topic + "-t6", "partitions": 1, "replicationFactor": 1}},
+		}},
+		"T9":  {http.MethodPatch, "/v1/topics/" + topic + "/config", map[string]any{"confirm": topic, "set": map[string]any{"retention.ms": "60000"}}},
+		"T10": {http.MethodPost, "/v1/topics/" + topic + "/partitions", map[string]any{"confirm": topic, "partitions": 4}},
 	}
 }
 
 // dataPlaneRoutes covers every M1-M7 command currently wired to a route
-// (FUNC-SPEC §9.5 F6 covers M1-M8; M8 does not exist yet).
+// (FUNC-SPEC §9.5 F6 covers M1-M8; M8 does not exist yet) — hardcoded
+// rather than merged from wRoutes(), since wRoutes() also carries W
+// commands that are not data-plane (T5, T6, T9, T10).
 func dataPlaneRoutes(topic string) map[string]routeFixture {
-	routes := map[string]routeFixture{
+	all := wRoutes(topic)
+	return map[string]routeFixture{
 		"M1": {http.MethodGet, "/v1/topics/" + topic + "/messages?from=beginning&limit=1", nil},
 		"M2": {http.MethodGet, "/v1/topics/" + topic + "/partitions/0/messages/0", nil},
 		"M3": {http.MethodPost, "/v1/topics/" + topic + "/messages/search", map[string]any{"regex": ".", "from": "beginning", "maxMatches": 1}},
 		"M4": {http.MethodPost, "/v1/topics/" + topic + "/messages/filter", map[string]any{
 			"filter": map[string]any{"path": "$", "op": "exists"}, "from": "beginning", "maxMatches": 1,
 		}},
+		"M5": all["M5"],
+		"M6": all["M6"],
+		"M7": all["M7"],
 	}
-	for id, r := range wRoutes(topic) {
-		routes[id] = r
-	}
-	return routes
 }
 
 // wRoutesComplete fails t unless routes' keys exactly match command.Table's

@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
+	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
 	"github.com/misterkafkagod/kafka3o/internal/service/group"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
@@ -70,6 +71,108 @@ func Register(humaAPI huma.API, svc *topic.Service, groupSvc *group.Service, pag
 		Tags:        []string{"Topics"},
 		Extensions:  commandExtension("G3"),
 	}, topicConsumerGroups(groupSvc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "topic-create",
+		Method:      http.MethodPost,
+		Path:        "/v1/topics",
+		Summary:     "Create a topic",
+		Tags:        []string{"Topics"},
+		Extensions:  commandExtension("T5"),
+	}, createTopic(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "topic-create-bulk",
+		Method:      http.MethodPost,
+		Path:        "/v1/batch/topics",
+		Summary:     "Bulk create topics",
+		Tags:        []string{"Topics"},
+		Extensions:  commandExtension("T6"),
+	}, createTopicsBulk(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "topic-alter-config",
+		Method:      http.MethodPatch,
+		Path:        "/v1/topics/{name}/config",
+		Summary:     "Alter topic configuration",
+		Tags:        []string{"Topics"},
+		Extensions:  commandExtension("T9"),
+	}, alterConfig(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "topic-add-partitions",
+		Method:      http.MethodPost,
+		Path:        "/v1/topics/{name}/partitions",
+		Summary:     "Add partitions to a topic",
+		Tags:        []string{"Topics"},
+		Extensions:  commandExtension("T10"),
+	}, addPartitions(svc))
+}
+
+func createTopic(svc *topic.Service) func(context.Context, *CreateTopicInput) (*CreateTopicOutput, error) {
+	return func(ctx context.Context, in *CreateTopicInput) (*CreateTopicOutput, error) {
+		caller, _ := middleware.CallerFrom(ctx)
+		result, isDryRun, err := svc.Create(ctx, caller, toCreateParams(in.Body), in.DryRun)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		if isDryRun {
+			return &CreateTopicOutput{Status: http.StatusOK, Body: CreateTopicBody{DryRun: true, Plan: toCreateTopicPlanDTO(result)}}, nil
+		}
+		return &CreateTopicOutput{Status: http.StatusCreated, Body: CreateTopicBody{
+			Name: result.Name, Partitions: result.Partitions, ReplicationFactor: result.ReplicationFactor,
+			Configs: toTopicConfigEntryDTOs(result.Configs),
+		}}, nil
+	}
+}
+
+func createTopicsBulk(svc *topic.Service) func(context.Context, *CreateTopicsBulkInput) (*CreateTopicsBulkOutput, error) {
+	return func(ctx context.Context, in *CreateTopicsBulkInput) (*CreateTopicsBulkOutput, error) {
+		caller, _ := middleware.CallerFrom(ctx)
+		params := make([]topic.CreateParams, len(in.Body.Topics))
+		for i, t := range in.Body.Topics {
+			params[i] = toCreateParams(t)
+		}
+
+		result, err := svc.CreateBulk(ctx, caller, params)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		body, status := toCreateTopicsBulkBody(in.Body.Topics, result)
+		return &CreateTopicsBulkOutput{Status: status, Body: body}, nil
+	}
+}
+
+func alterConfig(svc *topic.Service) func(context.Context, *AlterConfigInput) (*AlterConfigOutput, error) {
+	return func(ctx context.Context, in *AlterConfigInput) (*AlterConfigOutput, error) {
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.AlterConfig(ctx, caller, in.Name, in.Body.Set, in.Body.Reset, in.Body.Confirm, in.DryRun)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		if result.DryRun {
+			return &AlterConfigOutput{Body: AlterConfigBody{DryRun: true, Plan: toAlterConfigPlanDTO(result.Plan)}}, nil
+		}
+		return &AlterConfigOutput{Body: AlterConfigBody{
+			Name: result.Value.Name, Configs: toTopicConfigEntryDTOs(result.Value.Configs),
+		}}, nil
+	}
+}
+
+func addPartitions(svc *topic.Service) func(context.Context, *AddPartitionsInput) (*AddPartitionsOutput, error) {
+	return func(ctx context.Context, in *AddPartitionsInput) (*AddPartitionsOutput, error) {
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.AddPartitions(ctx, caller, in.Name, in.Body.Partitions, in.Body.Confirm, in.DryRun)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		if result.DryRun {
+			return &AddPartitionsOutput{Body: AddPartitionsBody{DryRun: true, Plan: toAddPartitionsPlanDTO(result.Plan)}}, nil
+		}
+		return &AddPartitionsOutput{Body: AddPartitionsBody{
+			Name: result.Value.Name, PartitionCount: result.Value.PartitionCount,
+		}}, nil
+	}
 }
 
 func listTopics(svc *topic.Service, bounds PageBounds) func(context.Context, *ListTopicsInput) (*ListTopicsOutput, error) {

@@ -24,7 +24,7 @@ func TestTopicService_List_PatternIsRE2Unanchored(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	seedTopics(f)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	items, _, err := svc.List(context.Background(), topic.ListParams{Pattern: "pay", Page: 1, PageSize: 50})
 	if err != nil {
@@ -38,7 +38,7 @@ func TestTopicService_List_PatternIsRE2Unanchored(t *testing.T) {
 func TestTopicService_List_InvalidPatternIsInvalidRegex(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	_, _, err := svc.List(context.Background(), topic.ListParams{Pattern: "(", Page: 1, PageSize: 50})
 	if !core.IsCode(err, core.InvalidRegex) {
@@ -50,7 +50,7 @@ func TestTopicService_List_SortedByNameStablePaging(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	seedTopics(f)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	items, page, err := svc.List(context.Background(), topic.ListParams{IncludeInternal: true, Page: 1, PageSize: 2})
 	if err != nil {
@@ -76,7 +76,7 @@ func TestTopicService_List_PagePastEndEmptyWithTotal(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	seedTopics(f)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	items, page, err := svc.List(context.Background(), topic.ListParams{IncludeInternal: true, Page: 99, PageSize: 50})
 	if err != nil {
@@ -94,7 +94,7 @@ func TestTopicService_List_IncludeInternalToggle(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	seedTopics(f)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	without, _, err := svc.List(context.Background(), topic.ListParams{IncludeInternal: false, Page: 1, PageSize: 50})
 	if err != nil {
@@ -129,7 +129,7 @@ func TestTopicService_Describe_ApproxCountIsSumEndMinusBegin(t *testing.T) {
 	)
 	f.SeedPartitionMeta("t-describe", 0, 1, []int32{1}, []int32{1})
 	f.SeedPartitionMeta("t-describe", 1, 1, []int32{1}, []int32{1})
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	got, err := svc.Describe(context.Background(), "t-describe")
 	if err != nil {
@@ -152,7 +152,7 @@ func TestTopicService_Describe_ConfigSourceNormalised(t *testing.T) {
 		kafka.ConfigEntry{Name: "retention.ms", Value: "3600000", Source: kafka.SourceStatic},
 		kafka.ConfigEntry{Name: "compression.type", Value: "producer", Source: kafka.SourceDynamic},
 	)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	got, err := svc.Describe(context.Background(), "t-configs")
 	if err != nil {
@@ -177,7 +177,7 @@ func TestTopicService_Describe_ConfigSourceNormalised(t *testing.T) {
 func TestTopicService_Describe_MissingNotFound(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	_, err := svc.Describe(context.Background(), "does-not-exist")
 	if !kafka.IsKind(err, kafka.KindNotFound) {
@@ -192,7 +192,7 @@ func TestTopicService_Size_TotalsPerPartitionAndReplica(t *testing.T) {
 	f.SeedLogDir("t-size", 0, 1, "/data/kafka-logs", 1000)
 	f.SeedLogDir("t-size", 0, 2, "/data/kafka-logs", 1500)
 	f.SeedLogDir("t-size", 1, 1, "/data/kafka-logs", 200)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	got, err := svc.Size(context.Background(), "t-size")
 	if err != nil {
@@ -222,7 +222,7 @@ func TestTopicService_CountInWindow_ClampsToEndAndSums(t *testing.T) {
 		kafka.Record{Partition: 0, Value: []byte("c"), Timestamp: time.UnixMilli(base + 2000)},
 		kafka.Record{Partition: 1, Value: []byte("d"), Timestamp: time.UnixMilli(base)},
 	)
-	svc := topic.New(f)
+	svc := topic.New(f, nil, core.Runner{})
 
 	// to is far beyond the last record; must clamp to the end offset rather
 	// than reporting an offset that doesn't exist.

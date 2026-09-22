@@ -52,6 +52,7 @@ func codeTable() map[core.Code]httpMapping {
 		core.BulkValidationFailed: {400, "BULK_VALIDATION_FAILED"},
 		core.AuditUnavailable:     {503, "AUDIT_UNAVAILABLE"},
 		core.PayloadTooLarge:      {413, "PAYLOAD_TOO_LARGE"},
+		core.PartitionMismatch:    {400, "PARTITION_MISMATCH"},
 	}
 }
 

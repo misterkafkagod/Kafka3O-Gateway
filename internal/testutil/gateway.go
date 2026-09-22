@@ -101,6 +101,20 @@ func WithDataPlaneLock() Option {
 	}
 }
 
+// WithDisabledOperations turns on F3 (FUNC-SPEC §8.3) for exactly the given
+// command ids, leaving every other W command unaffected.
+func WithDisabledOperations(ids ...string) Option {
+	return func(s *settings) {
+		s.hooks = append(s.hooks, func(deps *api.Deps, _ *fake.Fake) {
+			disabled := make(map[string]bool, len(ids))
+			for _, id := range ids {
+				disabled[id] = true
+			}
+			deps.Policy.Disabled = disabled
+		})
+	}
+}
+
 // WithAuditUnhealthy makes /health/ready's audit sub-object report
 // unhealthy, without affecting readiness itself (TECH-SPEC §6.1 B5).
 func WithAuditUnhealthy() Option {

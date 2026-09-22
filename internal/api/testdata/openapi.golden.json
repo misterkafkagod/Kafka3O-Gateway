@@ -1,6 +1,86 @@
 {
   "components": {
     "schemas": {
+      "AddPartitionsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AddPartitionsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitionCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/AddPartitionsPlanDTO"
+          }
+        },
+        "type": "object"
+      },
+      "AddPartitionsPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "to": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "from",
+          "to",
+          "warning"
+        ],
+        "type": "object"
+      },
+      "AddPartitionsRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AddPartitionsRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "confirm",
+          "partitions"
+        ],
+        "type": "object"
+      },
       "AffectedDTO": {
         "additionalProperties": false,
         "properties": {
@@ -19,6 +99,97 @@
           "topic",
           "partition",
           "issue"
+        ],
+        "type": "object"
+      },
+      "AlterConfigBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AlterConfigBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/TopicConfigEntryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/AlterConfigPlanDTO"
+          }
+        },
+        "type": "object"
+      },
+      "AlterConfigPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ConfigChangeDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "changes"
+        ],
+        "type": "object"
+      },
+      "AlterConfigRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AlterConfigRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "reset": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "set": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "confirm"
         ],
         "type": "object"
       },
@@ -187,6 +358,217 @@
           "partitions",
           "affected",
           "truncated"
+        ],
+        "type": "object"
+      },
+      "ConfigChangeDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
+      "CreateBulkItemResultDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CreateTopicBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CreateTopicBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/TopicConfigEntryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/CreateTopicPlanDTO"
+          },
+          "replicationFactor": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "CreateTopicPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/TopicConfigEntryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "replicationFactor": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "partitions",
+          "replicationFactor",
+          "configs"
+        ],
+        "type": "object"
+      },
+      "CreateTopicRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CreateTopicRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "configs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "replicationFactor": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "partitions",
+          "replicationFactor"
+        ],
+        "type": "object"
+      },
+      "CreateTopicsBulkBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CreateTopicsBulkBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CreateBulkItemResultDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TopicBulkSummaryDTO"
+          }
+        },
+        "required": [
+          "items",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "CreateTopicsBulkRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CreateTopicsBulkRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/CreateTopicRequestBody"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "topics"
         ],
         "type": "object"
       },
@@ -1362,6 +1744,29 @@
         ],
         "type": "object"
       },
+      "TopicBulkSummaryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "failed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ok": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "ok",
+          "failed"
+        ],
+        "type": "object"
+      },
       "TopicConfigEntryDTO": {
         "additionalProperties": false,
         "properties": {
@@ -1582,6 +1987,48 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/batch/topics": {
+      "post": {
+        "operationId": "topic-create-bulk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTopicsBulkRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTopicsBulkBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Bulk create topics",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T6"
+      }
+    },
     "/v1/cluster": {
       "get": {
         "operationId": "cluster-describe",
@@ -1925,6 +2372,56 @@
           "Topics"
         ],
         "x-command-id": "T1"
+      },
+      "post": {
+        "operationId": "topic-create",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTopicRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTopicBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Create a topic",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T5"
       }
     },
     "/v1/topics/{name}": {
@@ -1967,6 +2464,66 @@
           "Topics"
         ],
         "x-command-id": "T2"
+      }
+    },
+    "/v1/topics/{name}/config": {
+      "patch": {
+        "operationId": "topic-alter-config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterConfigRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlterConfigBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Alter topic configuration",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T9"
       }
     },
     "/v1/topics/{name}/consumer-groups": {
@@ -2388,6 +2945,66 @@
           "Messages"
         ],
         "x-command-id": "M3"
+      }
+    },
+    "/v1/topics/{name}/partitions": {
+      "post": {
+        "operationId": "topic-add-partitions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPartitionsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddPartitionsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Add partitions to a topic",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "T10"
       }
     },
     "/v1/topics/{name}/partitions/{partition}/messages/{offset}": {

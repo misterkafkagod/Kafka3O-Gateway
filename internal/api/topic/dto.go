@@ -188,3 +188,177 @@ type TopicConsumerGroupsBody struct {
 type TopicConsumerGroupsOutput struct {
 	Body TopicConsumerGroupsBody
 }
+
+// CreateTopicRequestBody is POST /v1/topics's request body (FUNC-SPEC §8.7
+// T5), also T6's per-item shape.
+type CreateTopicRequestBody struct {
+	Name              string            `json:"name"`
+	Partitions        int32             `json:"partitions"`
+	ReplicationFactor int16             `json:"replicationFactor"`
+	Configs           map[string]string `json:"configs,omitempty"`
+}
+
+// CreateTopicInput is POST /v1/topics's parameters (FUNC-SPEC §8.7 T5, §8.2
+// `?dryRun=true`).
+type CreateTopicInput struct {
+	DryRun bool `query:"dryRun"`
+	Body   CreateTopicRequestBody
+}
+
+// CreateTopicBody is POST /v1/topics's response body: either the created
+// topic directly (FUNC-SPEC §8.7 T5), or — when DryRun — the FUNC-SPEC §8.3
+// dry-run envelope, Plan carrying the same shape a real create would
+// return. Both shapes share this one Go type (with the unused half left at
+// its zero value, omitted from JSON) since Huma's typed Output has one Body
+// type per operation.
+type CreateTopicBody struct {
+	DryRun            bool                  `json:"dryRun,omitempty"`
+	Plan              *CreateTopicPlanDTO   `json:"plan,omitempty"`
+	Name              string                `json:"name,omitempty"`
+	Partitions        int32                 `json:"partitions,omitempty"`
+	ReplicationFactor int16                 `json:"replicationFactor,omitempty"`
+	Configs           []TopicConfigEntryDTO `json:"configs,omitempty"`
+}
+
+// CreateTopicPlanDTO is a dry-run T5's plan (the same shape a real create
+// would return).
+type CreateTopicPlanDTO struct {
+	Name              string                `json:"name"`
+	Partitions        int32                 `json:"partitions"`
+	ReplicationFactor int16                 `json:"replicationFactor"`
+	Configs           []TopicConfigEntryDTO `json:"configs"`
+}
+
+// CreateTopicOutput wraps CreateTopicBody for Huma. Status is Huma's
+// dynamic-status-code field: 201 on a real create, 200 on a dry-run
+// (FUNC-SPEC §8.3 dry-run envelope).
+type CreateTopicOutput struct {
+	Status int
+	Body   CreateTopicBody
+}
+
+// CreateTopicsBulkRequestBody is POST /v1/batch/topics's request body
+// (FUNC-SPEC §8.7 T6).
+type CreateTopicsBulkRequestBody struct {
+	Topics []CreateTopicRequestBody `json:"topics"`
+}
+
+// CreateTopicsBulkInput is POST /v1/batch/topics's parameters.
+type CreateTopicsBulkInput struct {
+	Body CreateTopicsBulkRequestBody
+}
+
+// CreateBulkItemResultDTO is one T6 item's outcome (FUNC-SPEC §8.3 Bulk).
+type CreateBulkItemResultDTO struct {
+	Index  int    `json:"index"`
+	Status string `json:"status"`
+	Name   string `json:"name,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// TopicBulkSummaryDTO is the bulk envelope's `summary` sub-object
+// (FUNC-SPEC §8.3).
+type TopicBulkSummaryDTO struct {
+	Total  int `json:"total"`
+	OK     int `json:"ok"`
+	Failed int `json:"failed"`
+}
+
+// CreateTopicsBulkBody is POST /v1/batch/topics's response body.
+type CreateTopicsBulkBody struct {
+	Items   []CreateBulkItemResultDTO `json:"items"`
+	Summary TopicBulkSummaryDTO       `json:"summary"`
+}
+
+// CreateTopicsBulkOutput wraps CreateTopicsBulkBody for Huma. Status is
+// Huma's dynamic-status-code field: 200 when every item succeeded, 207 when
+// the outcome is mixed (FUNC-SPEC §8.3 Bulk).
+type CreateTopicsBulkOutput struct {
+	Status int
+	Body   CreateTopicsBulkBody
+}
+
+// AlterConfigRequestBody is PATCH /v1/topics/{name}/config's request body
+// (FUNC-SPEC §8.7 T9).
+type AlterConfigRequestBody struct {
+	Confirm string            `json:"confirm"`
+	Set     map[string]string `json:"set,omitempty"`
+	Reset   []string          `json:"reset,omitempty"`
+}
+
+// AlterConfigInput is PATCH /v1/topics/{name}/config's parameters
+// (FUNC-SPEC §8.7 T9, §8.2 `?dryRun=true`).
+type AlterConfigInput struct {
+	Name   string `path:"name"`
+	DryRun bool   `query:"dryRun"`
+	Body   AlterConfigRequestBody
+}
+
+// ConfigChangeDetailDTO is one config key's planned or applied change
+// (FUNC-SPEC §8.6 T9). To is "" for a reset.
+type ConfigChangeDetailDTO struct {
+	Name string `json:"name"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// AlterConfigPlanDTO is a dry-run T9's plan (FUNC-SPEC §8.6).
+type AlterConfigPlanDTO struct {
+	Topic   string                  `json:"topic"`
+	Changes []ConfigChangeDetailDTO `json:"changes"`
+}
+
+// AlterConfigBody is PATCH /v1/topics/{name}/config's response body: either
+// the altered topic's configs directly (FUNC-SPEC §8.7 T9), or — when
+// DryRun — the FUNC-SPEC §8.3 dry-run envelope. See CreateTopicBody for why
+// both shapes share one Go type.
+type AlterConfigBody struct {
+	DryRun  bool                  `json:"dryRun,omitempty"`
+	Plan    *AlterConfigPlanDTO   `json:"plan,omitempty"`
+	Name    string                `json:"name,omitempty"`
+	Configs []TopicConfigEntryDTO `json:"configs,omitempty"`
+}
+
+// AlterConfigOutput wraps AlterConfigBody for Huma.
+type AlterConfigOutput struct {
+	Body AlterConfigBody
+}
+
+// AddPartitionsRequestBody is POST /v1/topics/{name}/partitions's request
+// body (FUNC-SPEC §8.7 T10).
+type AddPartitionsRequestBody struct {
+	Confirm    string `json:"confirm"`
+	Partitions int32  `json:"partitions"`
+}
+
+// AddPartitionsInput is POST /v1/topics/{name}/partitions's parameters
+// (FUNC-SPEC §8.7 T10, §8.2 `?dryRun=true`).
+type AddPartitionsInput struct {
+	Name   string `path:"name"`
+	DryRun bool   `query:"dryRun"`
+	Body   AddPartitionsRequestBody
+}
+
+// AddPartitionsPlanDTO is a dry-run T10's plan (FUNC-SPEC §8.6).
+type AddPartitionsPlanDTO struct {
+	Topic   string `json:"topic"`
+	From    int32  `json:"from"`
+	To      int32  `json:"to"`
+	Warning string `json:"warning"`
+}
+
+// AddPartitionsBody is POST /v1/topics/{name}/partitions's response body:
+// either the topic's new partition count directly (FUNC-SPEC §8.7 T10), or
+// — when DryRun — the FUNC-SPEC §8.3 dry-run envelope. See CreateTopicBody
+// for why both shapes share one Go type.
+type AddPartitionsBody struct {
+	DryRun         bool                  `json:"dryRun,omitempty"`
+	Plan           *AddPartitionsPlanDTO `json:"plan,omitempty"`
+	Name           string                `json:"name,omitempty"`
+	PartitionCount int32                 `json:"partitionCount,omitempty"`
+}
+
+// AddPartitionsOutput wraps AddPartitionsBody for Huma.
+type AddPartitionsOutput struct {
+	Body AddPartitionsBody
+}

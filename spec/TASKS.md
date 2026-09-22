@@ -634,13 +634,13 @@
   - `porttest` cases `Admin_CreateTopics_ValidateOnlyCreatesNothing`, `Admin_CreateTopics_ExistingIsAlreadyExists`, `Admin_IncrementalAlterTopicConfigs_SetAndResetToDefault`, `Admin_CreatePartitions_IncreaseSucceeds`, `Admin_CreatePartitions_DecreaseIsError` — TECH L2
 
 ### Task 8.3: Topic service, routes, tests, acceptance (T5, T6, T9, T10)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.6 (T9, T10 rows), §8.7 T5, T6, T9, T10, §8.4 (`PARTITION_MISMATCH`, `ALREADY_EXISTS`), V3; TECH §6.2, §4.5
 - **Subtasks:**
-  - [ ] 8.3.1 `topic.Service.Create` (validate-only flag → plan), `CreateBulk` (validate-all: must not exist), `PlanAlterConfig`/`ApplyAlterConfig` (set + reset-to-default, plan `changes[]`), `PlanAddPartitions`/`Apply` (`to > from` else `PartitionMismatch`; warning in plan) — FUNC §8.6, §8.7
-  - [ ] 8.3.2 Routes: `POST /v1/topics` (201), `POST /v1/batch/topics`, `PATCH /v1/topics/{name}/config`, `POST /v1/topics/{name}/partitions` — TECH §6.2
-  - [ ] 8.3.3 Component tests: O8 rows for T9/T10, F3 (disable exactly one op), V3 for T6, 409, `dryRun` under data-plane lock unaffected (not data-plane) — TECH §4.5
-  - [ ] 8.3.4 Acceptance tests T5, T6, T9, T10; remove from `pending` — TECH §4.8
+  - [x] 8.3.1 `topic.Service.Create` (validate-only flag → plan), `CreateBulk` (validate-all: must not exist), `PlanAlterConfig`/`ApplyAlterConfig` (set + reset-to-default, plan `changes[]`), `PlanAddPartitions`/`Apply` (`to > from` else `PartitionMismatch`; warning in plan) — FUNC §8.6, §8.7
+  - [x] 8.3.2 Routes: `POST /v1/topics` (201), `POST /v1/batch/topics`, `PATCH /v1/topics/{name}/config`, `POST /v1/topics/{name}/partitions` — TECH §6.2
+  - [x] 8.3.3 Component tests: O8 rows for T9/T10, F3 (disable exactly one op), V3 for T6, 409, `dryRun` under data-plane lock unaffected (not data-plane) — TECH §4.5
+  - [x] 8.3.4 Acceptance tests T5, T6, T9, T10; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestTopicService_Create_ValidateOnlyReturnsPlanNoMutation`, `TestTopicService_Create_ExistingIsAlreadyExists` — FUNC §8.7 T5
   - `TestTopicService_CreateBulk_ExistingNameFailsValidationNothingCreated`, `TestTopicService_CreateBulk_PartialFailureIsMixed` — VC V3

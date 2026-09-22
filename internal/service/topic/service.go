@@ -1,12 +1,14 @@
-// Package topic implements the topic-inspection commands (FUNC-SPEC §8.7
-// T1-T4). Service holds only kafka.Admin (TECH-SPEC I2).
+// Package topic implements the topic commands (FUNC-SPEC §8.7 T1-T6, T9,
+// T10). Service holds only kafka.Admin (TECH-SPEC I2).
 package topic
 
 import (
 	"context"
 	"regexp"
 	"sort"
+	"time"
 
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
@@ -14,11 +16,21 @@ import (
 // Service implements the topic commands over a kafka.Admin.
 type Service struct {
 	admin kafka.Admin
+	// auditor records T5, T6, T9, T10's ATTEMPT/RESULT audit trail
+	// (FUNC-SPEC §8.5) — T1-T4 are reads and stay unaudited (FUNC-SPEC §8.5
+	// scope).
+	auditor    *audit.Auditor
+	newEventID func() string
+	now        func() time.Time
+	// runner gates T5, T6, T9, T10 (FUNC-SPEC §9.1 nodes F-K3): an
+	// operator-only caller, plus (for T9, T10, both in FUNC-SPEC §5.6) F3's
+	// per-operation switch.
+	runner core.Runner
 }
 
-// New builds a Service over admin.
-func New(admin kafka.Admin) *Service {
-	return &Service{admin: admin}
+// New builds a Service over admin, auditor, and runner.
+func New(admin kafka.Admin, auditor *audit.Auditor, runner core.Runner) *Service {
+	return &Service{admin: admin, auditor: auditor, newEventID: audit.NewEventID, now: time.Now, runner: runner}
 }
 
 // ListItem is one topic in a List result (FUNC-SPEC §8.7 T1).

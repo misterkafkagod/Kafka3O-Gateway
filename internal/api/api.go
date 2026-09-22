@@ -90,11 +90,11 @@ func New(deps Deps) http.Handler {
 	humaAPI := humago.New(mux, config)
 	registerHealth(humaAPI, deps)
 	apicluster.Register(humaAPI, cluster.New(deps.Admin))
+	runner := core.Runner{Policy: deps.Policy, Check: gates.Check}
 	groupSvc := group.New(deps.Admin)
 	groupPageBounds := apigroup.PageBounds{Default: deps.PageBounds.Default, Ceiling: deps.PageBounds.Ceiling}
-	apitopic.Register(humaAPI, topic.New(deps.Admin), groupSvc, deps.PageBounds)
+	apitopic.Register(humaAPI, topic.New(deps.Admin, deps.Auditor, runner), groupSvc, deps.PageBounds)
 	apigroup.Register(humaAPI, groupSvc, groupPageBounds)
-	runner := core.Runner{Policy: deps.Policy, Check: gates.Check}
 	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor, runner))
 
 	routeLookup := buildRouteLookup(mux, humaAPI)

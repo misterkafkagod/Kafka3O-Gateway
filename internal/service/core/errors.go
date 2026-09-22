@@ -31,6 +31,7 @@ const (
 	BulkValidationFailed
 	AuditUnavailable
 	PayloadTooLarge
+	PartitionMismatch
 )
 
 // String returns the Code's FUNC-SPEC §8.4 wire name.
@@ -60,6 +61,8 @@ func (c Code) String() string {
 		return "AUDIT_UNAVAILABLE"
 	case PayloadTooLarge:
 		return "PAYLOAD_TOO_LARGE"
+	case PartitionMismatch:
+		return "PARTITION_MISMATCH"
 	}
 	return fmt.Sprintf("code(%d)", int(c))
 }
@@ -70,7 +73,7 @@ func Codes() []Code {
 	return []Code{
 		TierForbidden, ReadOnlyMode, OperationDisabled, DataPlaneLocked,
 		ConfirmationMismatch, BoundExceeded, Validation, InvalidRegex, InvalidJSONPath,
-		BulkValidationFailed, AuditUnavailable, PayloadTooLarge,
+		BulkValidationFailed, AuditUnavailable, PayloadTooLarge, PartitionMismatch,
 	}
 }
 

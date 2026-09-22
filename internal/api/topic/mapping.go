@@ -1,7 +1,11 @@
 package topic
 
 import (
+	"net/http"
+
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 	"github.com/misterkafkagod/kafka3o/internal/service/group"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 )
@@ -101,4 +105,61 @@ func toTopicConsumerGroupsBody(topicName string, groups []group.TopicGroup) Topi
 		out[i] = TopicConsumerGroupDTO{GroupID: g.GroupID, State: g.State, TotalLag: g.TotalLag, Partitions: partitions}
 	}
 	return TopicConsumerGroupsBody{Topic: topicName, Groups: out}
+}
+
+// toCreateParams converts one request body into the service's params.
+func toCreateParams(b CreateTopicRequestBody) topic.CreateParams {
+	return topic.CreateParams{Name: b.Name, Partitions: b.Partitions, ReplicationFactor: b.ReplicationFactor, Configs: b.Configs}
+}
+
+// toCreateTopicPlanDTO converts the service's CreateResult into the plan
+// shape a dry-run T5 (or T6 item) returns.
+func toCreateTopicPlanDTO(r topic.CreateResult) *CreateTopicPlanDTO {
+	return &CreateTopicPlanDTO{
+		Name: r.Name, Partitions: r.Partitions, ReplicationFactor: r.ReplicationFactor,
+		Configs: toTopicConfigEntryDTOs(r.Configs),
+	}
+}
+
+// toCreateTopicsBulkBody converts the service's BulkResult (plus the
+// original per-item names, since core.BulkItemResult carries none) into
+// the wire bulk envelope (FUNC-SPEC §8.3 Bulk), and reports the HTTP
+// status: 200 when every item succeeded, 207 when the outcome is mixed.
+func toCreateTopicsBulkBody(topics []CreateTopicRequestBody, r core.BulkResult) (CreateTopicsBulkBody, int) {
+	items := make([]CreateBulkItemResultDTO, len(r.Items))
+	for i, item := range r.Items {
+		status := "ok"
+		if item.Outcome != audit.OutcomeSucceeded {
+			status = "failed"
+		}
+		name := ""
+		if item.Index < len(topics) {
+			name = topics[item.Index].Name
+		}
+		items[i] = CreateBulkItemResultDTO{Index: item.Index, Status: status, Name: name, Error: item.Error}
+	}
+	status := http.StatusOK
+	if r.Summary.Failed > 0 {
+		status = http.StatusMultiStatus
+	}
+	return CreateTopicsBulkBody{
+		Items:   items,
+		Summary: TopicBulkSummaryDTO{Total: r.Summary.Total, OK: r.Summary.Succeeded, Failed: r.Summary.Failed},
+	}, status
+}
+
+// toAlterConfigPlanDTO converts the service's AlterConfigPlan into the wire
+// shape.
+func toAlterConfigPlanDTO(p topic.AlterConfigPlan) *AlterConfigPlanDTO {
+	changes := make([]ConfigChangeDetailDTO, len(p.Changes))
+	for i, c := range p.Changes {
+		changes[i] = ConfigChangeDetailDTO{Name: c.Name, From: c.From, To: c.To}
+	}
+	return &AlterConfigPlanDTO{Topic: p.Topic, Changes: changes}
+}
+
+// toAddPartitionsPlanDTO converts the service's AddPartitionsPlan into the
+// wire shape.
+func toAddPartitionsPlanDTO(p topic.AddPartitionsPlan) *AddPartitionsPlanDTO {
+	return &AddPartitionsPlanDTO{Topic: p.Topic, From: p.From, To: p.To, Warning: p.Warning}
 }

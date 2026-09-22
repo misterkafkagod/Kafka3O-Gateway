@@ -114,6 +114,7 @@ func TestOpenAPI_PendingIsTableMinusImplemented(t *testing.T) {
 		"T1": true, "T2": true, "T3": true, "T4": true,
 		"M1": true, "M2": true, "M3": true, "M4": true, "M5": true, "M6": true, "M7": true,
 		"G1": true, "G2": true, "G3": true,
+		"T5": true, "T6": true, "T9": true, "T10": true,
 	}
 	want := make([]string, 0, len(command.Table()))
 	for _, d := range command.Table() {
