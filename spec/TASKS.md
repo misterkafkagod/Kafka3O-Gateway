@@ -384,12 +384,12 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 4.1: Regex and JSONPath matchers
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 M3, M4, V4, §9.2 Evaluate (skip semantics), §8.8 (regex per-message timeout); TECH §1.1 (`regexp` RE2, `theory/jsonpath` v0.12.1), O3 rule, D5 (containment in `scan`)
 - **Subtasks:**
-  - [ ] 4.1.1 `internal/scan/regex.go`: compile (invalid → error mapped to `INVALID_REGEX`), `fields` selection (value/key/headers), `caseInsensitive`, per-record timeout guard (defence-in-depth) — FUNC §8.7 M3
-  - [ ] 4.1.2 `jsonpath.go`: compile `path` (invalid → `INVALID_JSONPATH`), ops `eq neq contains regex exists gt lt gte lte`, match if any selected node satisfies; JSON-parse failure or type mismatch → skipped/non-match — FUNC V4, §9.2
-  - [ ] 4.1.3 Unit tests: each op ± case, missing path, type mismatch, nested-quantifier pattern completes within a time bound — TECH §4.5 Regex/JSONPath
+  - [x] 4.1.1 `internal/scan/regex.go`: compile (invalid → error mapped to `INVALID_REGEX`), `fields` selection (value/key/headers), `caseInsensitive`, per-record timeout guard (defence-in-depth) — FUNC §8.7 M3
+  - [x] 4.1.2 `jsonpath.go`: compile `path` (invalid → `INVALID_JSONPATH`), ops `eq neq contains regex exists gt lt gte lte`, match if any selected node satisfies; JSON-parse failure or type mismatch → skipped/non-match — FUNC V4, §9.2
+  - [x] 4.1.3 Unit tests: each op ± case, missing path, type mismatch, nested-quantifier pattern completes within a time bound — TECH §4.5 Regex/JSONPath
 - **Tests (Definition of Done):**
   - `TestRegexMatcher_FieldsValueKeyHeaders`, `TestRegexMatcher_CaseInsensitive`, `TestRegexMatcher_InvalidPatternError`, `TestRegexMatcher_UndecodableIsSkipped` — FUNC §8.7 M3; §9.2
   - `TestRegexMatcher_NestedQuantifierCompletesWithinBound` (RE2 linear-time assertion, not a timeout) — 4.5 Regex/JSONPath
