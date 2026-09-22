@@ -464,6 +464,94 @@ func (f *Fake) DeleteRecords(ctx context.Context, topic string, truncateTo map[i
 	})
 }
 
+// CommitGroupOffsets commits offsets for group (FUNC-SPEC §8.7 G4), creating
+// it when it does not yet exist. A group with active members → GroupActive.
+func (f *Fake) CommitGroupOffsets(ctx context.Context, group string, offsets map[kafka.TopicPartition]int64) error {
+	_, err := invoke(f, ctx, "CommitGroupOffsets", true, func() (struct{}, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		g := f.model.groups[group]
+		if g != nil && len(g.members) > 0 {
+			return struct{}{}, &kafka.Error{Kind: kafka.KindGroupActive, Resource: "group"}
+		}
+		if g == nil {
+			g = &fakeGroup{id: group, state: "Empty"}
+			if f.model.groups == nil {
+				f.model.groups = map[string]*fakeGroup{}
+			}
+			f.model.groups[group] = g
+		}
+		if g.offsets == nil {
+			g.offsets = map[kafka.TopicPartition]int64{}
+		}
+		for tp, at := range offsets {
+			g.offsets[tp] = at
+		}
+		return struct{}{}, nil
+	})
+	return err
+}
+
+// DeleteGroups deletes every named group (FUNC-SPEC §8.7 G5). A missing or
+// active group reports its own error on its own result; it never fails the
+// rest of the batch.
+func (f *Fake) DeleteGroups(ctx context.Context, groups []string) ([]kafka.GroupDeleteResult, error) {
+	return invoke(f, ctx, "DeleteGroups", true, func() ([]kafka.GroupDeleteResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		out := make([]kafka.GroupDeleteResult, len(groups))
+		for i, id := range groups {
+			g := f.model.groups[id]
+			if g == nil {
+				out[i] = kafka.GroupDeleteResult{ID: id, Err: &kafka.Error{Kind: kafka.KindNotFound, Resource: "group"}}
+				continue
+			}
+			if len(g.members) > 0 {
+				out[i] = kafka.GroupDeleteResult{ID: id, Err: &kafka.Error{Kind: kafka.KindGroupActive, Resource: "group"}}
+				continue
+			}
+			delete(f.model.groups, id)
+			out[i] = kafka.GroupDeleteResult{ID: id}
+		}
+		return out, nil
+	})
+}
+
+// LeaveGroup evicts members from group by their member id (FUNC-SPEC §8.7
+// G6). A member not currently part of the group reports its own error on
+// its own result; it never fails the rest of the batch.
+func (f *Fake) LeaveGroup(ctx context.Context, group string, members []string) ([]kafka.LeaveGroupResult, error) {
+	return invoke(f, ctx, "LeaveGroup", true, func() ([]kafka.LeaveGroupResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		g := f.model.groups[group]
+		if g == nil {
+			return nil, &kafka.Error{Kind: kafka.KindNotFound, Resource: "group"}
+		}
+
+		out := make([]kafka.LeaveGroupResult, len(members))
+		for i, id := range members {
+			idx := -1
+			for j, m := range g.members {
+				if m.MemberID == id {
+					idx = j
+					break
+				}
+			}
+			if idx < 0 {
+				out[i] = kafka.LeaveGroupResult{MemberID: id, Err: &kafka.Error{Kind: kafka.KindNotFound, Resource: "member"}}
+				continue
+			}
+			g.members = append(g.members[:idx], g.members[idx+1:]...)
+			out[i] = kafka.LeaveGroupResult{MemberID: id}
+		}
+		return out, nil
+	})
+}
+
 // sortedGroups returns every seeded group, ordered by id for stable listing
 // (FUNC-SPEC §9.7 Pagination "stable name ordering"). Callers must hold f.mu.
 func (f *Fake) sortedGroups() []*fakeGroup {

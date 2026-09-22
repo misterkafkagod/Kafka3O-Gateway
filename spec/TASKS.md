@@ -716,11 +716,11 @@
 - **Step 10 verification:** concrete ✓ (step 5 rewritten — F4) · self-contained ✓ · automated coverage ✓
 
 ### Task 10.1: Port and adapters for group administration
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 G4–G7; TECH L1–L4
 - **Subtasks:**
-  - [ ] 10.1.1 Port: `CommitGroupOffsets(group, offsets)` (creates the group when absent), `DeleteGroups`, `LeaveGroup(group, members)` — FUNC §8.7
-  - [ ] 10.1.2 `franz` (kadm incl. `LeaveGroup`), `fake` (`GroupActive` when members present), `porttest` cases — TECH §1.1, L2
+  - [x] 10.1.1 Port: `CommitGroupOffsets(group, offsets)` (creates the group when absent), `DeleteGroups`, `LeaveGroup(group, members)` — FUNC §8.7
+  - [x] 10.1.2 `franz` (kadm incl. `LeaveGroup`), `fake` (`GroupActive` when members present), `porttest` cases — TECH §1.1, L2
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_CommitGroupOffsets_CreatesAbsentGroup`, `Admin_CommitGroupOffsets_ActiveGroupIsGroupActive`, `Admin_DeleteGroups_ActiveIsGroupActive`, `Admin_DeleteGroups_InactiveRemoved`, `Admin_LeaveGroup_RemovesListedMembers` — TECH L2
 

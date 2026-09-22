@@ -97,6 +97,23 @@ type Admin interface {
 	// building the plan (FUNC-SPEC §8.6), but the port itself still refuses
 	// to silently accept it.
 	DeleteRecords(ctx context.Context, topic string, truncateTo map[int32]int64) ([]PartitionLowWatermark, error)
+
+	// CommitGroupOffsets commits offsets for group, creating it when it
+	// does not yet exist (G4's pre-seed for an absent group). group must
+	// currently have no active members, else *Error{Kind: KindGroupActive}.
+	CommitGroupOffsets(ctx context.Context, group string, offsets map[TopicPartition]int64) error
+
+	// DeleteGroups deletes every named group (G5). Each group's own result
+	// carries its own error (e.g. NotFound, GroupActive for one with live
+	// members); one failure never fails the rest of the batch.
+	DeleteGroups(ctx context.Context, groups []string) ([]GroupDeleteResult, error)
+
+	// LeaveGroup evicts the named members (by their dynamic member id, the
+	// same id G2 reports — not the static group.instance.id KIP-345 uses)
+	// from group (G6). Each member's own result carries its own error (e.g.
+	// it is not currently part of the group); one failure never fails the
+	// rest of the batch.
+	LeaveGroup(ctx context.Context, group string, members []string) ([]LeaveGroupResult, error)
 }
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,

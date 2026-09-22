@@ -6,6 +6,8 @@ import (
 	"strconv"
 
 	"github.com/twmb/franz-go/pkg/kadm"
+	"github.com/twmb/franz-go/pkg/kerr"
+	"github.com/twmb/franz-go/pkg/kmsg"
 
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 )
@@ -471,6 +473,87 @@ func (c *Client) DeleteRecords(ctx context.Context, topic string, truncateTo map
 		out = append(out, kafka.PartitionLowWatermark{Partition: partition, LowWatermark: r.LowWatermark})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Partition < out[j].Partition })
+	return out, nil
+}
+
+// CommitGroupOffsets commits offsets for group via kadm.CommitOffsets
+// (FUNC-SPEC §8.7 G4), creating the group when it does not yet exist.
+// kadm.CommitOffsets itself commits without any generation/member
+// validation, so it alone cannot enforce G4's "no active members"
+// precondition — this checks group's current member count via
+// DescribeGroups first (the same proactive check kafka-consumer-groups.sh
+// --reset-offsets makes) and refuses with KindGroupActive before ever
+// attempting the commit.
+func (c *Client) CommitGroupOffsets(ctx context.Context, group string, offsets map[kafka.TopicPartition]int64) error {
+	described, err := c.kadm.DescribeGroups(ctx, group)
+	if err != nil {
+		return wrapErr("group", err)
+	}
+	if d, derr := described.On(group, nil); derr == nil && len(d.Members) > 0 {
+		return &kafka.Error{Kind: kafka.KindGroupActive, Resource: "group"}
+	}
+
+	var kadmOffsets kadm.Offsets
+	for tp, at := range offsets {
+		kadmOffsets.Add(kadm.Offset{Topic: tp.Topic, Partition: tp.Partition, At: at})
+	}
+
+	resp, err := c.kadm.CommitOffsets(ctx, group, kadmOffsets)
+	if err != nil {
+		return wrapErr("group", err)
+	}
+	if err := resp.Error(); err != nil {
+		return wrapErr("group", err)
+	}
+	return nil
+}
+
+// DeleteGroups deletes every named group via kadm.DeleteGroups (FUNC-SPEC
+// §8.7 G5). Each group's own error (e.g. NotFound, or GroupActive from the
+// broker's own NON_EMPTY_GROUP for one with live members) surfaces on its
+// own result; one failure never fails the rest of the batch.
+func (c *Client) DeleteGroups(ctx context.Context, groups []string) ([]kafka.GroupDeleteResult, error) {
+	resp, err := c.kadm.DeleteGroups(ctx, groups...)
+	if err != nil {
+		return nil, wrapErr("group", err)
+	}
+	out := make([]kafka.GroupDeleteResult, len(groups))
+	for i, id := range groups {
+		r, ok := resp[id]
+		if !ok {
+			out[i] = kafka.GroupDeleteResult{ID: id}
+			continue
+		}
+		out[i] = kafka.GroupDeleteResult{ID: id, Err: wrapErr("group", r.Err)}
+	}
+	return out, nil
+}
+
+// LeaveGroup evicts members from group by their dynamic member id (FUNC-SPEC
+// §8.7 G6) via a raw kmsg.LeaveGroupRequest — kadm's own LeaveGroup helper
+// only removes members by their static group.instance.id (KIP-345), which
+// most consumers never set, so it cannot address the member ids G2 reports.
+func (c *Client) LeaveGroup(ctx context.Context, group string, members []string) ([]kafka.LeaveGroupResult, error) {
+	req := kmsg.NewPtrLeaveGroupRequest()
+	req.Group = group
+	for _, m := range members {
+		member := kmsg.NewLeaveGroupRequestMember()
+		member.MemberID = m
+		req.Members = append(req.Members, member)
+	}
+
+	resp, err := req.RequestWith(ctx, c.kgo)
+	if err != nil {
+		return nil, wrapErr("group", err)
+	}
+	if err := kerr.ErrorForCode(resp.ErrorCode); err != nil {
+		return nil, wrapErr("group", err)
+	}
+
+	out := make([]kafka.LeaveGroupResult, len(resp.Members))
+	for i, m := range resp.Members {
+		out[i] = kafka.LeaveGroupResult{MemberID: m.MemberID, Err: wrapErr("group", kerr.ErrorForCode(m.ErrorCode))}
+	}
 	return out, nil
 }
 

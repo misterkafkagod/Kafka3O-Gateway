@@ -608,4 +608,117 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 			t.Fatal("DeleteRecords(truncateTo beyond end) = nil, want an error")
 		}
 	})
+
+	t.Run("Admin_CommitGroupOffsets_CreatesAbsentGroup", func(t *testing.T) {
+		name := "porttest-commit-absent"
+		offsets := map[kafka.TopicPartition]int64{{Topic: "t", Partition: 0}: 5}
+
+		if err := port.CommitGroupOffsets(context.Background(), name, offsets); err != nil {
+			t.Fatalf("CommitGroupOffsets() error: %v", err)
+		}
+
+		got, err := port.FetchGroupOffsets(context.Background(), name)
+		if err != nil {
+			t.Fatalf("FetchGroupOffsets() error: %v", err)
+		}
+		if got[kafka.TopicPartition{Topic: "t", Partition: 0}] != 5 {
+			t.Errorf("FetchGroupOffsets() = %v, want {t/0: 5}", got)
+		}
+	})
+
+	t.Run("Admin_CommitGroupOffsets_ActiveGroupIsGroupActive", func(t *testing.T) {
+		gs, ok := port.(groupSeeder)
+		ms, ok2 := port.(groupMemberSeeder)
+		if !ok || !ok2 {
+			t.Skip("port does not implement the group seeding capabilities")
+		}
+		name := "porttest-commit-active"
+		gs.SeedGroup(name, nil)
+		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m1"})
+
+		err := port.CommitGroupOffsets(context.Background(), name, map[kafka.TopicPartition]int64{{Topic: "t", Partition: 0}: 5})
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindGroupActive {
+			t.Fatalf("CommitGroupOffsets(active group) error = %v, want *kafka.Error{Kind: KindGroupActive}", err)
+		}
+	})
+
+	t.Run("Admin_DeleteGroups_ActiveIsGroupActive", func(t *testing.T) {
+		gs, ok := port.(groupSeeder)
+		ms, ok2 := port.(groupMemberSeeder)
+		if !ok || !ok2 {
+			t.Skip("port does not implement the group seeding capabilities")
+		}
+		name := "porttest-delete-group-active"
+		gs.SeedGroup(name, nil)
+		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m1"})
+
+		results, err := port.DeleteGroups(context.Background(), []string{name})
+		if err != nil {
+			t.Fatalf("DeleteGroups() error: %v", err)
+		}
+		if len(results) != 1 {
+			t.Fatalf("DeleteGroups() results = %+v, want exactly one", results)
+		}
+		var ke *kafka.Error
+		if !errors.As(results[0].Err, &ke) || ke.Kind != kafka.KindGroupActive {
+			t.Errorf("DeleteGroups() result.Err = %v, want *kafka.Error{Kind: KindGroupActive}", results[0].Err)
+		}
+	})
+
+	t.Run("Admin_DeleteGroups_InactiveRemoved", func(t *testing.T) {
+		gs, ok := port.(groupSeeder)
+		if !ok {
+			t.Skip("port does not implement the group seeding capability")
+		}
+		name := "porttest-delete-group-inactive"
+		gs.SeedGroup(name, nil)
+
+		results, err := port.DeleteGroups(context.Background(), []string{name})
+		if err != nil {
+			t.Fatalf("DeleteGroups() error: %v", err)
+		}
+		if len(results) != 1 || results[0].ID != name || results[0].Err != nil {
+			t.Fatalf("DeleteGroups() results = %+v, want one clean result for %q", results, name)
+		}
+
+		if _, err := port.DescribeGroups(context.Background(), name); err == nil {
+			t.Error("DescribeGroups() after delete = nil error, want NotFound")
+		}
+	})
+
+	t.Run("Admin_LeaveGroup_RemovesListedMembers", func(t *testing.T) {
+		gs, ok := port.(groupSeeder)
+		ms, ok2 := port.(groupMemberSeeder)
+		if !ok || !ok2 {
+			t.Skip("port does not implement the group seeding capabilities")
+		}
+		name := "porttest-leave-group"
+		gs.SeedGroup(name, nil)
+		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m1"})
+		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m2"})
+
+		results, err := port.LeaveGroup(context.Background(), name, []string{"m1"})
+		if err != nil {
+			t.Fatalf("LeaveGroup() error: %v", err)
+		}
+		if len(results) != 1 || results[0].MemberID != "m1" || results[0].Err != nil {
+			t.Fatalf("LeaveGroup() results = %+v, want one clean result for m1", results)
+		}
+
+		groups, err := port.DescribeGroups(context.Background(), name)
+		if err != nil {
+			t.Fatalf("DescribeGroups() error: %v", err)
+		}
+		if len(groups) != 1 {
+			t.Fatalf("DescribeGroups() = %+v, want exactly one group", groups)
+		}
+		found := map[string]bool{}
+		for _, m := range groups[0].Members {
+			found[m.MemberID] = true
+		}
+		if found["m1"] || !found["m2"] {
+			t.Errorf("group members = %v, want m1 removed and m2 remaining", groups[0].Members)
+		}
+	})
 }

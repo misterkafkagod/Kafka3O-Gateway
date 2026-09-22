@@ -50,6 +50,13 @@ func (nopAdmin) DeleteTopics(context.Context, []string) ([]TopicDeleteResult, er
 func (nopAdmin) DeleteRecords(context.Context, string, map[int32]int64) ([]PartitionLowWatermark, error) {
 	return nil, nil
 }
+func (nopAdmin) CommitGroupOffsets(context.Context, string, map[TopicPartition]int64) error {
+	return nil
+}
+func (nopAdmin) DeleteGroups(context.Context, []string) ([]GroupDeleteResult, error) { return nil, nil }
+func (nopAdmin) LeaveGroup(context.Context, string, []string) ([]LeaveGroupResult, error) {
+	return nil, nil
+}
 
 type nopConsumer struct{}
 
@@ -136,6 +143,7 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[Header](), reflect.TypeFor[Group](), reflect.TypeFor[GroupMember](),
 		reflect.TypeFor[GroupSummary](), reflect.TypeFor[TopicSpec](), reflect.TypeFor[TopicCreateResult](),
 		reflect.TypeFor[ConfigChange](), reflect.TypeFor[TopicDeleteResult](), reflect.TypeFor[PartitionLowWatermark](),
+		reflect.TypeFor[GroupDeleteResult](), reflect.TypeFor[LeaveGroupResult](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),

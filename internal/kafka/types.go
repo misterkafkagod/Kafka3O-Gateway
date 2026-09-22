@@ -206,3 +206,20 @@ type PartitionLowWatermark struct {
 	Partition    int32
 	LowWatermark int64
 }
+
+// GroupDeleteResult is one group's outcome of DeleteGroups (FUNC-SPEC §8.7
+// G5). Err is set per-group when only that group was rejected (e.g. it does
+// not exist, or still has active members); it never fails the rest of the
+// batch.
+type GroupDeleteResult struct {
+	ID  string
+	Err error
+}
+
+// LeaveGroupResult is one member's outcome of LeaveGroup (FUNC-SPEC §8.7
+// G6). Err is set per-member when only that member was rejected (e.g. it is
+// not currently part of the group); it never fails the rest of the batch.
+type LeaveGroupResult struct {
+	MemberID string
+	Err      error
+}
