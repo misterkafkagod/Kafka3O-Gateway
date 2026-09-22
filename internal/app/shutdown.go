@@ -24,14 +24,15 @@ type kafkaCloser interface {
 // runServer serves on listener until ctx is cancelled, then shuts down in
 // the documented order (TECH-SPEC §5.4): stop accepting new connections →
 // drain in-flight requests (bounded by shutdownTimeout) → OTel shutdown →
-// close the Kafka client → log "shutdown complete".
+// close every Kafka client (the data-plane client and, when configured, the
+// audit sink's dedicated one — TECH-SPEC C5) → log "shutdown complete".
 func runServer(
 	ctx context.Context,
 	listener net.Listener,
 	server *http.Server,
 	shutdownTimeout time.Duration,
 	providers telemetryShutdowner,
-	kafkaClient kafkaCloser,
+	kafkaClients []kafkaCloser,
 	logger *slog.Logger,
 ) error {
 	errCh := make(chan error, 1)
@@ -69,7 +70,9 @@ func runServer(
 		return fmt.Errorf("app: telemetry shutdown: %w", err)
 	}
 
-	kafkaClient.Close()
+	for _, c := range kafkaClients {
+		c.Close()
+	}
 
 	logger.Info("shutdown complete")
 	return nil

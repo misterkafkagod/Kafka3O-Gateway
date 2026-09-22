@@ -45,8 +45,17 @@ func Run(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("app: kafka client: %w", err)
 	}
+	closers := []kafkaCloser{client}
 
-	handler, err := newHandler(cfg, client)
+	auditor, auditHealthy, auditClient, err := newAuditor(ctx, cfg, logger)
+	if err != nil {
+		return fmt.Errorf("app: audit: %w", err)
+	}
+	if auditClient != nil {
+		closers = append(closers, auditClient)
+	}
+
+	handler, err := newHandler(cfg, client, auditor, auditHealthy)
 	if err != nil {
 		return err
 	}
@@ -65,7 +74,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	// The shutdown grace period is the same "bounded request + headroom"
 	// value already derived onto WriteTimeout (TECH-SPEC §5.4, C6): no
 	// in-flight request can legitimately still be running past it.
-	return runServer(ctx, listener, server, cfg.HTTP.WriteTimeout, providers, client, logger)
+	return runServer(ctx, listener, server, cfg.HTTP.WriteTimeout, providers, closers, logger)
 }
 
 // newServer builds the *http.Server for h (TECH-SPEC §6.3 C6): timeouts
@@ -89,9 +98,10 @@ func newServer(h config.HTTP, handler http.Handler) (*http.Server, error) {
 	return server, nil
 }
 
-// newHandler builds the gateway's HTTP handler from cfg and an already-built
-// Kafka client (TECH-SPEC §2.1).
-func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
+// newHandler builds the gateway's HTTP handler from cfg, an already-built
+// Kafka client (TECH-SPEC §2.1), and the already-built Auditor and its
+// start-up health.
+func newHandler(cfg config.Config, client *franz.Client, auditor *audit.Auditor, auditHealthy bool) (http.Handler, error) {
 	keys, err := mapKeys(cfg.Auth.Keys)
 	if err != nil {
 		return nil, err
@@ -107,7 +117,7 @@ func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
 		Cluster:     admin,
 		Admin:       admin,
 		Producer:    producer,
-		Auditor:     newAuditor(),
+		Auditor:     auditor,
 		PageBounds:  apitopic.PageBounds{Default: cfg.Bounds.Page.Size.Default, Ceiling: cfg.Bounds.Page.Size.Ceiling},
 		NewConsumer: newConsumerFactory(cfg),
 		MessageBounds: message.Bounds{
@@ -119,7 +129,7 @@ func newHandler(cfg config.Config, client *franz.Client) (http.Handler, error) {
 			RegexTimeout:     cfg.Bounds.Scan.RegexTimeout,
 			MaxBulkBodyBytes: int64(cfg.Bounds.BulkProduceBody),
 		},
-		AuditStatus:    auditStatus(cfg.Audit),
+		AuditStatus:    auditStatus(cfg.Audit, auditHealthy),
 		Keys:           keys,
 		AuthEnabled:    cfg.Auth.Enabled,
 		CORSOrigins:    cfg.HTTP.CORS.Origins,
@@ -158,19 +168,66 @@ func newConsumerFactory(cfg config.Config) message.ConsumerFactory {
 	}
 }
 
-// auditStatus reports the configured sink as healthy: the real audit sink
-// (Phase 5, F5) does not exist yet, so there is nothing it could currently
-// report as unhealthy (TECH-SPEC §6.1 B5). Phase 5 replaces this with a
-// function backed by the sink's actual writability check.
-func auditStatus(a config.Audit) health.AuditStatus {
-	return func() (string, bool) { return a.Sink, true }
+// auditStatus reports the configured sink and its start-up health (TECH-SPEC
+// §6.1 B5): computed once by newAuditor and held fixed for the process
+// lifetime (FUNC-SPEC §9.6 — nothing here is per-request state).
+func auditStatus(a config.Audit, healthy bool) health.AuditStatus {
+	return func() (string, bool) { return a.Sink, healthy }
 }
 
 // newAuditor builds the gateway's Auditor (FUNC-SPEC §8.5): the stdout/slog
-// sink always runs. The Kafka sink needs its own dedicated producer client
-// (TECH-SPEC C5) and a start-up topic-existence check (TECH-SPEC §6.1 B5)
-// that a later task wires in; until then, a "kafka"-configured sink still
-// gets a working Auditor, just without that second sink.
-func newAuditor() *audit.Auditor {
-	return audit.NewAuditor(audit.NewSlogSink(slog.Default()))
+// sink always runs. When cfg.Audit.Sink is "kafka", it also builds a
+// dedicated producer client for the Kafka sink (TECH-SPEC C5, separate from
+// the data-plane producer) and wires that sink in regardless of the start-up
+// check below — a topic that is really unwritable then fails closed on its
+// own, on every real ATTEMPT (FUNC-SPEC §8.5 V2), exactly like any other
+// sink failure. The returned bool and *franz.Client are that check's result
+// and the dedicated client to close at shutdown (nil when sink is "stdout").
+func newAuditor(ctx context.Context, cfg config.Config, logger *slog.Logger) (*audit.Auditor, bool, *franz.Client, error) {
+	sinks := []audit.Sink{audit.NewSlogSink(logger)}
+	if cfg.Audit.Sink != config.AuditSinkKafka {
+		return audit.NewAuditor(sinks...), true, nil, nil
+	}
+
+	auditClient, err := franz.New(franzConfig(cfg))
+	if err != nil {
+		return nil, false, nil, fmt.Errorf("app: audit kafka client: %w", err)
+	}
+	auditProducer := telemetry.NewTracedProducer(auditClient)
+	sinks = append(sinks, audit.NewKafkaSink(auditProducer, cfg.Audit.Topic))
+
+	verifyCtx, cancel := context.WithTimeout(ctx, cfg.Kafka.RequestTimeout)
+	defer cancel()
+	healthy := auditHealthAfterVerify(verifyCtx, telemetry.NewTracedAdmin(auditClient), auditProducer, cfg.Audit.Topic, logger)
+
+	return audit.NewAuditor(sinks...), healthy, auditClient, nil
+}
+
+// auditHealthAfterVerify runs verifyAuditTopic and reports whether it
+// succeeded, logging an ERROR when it did not (TECH-SPEC §6.1 B5) — split
+// from newAuditor so it is testable against a fake kafka.Admin/kafka.Producer
+// without a real *franz.Client.
+func auditHealthAfterVerify(ctx context.Context, admin kafka.Admin, producer kafka.Producer, topic string, logger *slog.Logger) bool {
+	if err := verifyAuditTopic(ctx, admin, producer, topic); err != nil {
+		logger.Error("audit topic verification failed", "topic", topic, "error", err)
+		return false
+	}
+	return true
+}
+
+// verifyAuditTopic checks that topic exists and accepts a write (TECH-SPEC
+// §6.1 B5): the audit topic is never auto-created, so either failure is an
+// operator-configuration error to surface, not one the gateway works around.
+func verifyAuditTopic(ctx context.Context, admin kafka.Admin, producer kafka.Producer, topic string) error {
+	if _, err := admin.DescribeTopics(ctx, topic); err != nil {
+		return fmt.Errorf("describe: %w", err)
+	}
+	results, err := producer.Produce(ctx, topic, []kafka.ProduceRequest{{Value: []byte(`{"probe":"startup"}`)}})
+	if err != nil {
+		return fmt.Errorf("probe produce: %w", err)
+	}
+	if len(results) > 0 && results[0].Err != nil {
+		return fmt.Errorf("probe produce: %w", results[0].Err)
+	}
+	return nil
 }

@@ -75,6 +75,16 @@ func WithKeys(keys ...middleware.Key) Option {
 	}
 }
 
+// WithAuditUnhealthy makes /health/ready's audit sub-object report
+// unhealthy, without affecting readiness itself (TECH-SPEC §6.1 B5).
+func WithAuditUnhealthy() Option {
+	return func(s *settings) {
+		s.hooks = append(s.hooks, func(deps *api.Deps, _ *fake.Fake) {
+			deps.AuditStatus = func() (string, bool) { return "kafka", false }
+		})
+	}
+}
+
 // defaultSettings is NewTestGateway's starting point before opts run: auth
 // enabled, one operator key (DefaultOperatorKey), the real-time clock, and
 // the same page-size default/ceiling as configs/config.example.yaml.

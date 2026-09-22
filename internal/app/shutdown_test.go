@@ -74,7 +74,7 @@ func TestApp_ShutdownOrder(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runServer(ctx, listener, server, 5*time.Second, fakeTelemetry{rec}, fakeKafka{rec}, logger)
+		done <- runServer(ctx, listener, server, 5*time.Second, fakeTelemetry{rec}, []kafkaCloser{fakeKafka{rec}}, logger)
 	}()
 
 	// Start a request and let it reach the handler before triggering

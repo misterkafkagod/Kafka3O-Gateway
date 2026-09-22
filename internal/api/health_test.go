@@ -72,3 +72,27 @@ func TestHealth_ReadyReportsAuditFieldWithoutGating(t *testing.T) {
 		t.Errorf("audit = %v, want {sink:stdout,healthy:true}", audit)
 	}
 }
+
+func TestHealth_ReadyStaysUpWithAuditUnhealthy(t *testing.T) {
+	t.Parallel()
+	gw := testutil.NewTestGateway(t, testutil.WithAuditUnhealthy())
+
+	status, body := getJSON(t, gw, "/v1/health/ready")
+
+	// The cluster is reachable, so an unhealthy audit sink alone never pulls
+	// readiness down (TECH-SPEC §6.1 B5): mutations fail closed on their own
+	// ATTEMPT instead (FUNC-SPEC §8.5 V2).
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if body["status"] != "UP" {
+		t.Errorf("status field = %v, want UP", body["status"])
+	}
+	audit, ok := body["audit"].(map[string]any)
+	if !ok {
+		t.Fatalf("audit field missing: %v", body)
+	}
+	if audit["healthy"] != false {
+		t.Errorf("audit.healthy = %v, want false", audit["healthy"])
+	}
+}

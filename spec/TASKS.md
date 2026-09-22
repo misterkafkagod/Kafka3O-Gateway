@@ -487,11 +487,11 @@
   - `TestMessageService_Tombstone_NullValueProduced` — FUNC §8.7 M7
 
 ### Task 5.4: Audit-topic verification and readiness field
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.1 B5 (never auto-create; verify at start-up; `/health/ready` reports without gating); FUNC §8.5 audit-topic bullet
 - **Subtasks:**
-  - [ ] 5.4.1 `internal/app`: when sink = kafka, verify topic exists and a probe produce succeeds; log ERROR on failure; expose sink health to `health/ready` — TECH §6.1 B5
-  - [ ] 5.4.2 `docs/operations.md` section: audit topic settings (`cleanup.policy=delete`, `retention.ms ≥ 1 y`, `min.insync.replicas=2`) — TECH §6.1 B5
+  - [x] 5.4.1 `internal/app`: when sink = kafka, verify topic exists and a probe produce succeeds; log ERROR on failure; expose sink health to `health/ready` — TECH §6.1 B5
+  - [x] 5.4.2 `docs/operations.md` section: audit topic settings (`cleanup.policy=delete`, `retention.ms ≥ 1 y`, `min.insync.replicas=2`) — TECH §6.1 B5
 - **Tests (Definition of Done):**
   - `TestApp_AuditTopicMissing_LogsErrorAndMarksSinkUnhealthy` (fake without the topic) — TECH §6.1 B5
   - `TestApp_AuditTopicNeverAutoCreated` (fake `MutatingCalls()` contains no `CreateTopics` at start-up) — TECH §6.1 B5
