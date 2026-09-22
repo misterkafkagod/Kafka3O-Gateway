@@ -565,7 +565,7 @@
 ---
 
 ## Phase 7: Consumer-group inspection
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** A human can list groups, describe one with lag, and find which groups consume a topic.
 - **Manual Test Plan:**
   1. Run a console consumer in group `g1` on `t-demo` with your CLI; stop it after a few records.
