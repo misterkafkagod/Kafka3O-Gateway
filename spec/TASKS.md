@@ -664,12 +664,12 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 9.1: Plan token
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC V5, §8.6 (plan token definition); TECH C8 (canonical form), §4.6 (fuzz)
 - **Subtasks:**
-  - [ ] 9.1.1 `internal/service/core/plantoken.go`: `Token(commandID, targets []string) string` = lower-case hex SHA-256 of `commandID + "\n" + sorted-unique targets joined by "\n"` — TECH C8
-  - [ ] 9.1.2 Unit tests (order-independence, uniqueness per command) + fuzz target for canonicalisation — TECH §4.6
-  - [ ] 9.1.3 `BenchmarkPlanToken` (1 and 1 000 targets) (Step 11 G1) — TECH §4.7
+  - [x] 9.1.1 `internal/service/core/plantoken.go`: `Token(commandID, targets []string) string` = lower-case hex SHA-256 of `commandID + "\n" + sorted-unique targets joined by "\n"` — TECH C8
+  - [x] 9.1.2 Unit tests (order-independence, uniqueness per command) + fuzz target for canonicalisation — TECH §4.6
+  - [x] 9.1.3 `BenchmarkPlanToken` (1 and 1 000 targets) (Step 11 G1) — TECH §4.7
 - **Tests (Definition of Done):**
   - `TestPlanToken_OrderIndependent`, `TestPlanToken_DuplicatesCollapsed`, `TestPlanToken_DistinctPerCommandID`, `TestPlanToken_Is64LowercaseHex`, `TestPlanToken_KnownVector` — TECH C8
   - `FuzzPlanTokenCanonical` (permutations produce equal tokens) 10 s green — TECH §4.6
