@@ -807,12 +807,12 @@
   - `TestFranz_QuorumRequestBuiltFromKmsg` (unit: request construction) — TECH §1.1
 
 ### Task 12.2: Cluster service — inspection and destructive (C5–C12)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.6 (C5, C9, C12 rows), §8.7 C5–C12, §8.8 (C10 seconds 5/60), V5 (plan tokens for C9, C12); TECH §6.3 C11 cap
 - **Subtasks:**
-  - [ ] 12.2.1 `cluster.Service`: `Quorum`, `Reassignments`, `LogDirs`, `Throughput` (two end-offset snapshots `seconds` apart, bounded) , `Export` (pattern; overrides only) — FUNC §8.7
-  - [ ] 12.2.2 `destructive.go`: `PlanAlterBrokerConfig`/`Apply` (confirm = broker id string); `PlanReassign`/`Apply`, `PlanCancelReassignments`/`Apply`, `PlanElect`/`Apply` (plan token; bulk envelope); `PlanImport`/`Apply` (reconcile → `create/alter/delete/unchanged`; `allowDelete=false` → deletes skipped; token over `name=sha256(definition)`) — FUNC §8.6, V5; TECH C8
-  - [ ] 12.2.3 Unit tests incl. `REASSIGNMENT_IN_PROGRESS` mapping — FUNC §8.4
+  - [x] 12.2.1 `cluster.Service`: `Quorum`, `Reassignments`, `LogDirs`, `Throughput` (two end-offset snapshots `seconds` apart, bounded) , `Export` (pattern; overrides only) — FUNC §8.7
+  - [x] 12.2.2 `destructive.go`: `PlanAlterBrokerConfig`/`Apply` (confirm = broker id string); `PlanReassign`/`Apply`, `PlanCancelReassignments`/`Apply`, `PlanElect`/`Apply` (plan token; bulk envelope); `PlanImport`/`Apply` (reconcile → `create/alter/delete/unchanged`; `allowDelete=false` → deletes skipped; token over `name=sha256(definition)`) — FUNC §8.6, V5; TECH C8
+  - [x] 12.2.3 Unit tests incl. `REASSIGNMENT_IN_PROGRESS` mapping — FUNC §8.4
 - **Tests (Definition of Done):**
   - `TestClusterService_Throughput_TwoSnapshotsSecondsApart` (fixed clock), `TestClusterService_Throughput_SecondsAboveCeilingIsBoundExceeded` — FUNC §8.7 C10, §8.8
   - `TestClusterService_Export_PatternAndOverridesOnly` — FUNC §8.7 C11

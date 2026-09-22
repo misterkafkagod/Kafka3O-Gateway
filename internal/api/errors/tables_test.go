@@ -34,3 +34,14 @@ func TestErrorTables_EveryCodeMapped(t *testing.T) {
 		}
 	}
 }
+
+// TestErrorTables_ReassignmentInProgressIs409 names the exact row C9's
+// reassign conflicts with an already-in-progress reassignment map to
+// (FUNC-SPEC §8.4), beyond the two exhaustiveness tests above.
+func TestErrorTables_ReassignmentInProgressIs409(t *testing.T) {
+	t.Parallel()
+	m, ok := kindMapping(kafka.KindReassignmentInProgress)
+	if !ok || m.Status != 409 || m.Code != "REASSIGNMENT_IN_PROGRESS" {
+		t.Fatalf("kindMapping(KindReassignmentInProgress) = %+v, %v, want {409, REASSIGNMENT_IN_PROGRESS}", m, ok)
+	}
+}

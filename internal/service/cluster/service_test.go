@@ -7,6 +7,7 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/fake"
 	"github.com/misterkafkagod/kafka3o/internal/service/cluster"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
 
 func TestClusterService_DescribeCluster_MapsBrokersAndController(t *testing.T) {
@@ -14,7 +15,7 @@ func TestClusterService_DescribeCluster_MapsBrokersAndController(t *testing.T) {
 	f := fake.New()
 	f.SeedBroker(1, "b1", 9092, "rack-a")
 	f.SeedBroker(2, "b2", 9092, "")
-	svc := cluster.New(f)
+	svc := cluster.New(f, nil, core.Runner{})
 
 	info, err := svc.DescribeCluster(context.Background())
 	if err != nil {
@@ -40,7 +41,7 @@ func TestClusterService_DescribeBrokerConfig_SensitiveValueNull(t *testing.T) {
 		kafka.ConfigEntry{Name: "log.retention.ms", Value: "604800000"},
 		kafka.ConfigEntry{Name: "sasl.jaas.config", Value: "super-secret", IsSensitive: true},
 	)
-	svc := cluster.New(f)
+	svc := cluster.New(f, nil, core.Runner{})
 
 	configs, err := svc.DescribeBrokerConfig(context.Background(), 1)
 	if err != nil {
@@ -79,7 +80,7 @@ func TestClusterService_HealthSummary_CountsURPsOfflineNonPreferred(t *testing.T
 	f.SeedTopic("t-non-preferred", 1, kafka.Record{Value: []byte("v")})
 	f.SeedPartitionMeta("t-non-preferred", 0, 2, []int32{1, 2}, []int32{1, 2})
 
-	svc := cluster.New(f)
+	svc := cluster.New(f, nil, core.Runner{})
 	summary, err := svc.HealthSummary(context.Background())
 	if err != nil {
 		t.Fatalf("HealthSummary() error: %v", err)
@@ -121,7 +122,7 @@ func TestClusterService_HealthSummary_AffectedCappedAt1000WithTruncated(t *testi
 		f.SeedPartitionMeta("t-many-offline", int32(p), -1, []int32{1}, []int32{1})
 	}
 
-	svc := cluster.New(f)
+	svc := cluster.New(f, nil, core.Runner{})
 	summary, err := svc.HealthSummary(context.Background())
 	if err != nil {
 		t.Fatalf("HealthSummary() error: %v", err)
