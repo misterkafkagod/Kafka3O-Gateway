@@ -453,16 +453,16 @@
   - `TestFranzProducer_OptionsAcksAllIdempotent` (unit: option construction) — TECH C4
 
 ### Task 5.2: Audit subsystem
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.5 (event schema, scope, two-phase, fail-closed, severity, caller nullability), F5, V2, V6, C14; TECH §2.2 (Sink interface), §2.3, I3, L5, §4.4 (`audittest`), C5 (dedicated producer), §6.1 B5
 - **Subtasks:**
-  - [ ] 5.2.1 `internal/audit/event.go`: `Event` exactly as FUNC §8.5 (`eventId`, `timestamp`, `requestId`, `phase`, `severity`, `commandId`, `commandName`, `target`, `caller{keyId nullable, tier, clientIp}`, `dryRun`, `breakGlass?`, `outcome?`, `error?`, `durationMs?`) — FUNC §8.5
-  - [ ] 5.2.2 `sink.go`: `Sink interface { Write(ctx, Event) error }` — TECH I3
-  - [ ] 5.2.3 `sink_slog.go`: structured JSON to stdout via the audit logger — FUNC F5
-  - [ ] 5.2.4 `sink_kafka.go`: dedicated `Producer` (acks=all, idempotent) to `KGW_AUDIT_TOPIC`; bounded by ctx; returns errors (never blocks) — TECH C5, L5
-  - [ ] 5.2.5 `auditor.go`: `Attempt(ctx, ev) error` (any sink error → error → fail-closed 503), `Result(ctx, ev)`; severity rules (INFO/WARN/HIGH incl. T7, T8, T11, T12, G5 success = HIGH; break-glass = HIGH) — FUNC V2, V6
-  - [ ] 5.2.6 `audittest/recording.go`: `Events()`, `FailNext(phase)`, `FailAlways()` — TECH §4.4
-  - [ ] 5.2.7 Unit tests: fail-closed with each sink type, severity table, concurrency (`-race`) — TECH L5, §4.5 V2/V6
+  - [x] 5.2.1 `internal/audit/event.go`: `Event` exactly as FUNC §8.5 (`eventId`, `timestamp`, `requestId`, `phase`, `severity`, `commandId`, `commandName`, `target`, `caller{keyId nullable, tier, clientIp}`, `dryRun`, `breakGlass?`, `outcome?`, `error?`, `durationMs?`) — FUNC §8.5
+  - [x] 5.2.2 `sink.go`: `Sink interface { Write(ctx, Event) error }` — TECH I3
+  - [x] 5.2.3 `sink_slog.go`: structured JSON to stdout via the audit logger — FUNC F5
+  - [x] 5.2.4 `sink_kafka.go`: dedicated `Producer` (acks=all, idempotent) to `KGW_AUDIT_TOPIC`; bounded by ctx; returns errors (never blocks) — TECH C5, L5
+  - [x] 5.2.5 `auditor.go`: `Attempt(ctx, ev) error` (any sink error → error → fail-closed 503), `Result(ctx, ev)`; severity rules (INFO/WARN/HIGH incl. T7, T8, T11, T12, G5 success = HIGH; break-glass = HIGH) — FUNC V2, V6
+  - [x] 5.2.6 `audittest/recording.go`: `Events()`, `FailNext(phase)`, `FailAlways()` — TECH §4.4
+  - [x] 5.2.7 Unit tests: fail-closed with each sink type, severity table, concurrency (`-race`) — TECH L5, §4.5 V2/V6
 - **Tests (Definition of Done):**
   - `TestAuditEvent_SchemaFieldsMatchSpec` (JSON keys exactly FUNC §8.5) — FUNC §8.5
   - `TestAuditor_AttemptThenResultOrdering`, `TestAuditor_DryRunEmitsSingleResult` — FUNC §8.5 two-phase
