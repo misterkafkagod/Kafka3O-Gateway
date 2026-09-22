@@ -296,7 +296,7 @@
 ---
 
 ## Phase 3: Read messages
-- **Phase Status:** Awaiting Manual Verification
+- **Phase Status:** Verified
 - **Goal:** A human can page through a topic's messages from any starting point, fetch one by offset, and see every bound honoured.
 - **Manual Test Plan:**
   1. Seed 250 JSON records across `t-demo` with your CLI.
