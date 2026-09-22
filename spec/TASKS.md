@@ -725,13 +725,13 @@
   - `porttest` cases `Admin_CommitGroupOffsets_CreatesAbsentGroup`, `Admin_CommitGroupOffsets_ActiveGroupIsGroupActive`, `Admin_DeleteGroups_ActiveIsGroupActive`, `Admin_DeleteGroups_InactiveRemoved`, `Admin_LeaveGroup_RemovesListedMembers` — TECH L2
 
 ### Task 10.2: Group service, routes, tests, acceptance (G4–G7)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.6 (G4–G7 rows), §8.7 G4–G7 (G7 target in path), §9.1 rules (G4 timestamp clamping — C10), §8.4 `GROUP_ACTIVE`, V6 (G5 HIGH); TECH §6.2, §4.5
 - **Subtasks:**
-  - [ ] 10.2.1 `group.Service`: `PlanReset`/`Apply` (modes earliest/latest/offset/timestamp with clamping; explicit `offsets` map; `topics` scope; pre-seed), `PlanDelete`/`Apply`, `PlanRemoveMembers`/`Apply` (all or listed), `PlanCloneOffsets`/`Apply` (target inactive) — FUNC §8.6, C10
-  - [ ] 10.2.2 Routes: `POST /v1/consumer-groups/{groupId}/reset-offsets`, `DELETE /v1/consumer-groups/{groupId}`, `POST …/remove-members`, `POST /v1/consumer-groups/{target}/clone-offsets` — TECH §6.2
-  - [ ] 10.2.3 Component tests: 409 on active group, clamping, pre-seed, HIGH on G5, O8 rows — TECH §4.5
-  - [ ] 10.2.4 Acceptance tests G4–G7; remove from `pending` — TECH §4.8
+  - [x] 10.2.1 `group.Service`: `PlanReset`/`Apply` (modes earliest/latest/offset/timestamp with clamping; explicit `offsets` map; `topics` scope; pre-seed), `PlanDelete`/`Apply`, `PlanRemoveMembers`/`Apply` (all or listed), `PlanCloneOffsets`/`Apply` (target inactive) — FUNC §8.6, C10
+  - [x] 10.2.2 Routes: `POST /v1/consumer-groups/{groupId}/reset-offsets`, `DELETE /v1/consumer-groups/{groupId}`, `POST …/remove-members`, `POST /v1/consumer-groups/{target}/clone-offsets` — TECH §6.2
+  - [x] 10.2.3 Component tests: 409 on active group, clamping, pre-seed, HIGH on G5, O8 rows — TECH §4.5
+  - [x] 10.2.4 Acceptance tests G4–G7; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestGroupService_Reset_EachMode` (earliest, latest, offset, explicit map), `TestGroupService_Reset_TimestampClampsToLatestAndEarliest`, `TestGroupService_Reset_ActiveGroupIs409`, `TestGroupService_Reset_PreSeedsAbsentGroup`, `TestGroupService_Reset_PlanBeforeAfter` — FUNC §8.6 G4; TECH C10
   - `TestGroupService_Delete_ActiveIs409`, `TestGroupService_RemoveMembers_AllOrListed`, `TestGroupService_Clone_TargetActiveIs409`, `TestGroupService_Clone_CopiesSourceOffsets` — FUNC §8.6 G5–G7

@@ -403,6 +403,140 @@
         ],
         "type": "object"
       },
+      "CloneOffsetPlanDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "newValue": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "targetCurrent": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "targetCurrent",
+          "newValue"
+        ],
+        "type": "object"
+      },
+      "CloneOffsetResultDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "offset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "offset"
+        ],
+        "type": "object"
+      },
+      "CloneOffsetsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CloneOffsetsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "offsets": {
+            "items": {
+              "$ref": "#/components/schemas/CloneOffsetResultDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/CloneOffsetsPlanDTO"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CloneOffsetsPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "offsets": {
+            "items": {
+              "$ref": "#/components/schemas/CloneOffsetPlanDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "offsets"
+        ],
+        "type": "object"
+      },
+      "CloneOffsetsRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CloneOffsetsRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "confirm",
+          "source"
+        ],
+        "type": "object"
+      },
       "ClusterHealthBody": {
         "additionalProperties": false,
         "properties": {
@@ -654,6 +788,68 @@
         },
         "required": [
           "topics"
+        ],
+        "type": "object"
+      },
+      "DeleteGroupBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/DeleteGroupBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "deleted": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/DeleteGroupPlanDTO"
+          }
+        },
+        "type": "object"
+      },
+      "DeleteGroupPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "committedOffsets": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "groupId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupId",
+          "committedOffsets"
+        ],
+        "type": "object"
+      },
+      "DeleteGroupRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/DeleteGroupRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirm"
         ],
         "type": "object"
       },
@@ -1869,6 +2065,84 @@
         ],
         "type": "object"
       },
+      "RemoveMembersBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/RemoveMembersBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/RemoveMembersPlanDTO"
+          },
+          "removed": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "RemoveMembersPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "type": "object"
+      },
+      "RemoveMembersRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/RemoveMembersRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "type": "object"
+      },
       "ReplicaSizeDTO": {
         "additionalProperties": false,
         "properties": {
@@ -1888,6 +2162,172 @@
           "brokerId",
           "logDir",
           "bytes"
+        ],
+        "type": "object"
+      },
+      "ResetOffsetPlanDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "current": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "target": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "current",
+          "target"
+        ],
+        "type": "object"
+      },
+      "ResetOffsetResultDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "before": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "before",
+          "after"
+        ],
+        "type": "object"
+      },
+      "ResetOffsetsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ResetOffsetsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "offsets": {
+            "items": {
+              "$ref": "#/components/schemas/ResetOffsetResultDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ResetOffsetsPlanDTO"
+          }
+        },
+        "type": "object"
+      },
+      "ResetOffsetsPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "offsets": {
+            "items": {
+              "$ref": "#/components/schemas/ResetOffsetPlanDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "offsets"
+        ],
+        "type": "object"
+      },
+      "ResetOffsetsRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ResetOffsetsRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ResetOffsetsTargetDTO"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "confirm",
+          "target"
+        ],
+        "type": "object"
+      },
+      "ResetOffsetsTargetDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "offset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "offsets": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "timestampMs": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mode"
         ],
         "type": "object"
       },
@@ -2581,6 +3021,65 @@
       }
     },
     "/v1/consumer-groups/{groupId}": {
+      "delete": {
+        "description": "Carries a JSON body ({confirm}) on a DELETE request; some intermediaries strip DELETE bodies, in which case Confirm arrives empty and the request fails closed as 400 CONFIRMATION_MISMATCH (TECH-SPEC R3).",
+        "operationId": "group-delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteGroupRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteGroupBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a consumer group",
+        "tags": [
+          "Consumer Groups"
+        ],
+        "x-command-id": "G5"
+      },
       "get": {
         "operationId": "group-describe",
         "parameters": [
@@ -2620,6 +3119,186 @@
           "Consumer Groups"
         ],
         "x-command-id": "G2"
+      }
+    },
+    "/v1/consumer-groups/{groupId}/remove-members": {
+      "post": {
+        "operationId": "group-remove-members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveMembersRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoveMembersBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Evict members from a consumer group",
+        "tags": [
+          "Consumer Groups"
+        ],
+        "x-command-id": "G6"
+      }
+    },
+    "/v1/consumer-groups/{groupId}/reset-offsets": {
+      "post": {
+        "operationId": "group-reset-offsets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetOffsetsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetOffsetsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Reset a consumer group's committed offsets",
+        "tags": [
+          "Consumer Groups"
+        ],
+        "x-command-id": "G4"
+      }
+    },
+    "/v1/consumer-groups/{target}/clone-offsets": {
+      "post": {
+        "operationId": "group-clone-offsets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneOffsetsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloneOffsetsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Clone committed offsets from another consumer group",
+        "tags": [
+          "Consumer Groups"
+        ],
+        "x-command-id": "G7"
       }
     },
     "/v1/health/live": {

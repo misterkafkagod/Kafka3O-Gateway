@@ -41,6 +41,12 @@ func wRoutes(topic string) map[string]routeFixture {
 		"T8":  {http.MethodPost, "/v1/batch/topics/delete", map[string]any{"confirm": "irrelevant", "topics": []string{topic + "-t8-missing"}}},
 		"T11": {http.MethodPost, "/v1/topics/" + topic + "/delete-records", map[string]any{"confirm": topic, "offsets": map[string]any{"0": 0}}},
 		"T12": {http.MethodPost, "/v1/topics/" + topic + "/purge", map[string]any{"confirm": topic}},
+		"G4": {http.MethodPost, "/v1/consumer-groups/" + topic + "-g/reset-offsets", map[string]any{
+			"confirm": topic + "-g", "target": map[string]any{"mode": "earliest"}, "topics": []string{topic},
+		}},
+		"G5": {http.MethodDelete, "/v1/consumer-groups/" + topic + "-g", map[string]any{"confirm": topic + "-g"}},
+		"G6": {http.MethodPost, "/v1/consumer-groups/" + topic + "-g/remove-members", map[string]any{"confirm": topic + "-g"}},
+		"G7": {http.MethodPost, "/v1/consumer-groups/" + topic + "-g/clone-offsets", map[string]any{"confirm": topic + "-g", "source": topic + "-g-source"}},
 	}
 }
 

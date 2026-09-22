@@ -95,3 +95,186 @@ type DescribeGroupBody struct {
 type DescribeGroupOutput struct {
 	Body DescribeGroupBody
 }
+
+// ResetOffsetsTargetDTO is G4's `target` request field (FUNC-SPEC §8.7 G4).
+// Offsets, when non-empty, overrides Mode/Offset/TimestampMs entirely; its
+// keys are "<topic>:<partition>" (Kafka topic names never contain ':').
+type ResetOffsetsTargetDTO struct {
+	Mode        string           `json:"mode"`
+	Offset      int64            `json:"offset,omitempty"`
+	TimestampMs int64            `json:"timestampMs,omitempty"`
+	Offsets     map[string]int64 `json:"offsets,omitempty"`
+}
+
+// ResetOffsetsRequestBody is POST .../reset-offsets's request body
+// (FUNC-SPEC §8.7 G4).
+type ResetOffsetsRequestBody struct {
+	Confirm string                `json:"confirm"`
+	Target  ResetOffsetsTargetDTO `json:"target"`
+	Topics  []string              `json:"topics,omitempty"`
+}
+
+// ResetOffsetsInput is POST .../reset-offsets's parameters (FUNC-SPEC §8.7
+// G4, §8.2 `?dryRun=true`).
+type ResetOffsetsInput struct {
+	GroupID string `path:"groupId"`
+	DryRun  bool   `query:"dryRun"`
+	Body    ResetOffsetsRequestBody
+}
+
+// ResetOffsetPlanDetailDTO is one partition's planned move (FUNC-SPEC §8.6 G4).
+type ResetOffsetPlanDetailDTO struct {
+	Topic     string `json:"topic"`
+	Partition int32  `json:"partition"`
+	Current   int64  `json:"current"`
+	Target    int64  `json:"target"`
+}
+
+// ResetOffsetsPlanDTO is a dry-run G4's plan (FUNC-SPEC §8.6).
+type ResetOffsetsPlanDTO struct {
+	Offsets []ResetOffsetPlanDetailDTO `json:"offsets"`
+}
+
+// ResetOffsetResultDetailDTO is one partition's applied move (FUNC-SPEC §8.7 G4).
+type ResetOffsetResultDetailDTO struct {
+	Topic     string `json:"topic"`
+	Partition int32  `json:"partition"`
+	Before    int64  `json:"before"`
+	After     int64  `json:"after"`
+}
+
+// ResetOffsetsBody is POST .../reset-offsets's response body: either the
+// applied offset moves directly (FUNC-SPEC §8.7 G4), or — when DryRun — the
+// FUNC-SPEC §8.3 dry-run envelope. See topic.CreateTopicBody for why both
+// shapes share one Go type.
+type ResetOffsetsBody struct {
+	DryRun  bool                         `json:"dryRun,omitempty"`
+	Plan    *ResetOffsetsPlanDTO         `json:"plan,omitempty"`
+	GroupID string                       `json:"groupId,omitempty"`
+	Offsets []ResetOffsetResultDetailDTO `json:"offsets,omitempty"`
+}
+
+// ResetOffsetsOutput wraps ResetOffsetsBody for Huma.
+type ResetOffsetsOutput struct {
+	Body ResetOffsetsBody
+}
+
+// DeleteGroupRequestBody is DELETE /v1/consumer-groups/{groupId}'s request
+// body (FUNC-SPEC §8.7 G5). Carried in the DELETE body itself (TECH-SPEC
+// R3, matching topic.DeleteTopicRequestBody's own note).
+type DeleteGroupRequestBody struct {
+	Confirm string `json:"confirm"`
+}
+
+// DeleteGroupInput is DELETE /v1/consumer-groups/{groupId}'s parameters
+// (FUNC-SPEC §8.7 G5, §8.2 `?dryRun=true`).
+type DeleteGroupInput struct {
+	GroupID string `path:"groupId"`
+	DryRun  bool   `query:"dryRun"`
+	Body    DeleteGroupRequestBody
+}
+
+// DeleteGroupPlanDTO is a dry-run G5's plan (FUNC-SPEC §8.6).
+type DeleteGroupPlanDTO struct {
+	GroupID          string `json:"groupId"`
+	CommittedOffsets int    `json:"committedOffsets"`
+}
+
+// DeleteGroupBody is DELETE /v1/consumer-groups/{groupId}'s response body:
+// either the deleted group's id directly (FUNC-SPEC §8.7 G5), or — when
+// DryRun — the FUNC-SPEC §8.3 dry-run envelope.
+type DeleteGroupBody struct {
+	DryRun  bool                `json:"dryRun,omitempty"`
+	Plan    *DeleteGroupPlanDTO `json:"plan,omitempty"`
+	Deleted string              `json:"deleted,omitempty"`
+}
+
+// DeleteGroupOutput wraps DeleteGroupBody for Huma.
+type DeleteGroupOutput struct {
+	Body DeleteGroupBody
+}
+
+// RemoveMembersRequestBody is POST .../remove-members's request body
+// (FUNC-SPEC §8.7 G6). Members omitted or empty means every current member.
+type RemoveMembersRequestBody struct {
+	Confirm string   `json:"confirm"`
+	Members []string `json:"members,omitempty"`
+}
+
+// RemoveMembersInput is POST .../remove-members's parameters (FUNC-SPEC §8.7
+// G6, §8.2 `?dryRun=true`).
+type RemoveMembersInput struct {
+	GroupID string `path:"groupId"`
+	DryRun  bool   `query:"dryRun"`
+	Body    RemoveMembersRequestBody
+}
+
+// RemoveMembersPlanDTO is a dry-run G6's plan (FUNC-SPEC §8.6).
+type RemoveMembersPlanDTO struct {
+	Members []string `json:"members"`
+}
+
+// RemoveMembersBody is POST .../remove-members's response body: either the
+// removed member ids directly (FUNC-SPEC §8.7 G6), or — when DryRun — the
+// FUNC-SPEC §8.3 dry-run envelope.
+type RemoveMembersBody struct {
+	DryRun  bool                  `json:"dryRun,omitempty"`
+	Plan    *RemoveMembersPlanDTO `json:"plan,omitempty"`
+	Removed []string              `json:"removed,omitempty"`
+}
+
+// RemoveMembersOutput wraps RemoveMembersBody for Huma.
+type RemoveMembersOutput struct {
+	Body RemoveMembersBody
+}
+
+// CloneOffsetsRequestBody is POST /v1/consumer-groups/{target}/clone-offsets's
+// request body (FUNC-SPEC §8.7 G7).
+type CloneOffsetsRequestBody struct {
+	Confirm string   `json:"confirm"`
+	Source  string   `json:"source"`
+	Topics  []string `json:"topics,omitempty"`
+}
+
+// CloneOffsetsInput is POST .../clone-offsets's parameters (FUNC-SPEC §8.7
+// G7 target in path, §8.2 `?dryRun=true`).
+type CloneOffsetsInput struct {
+	Target string `path:"target"`
+	DryRun bool   `query:"dryRun"`
+	Body   CloneOffsetsRequestBody
+}
+
+// CloneOffsetPlanDetailDTO is one partition's planned clone (FUNC-SPEC §8.6 G7).
+type CloneOffsetPlanDetailDTO struct {
+	Topic         string `json:"topic"`
+	Partition     int32  `json:"partition"`
+	TargetCurrent int64  `json:"targetCurrent"`
+	NewValue      int64  `json:"newValue"`
+}
+
+// CloneOffsetsPlanDTO is a dry-run G7's plan (FUNC-SPEC §8.6).
+type CloneOffsetsPlanDTO struct {
+	Offsets []CloneOffsetPlanDetailDTO `json:"offsets"`
+}
+
+// CloneOffsetResultDetailDTO is one partition's applied clone (FUNC-SPEC §8.7 G7).
+type CloneOffsetResultDetailDTO struct {
+	Topic     string `json:"topic"`
+	Partition int32  `json:"partition"`
+	Offset    int64  `json:"offset"`
+}
+
+// CloneOffsetsBody is POST .../clone-offsets's response body: either the
+// applied clone directly (FUNC-SPEC §8.7 G7), or — when DryRun — the
+// FUNC-SPEC §8.3 dry-run envelope.
+type CloneOffsetsBody struct {
+	DryRun  bool                         `json:"dryRun,omitempty"`
+	Plan    *CloneOffsetsPlanDTO         `json:"plan,omitempty"`
+	Target  string                       `json:"target,omitempty"`
+	Offsets []CloneOffsetResultDetailDTO `json:"offsets,omitempty"`
+}
+
+// CloneOffsetsOutput wraps CloneOffsetsBody for Huma.
+type CloneOffsetsOutput struct {
+	Body CloneOffsetsBody
+}

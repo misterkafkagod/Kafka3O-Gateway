@@ -6,6 +6,7 @@ import (
 
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/fake"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 	"github.com/misterkafkagod/kafka3o/internal/service/group"
 )
 
@@ -18,7 +19,7 @@ func TestGroupService_List_StateFilterAndStablePaging(t *testing.T) {
 	f.SeedGroupMeta("g-alpha", "Stable", "consumer", 1)
 	f.SeedGroup("g-bravo", nil)
 	f.SeedGroupMeta("g-bravo", "Empty", "consumer", 1)
-	svc := group.New(f)
+	svc := group.New(f, nil, core.Runner{})
 
 	// State filter: only the two Stable groups.
 	stable, page, err := svc.List(context.Background(), group.ListParams{State: "Stable", Page: 1, PageSize: 50})
@@ -70,7 +71,7 @@ func TestGroupService_Describe_LagIsEndMinusCommittedAndTotal(t *testing.T) {
 		{Topic: "orders", Partition: 1}: 2, // end 2 -> lag 0
 	})
 	f.SeedGroupMeta("g1", "Stable", "consumer", 1)
-	svc := group.New(f)
+	svc := group.New(f, nil, core.Runner{})
 
 	d, err := svc.Describe(context.Background(), "g1")
 	if err != nil {
@@ -100,7 +101,7 @@ func TestGroupService_Describe_LagIsEndMinusCommittedAndTotal(t *testing.T) {
 func TestGroupService_Describe_MissingGroupNotFound(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
-	svc := group.New(f)
+	svc := group.New(f, nil, core.Runner{})
 
 	_, err := svc.Describe(context.Background(), "does-not-exist")
 	if !kafka.IsKind(err, kafka.KindNotFound) {
@@ -119,7 +120,7 @@ func TestGroupService_ConsumersOfTopic_ReverseLookup(t *testing.T) {
 	f.SeedGroupMeta("g1", "Empty", "consumer", 1) // stopped, but still has committed offsets
 	f.SeedGroup("g2", map[kafka.TopicPartition]int64{{Topic: "payments", Partition: 0}: 1})
 	f.SeedGroupMeta("g2", "Stable", "consumer", 1)
-	svc := group.New(f)
+	svc := group.New(f, nil, core.Runner{})
 
 	groups, err := svc.ConsumersOfTopic(context.Background(), "orders")
 	if err != nil {
@@ -136,7 +137,7 @@ func TestGroupService_ConsumersOfTopic_ReverseLookup(t *testing.T) {
 func TestGroupService_ConsumersOfTopic_MissingTopicNotFound(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
-	svc := group.New(f)
+	svc := group.New(f, nil, core.Runner{})
 
 	_, err := svc.ConsumersOfTopic(context.Background(), "does-not-exist")
 	if !kafka.IsKind(err, kafka.KindNotFound) {

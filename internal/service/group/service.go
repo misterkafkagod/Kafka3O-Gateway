@@ -1,22 +1,33 @@
 // Package group implements the consumer-group commands (FUNC-SPEC §8.7
-// G1-G3). Service holds only kafka.Admin (TECH-SPEC I2, S2).
+// G1-G7). Service holds only kafka.Admin (TECH-SPEC I2, S2).
 package group
 
 import (
 	"context"
 	"sort"
+	"time"
 
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
 
 // Service implements the group commands over a kafka.Admin.
 type Service struct {
 	admin kafka.Admin
+	// auditor records G4-G7's ATTEMPT/RESULT audit trail (FUNC-SPEC §8.5) —
+	// G1-G3 are reads and stay unaudited (FUNC-SPEC §8.5 scope).
+	auditor    *audit.Auditor
+	newEventID func() string
+	now        func() time.Time
+	// runner gates G4-G7 (FUNC-SPEC §9.1 nodes F-K3): an operator-only
+	// caller, plus (all four are in FUNC-SPEC §5.6) F3's per-operation switch.
+	runner core.Runner
 }
 
-// New builds a Service over admin.
-func New(admin kafka.Admin) *Service {
-	return &Service{admin: admin}
+// New builds a Service over admin, auditor, and runner.
+func New(admin kafka.Admin, auditor *audit.Auditor, runner core.Runner) *Service {
+	return &Service{admin: admin, auditor: auditor, newEventID: audit.NewEventID, now: time.Now, runner: runner}
 }
 
 // ListItem is one group in a List result (FUNC-SPEC §8.7 G1).
@@ -237,4 +248,20 @@ func (s *Service) ConsumersOfTopic(ctx context.Context, topic string) ([]TopicGr
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].GroupID < out[j].GroupID })
 	return out, nil
+}
+
+// groupState returns groupID's current member count and whether it exists
+// yet, treating a NotFound from Admin.DescribeGroups as "does not exist,
+// zero members" (G4's own precondition allows pre-seeding an absent group;
+// G5 and G7 still require the group to already exist, checked separately by
+// their own callers).
+func (s *Service) groupState(ctx context.Context, groupID string) (exists bool, memberCount int, err error) {
+	groups, err := s.admin.DescribeGroups(ctx, groupID)
+	if err != nil {
+		if kafka.IsKind(err, kafka.KindNotFound) {
+			return false, 0, nil
+		}
+		return false, 0, err
+	}
+	return true, len(groups[0].Members), nil
 }

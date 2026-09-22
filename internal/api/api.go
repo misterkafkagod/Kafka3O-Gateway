@@ -91,7 +91,7 @@ func New(deps Deps) http.Handler {
 	registerHealth(humaAPI, deps)
 	apicluster.Register(humaAPI, cluster.New(deps.Admin))
 	runner := core.Runner{Policy: deps.Policy, Check: gates.Check}
-	groupSvc := group.New(deps.Admin)
+	groupSvc := group.New(deps.Admin, deps.Auditor, runner)
 	groupPageBounds := apigroup.PageBounds{Default: deps.PageBounds.Default, Ceiling: deps.PageBounds.Ceiling}
 	apitopic.Register(humaAPI, topic.New(deps.Admin, deps.Auditor, runner), groupSvc, deps.PageBounds)
 	apigroup.Register(humaAPI, groupSvc, groupPageBounds)
