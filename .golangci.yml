@@ -251,6 +251,7 @@ linters:
           allow:
             - $gostd
             - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/kafka/fake
             - github.com/misterkafkagod/kafka3o/internal/command
             - github.com/misterkafkagod/kafka3o/internal/scan
             - github.com/misterkafkagod/kafka3o/internal/audit
