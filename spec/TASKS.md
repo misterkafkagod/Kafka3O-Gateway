@@ -767,12 +767,12 @@
   - `TestReplay_UsesScanRunAndAttemptResultAudit` — TECH §2.3; FUNC §9.3 step 2
 
 ### Task 11.2: Route, tests, acceptance (M8)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.2, §4.5 (Replay row), §4.8
 - **Subtasks:**
-  - [ ] 11.2.1 `POST /v1/replays` — TECH §6.2
-  - [ ] 11.2.2 Component tests: `preservePartition` mismatch, `FailNext(Produce)` mid-batch → 502 with `progress`, byte-equal headers/timestamps, cursor resume, bound ceiling — TECH §4.5
-  - [ ] 11.2.3 Acceptance test M8; remove from `pending` — TECH §4.8
+  - [x] 11.2.1 `POST /v1/replays` — TECH §6.2
+  - [x] 11.2.2 Component tests: `preservePartition` mismatch, `FailNext(Produce)` mid-batch → 502 with `progress`, byte-equal headers/timestamps, cursor resume, bound ceiling — TECH §4.5
+  - [x] 11.2.3 Acceptance test M8; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestAPI_M8_PreservePartitionMismatch400`, `TestAPI_M8_MidBatchFailure502WithProgress`, `TestAPI_M8_CursorResume`, `TestAPI_M8_LimitAboveCeiling400`, `TestAPI_M8_LockedByDataPlaneLockEvenDryRun` (activates `TestAPI_Lock_DryRunStillLocked` from Task 6.2) — 4.5 Replay; FUNC §9.1 rules
   - `TestOpenAPI_Golden` contains the at-least-once description on `POST /v1/replays` — FUNC §9.3 step 5

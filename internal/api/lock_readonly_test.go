@@ -47,13 +47,18 @@ func wRoutes(topic string) map[string]routeFixture {
 		"G5": {http.MethodDelete, "/v1/consumer-groups/" + topic + "-g", map[string]any{"confirm": topic + "-g"}},
 		"G6": {http.MethodPost, "/v1/consumer-groups/" + topic + "-g/remove-members", map[string]any{"confirm": topic + "-g"}},
 		"G7": {http.MethodPost, "/v1/consumer-groups/" + topic + "-g/clone-offsets", map[string]any{"confirm": topic + "-g", "source": topic + "-g-source"}},
+		"M8": {http.MethodPost, "/v1/replays", map[string]any{
+			"confirm": topic + "-m8dst",
+			"source":  map[string]any{"topic": topic, "from": "beginning"},
+			"target":  map[string]any{"topic": topic + "-m8dst"},
+		}},
 	}
 }
 
-// dataPlaneRoutes covers every M1-M7 command currently wired to a route
-// (FUNC-SPEC §9.5 F6 covers M1-M8; M8 does not exist yet) — hardcoded
-// rather than merged from wRoutes(), since wRoutes() also carries W
-// commands that are not data-plane (T5, T6, T9, T10).
+// dataPlaneRoutes covers every M1-M8 command currently wired to a route
+// (FUNC-SPEC §9.5 F6 covers M1-M8) — hardcoded rather than merged from
+// wRoutes(), since wRoutes() also carries W commands that are not
+// data-plane (T5-T12, G4-G7).
 func dataPlaneRoutes(topic string) map[string]routeFixture {
 	all := wRoutes(topic)
 	return map[string]routeFixture{
@@ -66,6 +71,7 @@ func dataPlaneRoutes(topic string) map[string]routeFixture {
 		"M5": all["M5"],
 		"M6": all["M6"],
 		"M7": all["M7"],
+		"M8": all["M8"],
 	}
 }
 
@@ -248,6 +254,27 @@ func TestAPI_Rejection_ReaderOnProduceEmitsWarnRejectedAudit(t *testing.T) {
 	}
 }
 
+// TestAPI_Lock_DryRunStillLocked proves F6 (the data-plane lock) applies
+// even to a dry run: core.Destructive's gate check (CheckAudited) runs
+// before the dryRun short-circuit, so a locked M8 replay never even builds
+// a plan, dry-run or not (FUNC-SPEC §9.1 rules).
 func TestAPI_Lock_DryRunStillLocked(t *testing.T) {
-	t.Skip("M8 (replay) does not exist yet — see TASKS.md Phase 11; this activates once dryRun exists to test against")
+	t.Parallel()
+	gw := testutil.NewTestGateway(t, testutil.WithDataPlaneLock())
+	gw.Fake.SeedTopic("src", 1)
+	gw.Fake.SeedTopic("dst", 1)
+
+	resp := gw.Do(t, http.MethodPost, "/v1/replays?dryRun=true", map[string]any{
+		"confirm": "dst",
+		"source":  map[string]any{"topic": "src", "from": "beginning"},
+		"target":  map[string]any{"topic": "dst"},
+	})
+	body := decodeBody(t, resp)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403: %v", resp.StatusCode, body)
+	}
+	errBody, _ := body["error"].(map[string]any)
+	if errBody["code"] != "DATA_PLANE_LOCKED" {
+		t.Errorf("code = %v, want DATA_PLANE_LOCKED", errBody["code"])
+	}
 }

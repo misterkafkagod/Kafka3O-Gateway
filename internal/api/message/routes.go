@@ -97,6 +97,46 @@ func Register(humaAPI huma.API, svc *message.Service) {
 		Tags:        []string{"Messages"},
 		Extensions:  commandExtension("M7"),
 	}, sendTombstone(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "replay",
+		Method:      http.MethodPost,
+		Path:        "/v1/replays",
+		Summary:     "Copy a bounded record range from one topic to another",
+		Description: "Semantics are at-least-once: a retry from the returned cursor after a failure may duplicate the last in-flight records (FUNC-SPEC §9.3 step 5).",
+		Tags:        []string{"Messages"},
+		Extensions:  commandExtension("M8"),
+	}, replay(svc))
+}
+
+func replay(svc *message.Service) func(context.Context, *ReplayInput) (*ReplayOutput, error) {
+	return func(ctx context.Context, in *ReplayInput) (*ReplayOutput, error) {
+		requestID := apierrors.RequestIDFrom(ctx)
+		body := in.Body
+
+		from, to, err := parseFromTo(body.Source.From, body.Source.To, requestID)
+		if err != nil {
+			return nil, err
+		}
+
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.Replay(ctx, caller,
+			message.ReplaySource{Topic: body.Source.Topic, Partitions: body.Source.Partitions, From: from, To: to},
+			message.ReplayTarget{Topic: body.Target.Topic, PreservePartition: body.Target.PreservePartition},
+			body.Limit, body.Confirm, in.DryRun,
+		)
+		if err != nil {
+			return nil, apierrors.MapDestructive(err, func(p message.ReplayPlan) any { return toReplayPlanDTO(p) }, requestID)
+		}
+		if result.DryRun {
+			return &ReplayOutput{Body: ReplayResponseBody{DryRun: true, Plan: toReplayPlanDTO(result.Plan)}}, nil
+		}
+		copied := result.Value.Copied
+		reachedEnd := result.Value.ReachedEnd
+		return &ReplayOutput{Body: ReplayResponseBody{
+			Copied: &copied, Cursor: toCursorDTO(result.Value.Cursor), ReachedEnd: &reachedEnd,
+		}}, nil
+	}
 }
 
 func produceMessages(svc *message.Service) func(context.Context, *ProduceInput) (*ProduceOutput, error) {

@@ -86,3 +86,21 @@ func toScanStatsDTO(s scan.Stats) ScanStatsDTO {
 		Continuation: continuation,
 	}
 }
+
+// toReplayPlanDTO converts the service's ReplayPlan into the wire shape.
+func toReplayPlanDTO(p message.ReplayPlan) *ReplayPlanDTO {
+	return &ReplayPlanDTO{
+		EstimatedRecords: p.EstimatedRecords, SourcePartitions: p.SourcePartitions, TargetPartitions: p.TargetPartitions,
+	}
+}
+
+// toCursorDTO converts the service's partition-keyed cursor into the wire
+// shape (partition numbers as decimal-string JSON keys, matching
+// ScanStatsDTO.Continuation's own convention).
+func toCursorDTO(cursor map[int32]int64) map[string]int64 {
+	out := make(map[string]int64, len(cursor))
+	for p, offset := range cursor {
+		out[strconv.Itoa(int(p))] = offset
+	}
+	return out
+}

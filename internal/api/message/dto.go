@@ -246,3 +246,63 @@ type TombstoneResponseBody struct {
 type TombstoneOutput struct {
 	Body TombstoneResponseBody
 }
+
+// ReplaySourceDTO is M8's `source` request field (FUNC-SPEC §8.7 M8). From
+// and To reuse M1's own `from=`/`to=` vocabulary and parser (ParseFrom):
+// beginning, latest, offset:<n>, timestamp:<ms|iso> — a resumed call passes
+// the prior response's cursor value back as e.g. "offset:<cursor>".
+type ReplaySourceDTO struct {
+	Topic      string  `json:"topic"`
+	Partitions []int32 `json:"partitions,omitempty"`
+	From       string  `json:"from"`
+	To         string  `json:"to,omitempty"`
+}
+
+// ReplayTargetDTO is M8's `target` request field (FUNC-SPEC §8.7 M8).
+type ReplayTargetDTO struct {
+	Topic             string `json:"topic"`
+	PreservePartition bool   `json:"preservePartition,omitempty"`
+}
+
+// ReplayRequestBody is POST /v1/replays's request body (FUNC-SPEC §8.7 M8).
+type ReplayRequestBody struct {
+	Confirm string          `json:"confirm"`
+	Source  ReplaySourceDTO `json:"source"`
+	Target  ReplayTargetDTO `json:"target"`
+	Limit   int             `json:"limit,omitempty"`
+}
+
+// ReplayInput is POST /v1/replays's parameters (FUNC-SPEC §8.7 M8, §8.2
+// `?dryRun=true`).
+type ReplayInput struct {
+	DryRun bool `query:"dryRun"`
+	Body   ReplayRequestBody
+}
+
+// ReplayPlanDTO is a dry-run M8's plan (FUNC-SPEC §8.6).
+type ReplayPlanDTO struct {
+	EstimatedRecords int64 `json:"estimatedRecords"`
+	SourcePartitions int   `json:"sourcePartitions"`
+	TargetPartitions int   `json:"targetPartitions"`
+}
+
+// ReplayResponseBody is POST /v1/replays's response body: either the
+// executed copy's outcome directly (FUNC-SPEC §8.7 M8), or — when DryRun —
+// the FUNC-SPEC §8.3 dry-run envelope. See topic.CreateTopicBody for why
+// both shapes share one Go type. Copied and ReachedEnd are pointers, not
+// plain omitempty values, because 0 and false are themselves meaningful on
+// a real response (nothing copied yet; the window is not yet exhausted) and
+// must still be rendered, unlike their zero value meaning "absent" on a
+// dry-run response.
+type ReplayResponseBody struct {
+	DryRun     bool             `json:"dryRun,omitempty"`
+	Plan       *ReplayPlanDTO   `json:"plan,omitempty"`
+	Copied     *int             `json:"copied,omitempty"`
+	Cursor     map[string]int64 `json:"cursor,omitempty"`
+	ReachedEnd *bool            `json:"reachedEnd,omitempty"`
+}
+
+// ReplayOutput wraps ReplayResponseBody for Huma.
+type ReplayOutput struct {
+	Body ReplayResponseBody
+}

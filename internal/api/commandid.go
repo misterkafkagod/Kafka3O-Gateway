@@ -48,6 +48,7 @@ func implementedCommandIDs() map[string]bool {
 		"G5":  true,
 		"G6":  true,
 		"G7":  true,
+		"M8":  true,
 	}
 }
 
