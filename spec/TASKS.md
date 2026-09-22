@@ -371,7 +371,7 @@
 ---
 
 ## Phase 4: Search messages by regex and JSONPath
-- **Phase Status:** Awaiting Manual Verification
+- **Phase Status:** Verified
 - **Goal:** A human can search a topic by regex or a structured JSONPath filter and see scan statistics including skipped records.
 - **Manual Test Plan:**
   1. CS3 `POST /v1/topics/t-demo/messages/search` body `{"regex":"FAILED","from":"beginning"}` → only matching items; `scan.scanned ≥ scan.matched`.
