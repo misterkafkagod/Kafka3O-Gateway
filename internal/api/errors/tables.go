@@ -48,6 +48,7 @@ func codeTable() map[core.Code]httpMapping {
 		core.BoundExceeded:        {400, "BOUND_EXCEEDED"},
 		core.Validation:           {400, "VALIDATION_FAILED"},
 		core.InvalidRegex:         {400, "INVALID_REGEX"},
+		core.InvalidJSONPath:      {400, "INVALID_JSONPATH"},
 	}
 }
 

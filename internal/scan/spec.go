@@ -25,8 +25,13 @@ type Spec struct {
 	// already resolved Start as max(begin, end-limit) and for sorting
 	// emitted items by timestamp descending before truncating to limit.
 	Latest bool
-	// MaxMessages bounds the number of matched items (0 = unbounded).
+	// MaxMessages bounds the number of matched items (0 = unbounded): M1's
+	// `limit`, M3/M4's `maxMatches`.
 	MaxMessages int
+	// MaxScanned bounds the number of records evaluated, matched or not
+	// (0 = unbounded): M3/M4's `maxScan`. M1 has no filter, so it never sets
+	// this — MaxMessages alone already bounds M1 (scanned == matched there).
+	MaxScanned int
 	// MaxBytes bounds cumulative scanned key+value bytes (0 = unbounded).
 	MaxBytes int64
 	// MaxTime bounds wall-clock time from Run's start (0 = unbounded).

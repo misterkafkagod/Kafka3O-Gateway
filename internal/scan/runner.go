@@ -177,10 +177,17 @@ func windowsExhausted(spec Spec, cursor map[int32]int64) bool {
 
 // hitBound reports which bound acc has just reached, if any (FUNC-SPEC §8.8,
 // §9.2). MaxMessages bounds matched items and never stops a Latest scan
-// early (Run truncates it globally afterward instead); MaxBytes bounds
-// cumulative scanned key+value bytes, regardless of match, in every mode.
+// early (Run truncates it globally afterward instead); MaxScanned bounds
+// records evaluated regardless of match (M3/M4's maxScan) — the wire
+// vocabulary has no separate "maxScan" stoppedBy value, so hitting it is
+// still reported as StoppedByMaxMessages, same as MaxMessages; MaxBytes
+// bounds cumulative scanned key+value bytes, regardless of match, in every
+// mode.
 func hitBound(acc *accumulator, spec Spec) string {
 	if !spec.Latest && spec.MaxMessages > 0 && acc.matched >= spec.MaxMessages {
+		return StoppedByMaxMessages
+	}
+	if spec.MaxScanned > 0 && acc.scanned >= spec.MaxScanned {
 		return StoppedByMaxMessages
 	}
 	if spec.MaxBytes > 0 && acc.bytes >= spec.MaxBytes {

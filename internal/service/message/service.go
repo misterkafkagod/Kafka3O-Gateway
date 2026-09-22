@@ -35,14 +35,21 @@ type RangeDuration struct {
 	Ceiling time.Duration
 }
 
-// Bounds are the configured defaults and ceilings Read validates against
-// (FUNC-SPEC §8.8). Limit is M1's own row; MaxBytes and MaxTime are the
-// single scan-mechanism row §8.8 lists once for M3/M4 and that M1 shares,
-// since both ultimately bound the same internal/scan.Run.
+// Bounds are the configured defaults and ceilings Read, Search, and Filter
+// validate against (FUNC-SPEC §8.8). Limit is M1's own row; MaxScan and
+// MaxMatches are M3/M4's; MaxBytes and MaxTime are the single scan-mechanism
+// row §8.8 lists once for M3/M4 and that M1 shares, since all three
+// ultimately bound the same internal/scan.Run.
 type Bounds struct {
-	Limit    Range
-	MaxBytes RangeBytes
-	MaxTime  RangeDuration
+	Limit      Range
+	MaxScan    Range
+	MaxMatches Range
+	MaxBytes   RangeBytes
+	MaxTime    RangeDuration
+	// RegexTimeout bounds each field a Search checks per record (FUNC-SPEC
+	// §8.8 "regex per-message match timeout"): fixed, not caller-adjustable
+	// (the table gives it a default and no ceiling).
+	RegexTimeout time.Duration
 }
 
 // Service implements the message commands.

@@ -397,11 +397,11 @@
   - `TestJSONPathMatcher_MissingPathNoMatch`, `TestJSONPathMatcher_TypeMismatchNoMatch`, `TestJSONPathMatcher_NonJSONSkipped`, `TestJSONPathMatcher_InvalidPathError`, `TestJSONPathMatcher_AnyNodeSatisfies` — FUNC V4, §9.2
 
 ### Task 4.2: Message service (M3, M4)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 M3/M4 (`limit` not accepted; `maxScan`, `maxMatches`), §8.8 (`maxMatches` 100 / 1 000); TECH §6.1 B8
 - **Subtasks:**
-  - [ ] 4.2.1 `Search` and `Filter` on `message.Service` composing `scan.Run` with the matchers; `maxScan`/`maxMatches`/`maxBytes`/`maxTime` validated against ceilings — FUNC §8.8
-  - [ ] 4.2.2 Unit tests for bound interplay (`maxMatches` stops before `maxScan`) — TECH §4.5 O3
+  - [x] 4.2.1 `Search` and `Filter` on `message.Service` composing `scan.Run` with the matchers; `maxScan`/`maxMatches`/`maxBytes`/`maxTime` validated against ceilings — FUNC §8.8
+  - [x] 4.2.2 Unit tests for bound interplay (`maxMatches` stops before `maxScan`) — TECH §4.5 O3
 - **Tests (Definition of Done):**
   - `TestMessageService_Search_MaxMatchesStopsBeforeMaxScan`, `TestMessageService_Search_MaxScanStopsBeforeMaxMatches` — VC O3; FUNC §8.8
   - `TestMessageService_Search_MaxMatchesAboveCeilingIsBoundExceeded` — TECH §6.1 B8
