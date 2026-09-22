@@ -9,6 +9,7 @@ import (
 
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	"github.com/misterkafkagod/kafka3o/internal/config"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
 
 // mapKeys maps the loaded configuration's API keys onto middleware.Key —
@@ -40,6 +41,21 @@ func parseCIDRs(cidrs []string) ([]*net.IPNet, error) {
 		out[i] = n
 	}
 	return out, nil
+}
+
+// mapPolicy maps the loaded configuration's switches onto core.Policy —
+// internal/service/core may not import internal/config (TECH-SPEC §5.3).
+func mapPolicy(authEnabled bool, p config.Policy) core.Policy {
+	disabled := make(map[string]bool, len(p.DisabledOperations))
+	for _, id := range p.DisabledOperations {
+		disabled[id] = true
+	}
+	return core.Policy{
+		AuthEnabled:   authEnabled,
+		ReadOnly:      p.ReadOnlyMode,
+		DataPlaneLock: p.DataPlaneLock,
+		Disabled:      disabled,
+	}
 }
 
 // parseLevel maps the configured log level (TECH-SPEC §1.1 logging) onto

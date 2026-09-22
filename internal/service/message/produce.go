@@ -57,12 +57,16 @@ type ProduceResult struct {
 // never stops the others, and the ATTEMPT/RESULT audit pair brackets
 // execution regardless of the per-item mix.
 func (s *Service) Produce(ctx context.Context, caller core.Caller, topic string, items []ProduceItem) (ProduceResult, error) {
+	if err := s.checkGate(ctx, caller, "M5", topic); err != nil {
+		return ProduceResult{}, err
+	}
 	return s.produce(ctx, caller, "M5", topic, items)
 }
 
-// produce is Produce and ProduceBulk's shared implementation — the two
-// commands differ only in how their items arrive (a body object/array for
-// M5, an uploaded NDJSON/JSON-array stream for M6 — see producebulk.go).
+// produce is Produce and ProduceBulk's shared implementation, run only after
+// the caller has already passed checkGate — the two commands differ only in
+// how their items arrive (a body object/array for M5, an uploaded NDJSON/
+// JSON-array stream for M6 — see producebulk.go).
 func (s *Service) produce(ctx context.Context, caller core.Caller, commandID, topic string, items []ProduceItem) (ProduceResult, error) {
 	partitionCount, err := s.partitionCount(ctx, topic)
 	if err != nil {

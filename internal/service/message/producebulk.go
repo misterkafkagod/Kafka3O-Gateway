@@ -19,6 +19,9 @@ import (
 // malformed body reports *core.PolicyError{Code: core.Validation} — neither
 // case executes anything or emits an ATTEMPT.
 func (s *Service) ProduceBulk(ctx context.Context, caller core.Caller, topic string, body io.Reader, ndjson bool) (ProduceResult, error) {
+	if err := s.checkGate(ctx, caller, "M6", topic); err != nil {
+		return ProduceResult{}, err
+	}
 	items, err := s.parseBulkBody(body, ndjson)
 	if err != nil {
 		return ProduceResult{}, err

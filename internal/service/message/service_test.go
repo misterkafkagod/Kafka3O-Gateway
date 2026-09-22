@@ -28,7 +28,7 @@ func TestMessageService_Read_LimitAboveCeilingIsBoundExceeded(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	f.SeedTopic("t", 1, kafka.Record{Partition: 0, Value: []byte("a")})
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil)
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
 
 	_, err := svc.Read(context.Background(), message.ReadParams{
 		Topic: "t", From: message.From{Kind: message.FromBeginning}, Limit: 999,
@@ -46,7 +46,7 @@ func TestMessageService_Read_DefaultsApplied(t *testing.T) {
 		kafka.Record{Partition: 0, Value: []byte("b")},
 		kafka.Record{Partition: 0, Value: []byte("c")},
 	)
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil)
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
 
 	// Limit left zero -> Bounds.Limit.Default (2) applies, stopping before
 	// the third seeded record.
@@ -68,7 +68,7 @@ func TestMessageService_Read_NoCommitsNoGroupJoin(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	f.SeedTopic("t", 1, kafka.Record{Partition: 0, Value: []byte("a")})
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil)
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
 
 	if _, err := svc.Read(context.Background(), message.ReadParams{
 		Topic: "t", From: message.From{Kind: message.FromBeginning},
@@ -88,7 +88,7 @@ func TestMessageService_Get_ReturnsRecordAtOffset(t *testing.T) {
 		kafka.Record{Partition: 0, Value: []byte("b")},
 		kafka.Record{Partition: 0, Value: []byte("c")},
 	)
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil)
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
 
 	r, err := svc.Get(context.Background(), "t", 0, 1)
 	if err != nil {
@@ -109,7 +109,7 @@ func TestMessageService_Get_CompactedAwayIsNotFound(t *testing.T) {
 	)
 	// Offsets 0 and 1 are compacted away; the log now starts at 2.
 	f.SeedCompactAway("t", 0, 2)
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil)
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
 
 	_, err := svc.Get(context.Background(), "t", 0, 0)
 	if !kafka.IsKind(err, kafka.KindNotFound) {
@@ -121,7 +121,7 @@ func TestMessageService_Get_OutOfRangeIsNotFound(t *testing.T) {
 	t.Parallel()
 	f := fake.New()
 	f.SeedTopic("t", 1, kafka.Record{Partition: 0, Value: []byte("a")})
-	svc := message.New(f, f, consumerFactory(f), testBounds(), nil)
+	svc := message.New(f, f, consumerFactory(f), testBounds(), nil, core.Runner{})
 
 	_, err := svc.Get(context.Background(), "t", 0, 999999)
 	if !kafka.IsKind(err, kafka.KindNotFound) {

@@ -118,6 +118,7 @@ func newHandler(cfg config.Config, client *franz.Client, auditor *audit.Auditor,
 		Admin:       admin,
 		Producer:    producer,
 		Auditor:     auditor,
+		Policy:      mapPolicy(cfg.Auth.Enabled, cfg.Policy),
 		PageBounds:  apitopic.PageBounds{Default: cfg.Bounds.Page.Size.Default, Ceiling: cfg.Bounds.Page.Size.Ceiling},
 		NewConsumer: newConsumerFactory(cfg),
 		MessageBounds: message.Bounds{

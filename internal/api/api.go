@@ -24,6 +24,8 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
 	"github.com/misterkafkagod/kafka3o/internal/service/cluster"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
+	"github.com/misterkafkagod/kafka3o/internal/service/gates"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
@@ -49,6 +51,10 @@ type Deps struct {
 	Producer kafka.Producer
 	// Auditor records M5-M7's two-phase ATTEMPT/RESULT audit trail (FUNC-SPEC §8.5).
 	Auditor *audit.Auditor
+	// Policy is what gates.Check evaluates a W command's caller against
+	// (FUNC-SPEC §9.1 F-K3): readOnlyMode, dataPlaneLock, and per-operation
+	// disables. Zero value means nothing is restricted beyond tier.
+	Policy core.Policy
 	// MessageBounds are the configured M1 limit/maxBytes/maxTimeMs bounds (FUNC-SPEC §8.8).
 	MessageBounds message.Bounds
 	// AuditStatus reports the configured audit sink's health (TECH-SPEC B5).
@@ -83,7 +89,8 @@ func New(deps Deps) http.Handler {
 	registerHealth(humaAPI, deps)
 	apicluster.Register(humaAPI, cluster.New(deps.Admin))
 	apitopic.Register(humaAPI, topic.New(deps.Admin), deps.PageBounds)
-	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor))
+	runner := core.Runner{Policy: deps.Policy, Check: gates.Check}
+	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor, runner))
 
 	var handler http.Handler = mux
 	handler = telemetry.HTTPMiddleware("gateway", func(r *http.Request) string {

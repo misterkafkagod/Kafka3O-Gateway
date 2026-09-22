@@ -12,6 +12,7 @@ import (
 
 	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
+	"github.com/misterkafkagod/kafka3o/internal/service/core"
 )
 
 // ConsumerFactory builds a fresh kafka.Consumer for one scan (TECH-SPEC
@@ -71,13 +72,17 @@ type Service struct {
 	// read and stays unaudited (FUNC-SPEC §8.5 scope).
 	auditor    *audit.Auditor
 	newEventID func() string
+	// runner gates M5-M7 (FUNC-SPEC §9.1 nodes F-K3): an operator-only
+	// caller past ReadOnly/DataPlaneLock/Disabled, exactly as any other W
+	// command. M1-M4 do not check it yet (Task 6.1 generalises this).
+	runner core.Runner
 }
 
-// New builds a Service over admin, producer, newConsumer, bounds, and
-// auditor.
-func New(admin kafka.Admin, producer kafka.Producer, newConsumer ConsumerFactory, bounds Bounds, auditor *audit.Auditor) *Service {
+// New builds a Service over admin, producer, newConsumer, bounds, auditor,
+// and runner.
+func New(admin kafka.Admin, producer kafka.Producer, newConsumer ConsumerFactory, bounds Bounds, auditor *audit.Auditor, runner core.Runner) *Service {
 	return &Service{
 		admin: admin, producer: producer, newConsumer: newConsumer, bounds: bounds,
-		now: time.Now, auditor: auditor, newEventID: audit.NewEventID,
+		now: time.Now, auditor: auditor, newEventID: audit.NewEventID, runner: runner,
 	}
 }

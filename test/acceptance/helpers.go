@@ -51,6 +51,25 @@ func doAcceptanceJSON(t *testing.T, method, path, apiKey string, body any) *http
 	return resp
 }
 
+// doAcceptanceRaw is doAcceptance for a request carrying an arbitrary body
+// and Content-Type (M6's NDJSON upload).
+func doAcceptanceRaw(t *testing.T, method, path, apiKey, contentType string, body []byte) *http.Response {
+	t.Helper()
+
+	req, err := http.NewRequest(method, baseURL+path, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("http.NewRequest(%s %q) error: %v", method, path, err)
+	}
+	req.Header.Set("X-Api-Key", apiKey)
+	req.Header.Set("Content-Type", contentType)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("%s %s error: %v", method, path, err)
+	}
+	return resp
+}
+
 // drainAndClose discards resp's body and closes it — every test that does
 // not need the body must still call this so the connection can be reused.
 func drainAndClose(resp *http.Response) {

@@ -75,6 +75,15 @@ func WithKeys(keys ...middleware.Key) Option {
 	}
 }
 
+// WithMaxBulkBodyBytes overrides M6's configured body-size ceiling
+// (FUNC-SPEC §8.8), for tests exercising 413 without sending a
+// multi-megabyte body.
+func WithMaxBulkBodyBytes(n int64) Option {
+	return func(s *settings) {
+		s.hooks = append(s.hooks, func(deps *api.Deps, _ *fake.Fake) { deps.MessageBounds.MaxBulkBodyBytes = n })
+	}
+}
+
 // WithAuditUnhealthy makes /health/ready's audit sub-object report
 // unhealthy, without affecting readiness itself (TECH-SPEC §6.1 B5).
 func WithAuditUnhealthy() Option {

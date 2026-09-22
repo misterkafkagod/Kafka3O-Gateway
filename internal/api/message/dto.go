@@ -1,8 +1,16 @@
-// Package message wires the message-reading commands (FUNC-SPEC §8.7 M1,
-// M2) onto Huma operations: routes, DTOs, the `from=`/`to=` wire parser, and
-// the mapping between them and internal/service/message's plain domain
-// results (TECH-SPEC I5).
+// Package message wires the message commands (FUNC-SPEC §8.7 M1-M7) onto
+// Huma operations: routes, DTOs, the `from=`/`to=` wire parser, and the
+// mapping between them and internal/service/message's plain domain results
+// (TECH-SPEC I5).
 package message
+
+import (
+	"encoding/json"
+
+	"github.com/danielgtaylor/huma/v2"
+
+	"github.com/misterkafkagod/kafka3o/internal/service/message"
+)
 
 // HeaderDTO is one decoded record header (FUNC-SPEC §8.3 Record row).
 type HeaderDTO struct {
@@ -131,4 +139,110 @@ type FilterBody struct {
 type FilterInput struct {
 	Name string `path:"name"`
 	Body FilterBody
+}
+
+// ProduceBody is M5's request body: a single record object, or
+// { records: [...record] } (FUNC-SPEC §8.7 M5). message.ProduceItem already
+// carries the wire tags for one record (internal/service/message, Task 5.3),
+// so this type exists only to normalise whichever shape arrived into
+// Records — Schema keeps Huma's pre-validation permissive (any object),
+// since a static struct schema cannot express "either shape," and
+// UnmarshalJSON does the real parsing.
+type ProduceBody struct {
+	Records []message.ProduceItem
+}
+
+// Schema implements huma.SchemaProvider.
+func (ProduceBody) Schema(huma.Registry) *huma.Schema {
+	return &huma.Schema{Type: huma.TypeObject}
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (b *ProduceBody) UnmarshalJSON(data []byte) error {
+	var wrapped struct {
+		Records []message.ProduceItem `json:"records"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err == nil && wrapped.Records != nil {
+		b.Records = wrapped.Records
+		return nil
+	}
+	var single message.ProduceItem
+	if err := json.Unmarshal(data, &single); err != nil {
+		return err
+	}
+	b.Records = []message.ProduceItem{single}
+	return nil
+}
+
+// ProduceInput is POST .../messages's parameters (FUNC-SPEC §8.7 M5).
+type ProduceInput struct {
+	Name string `path:"name"`
+	Body ProduceBody
+}
+
+// ProduceItemResultDTO is one produced (or failed) record (FUNC-SPEC §8.3
+// Bulk, §8.7 M5): Partition, Offset, and TimestampMs are meaningful only
+// when Status is "ok".
+type ProduceItemResultDTO struct {
+	Index       int    `json:"index"`
+	Status      string `json:"status"`
+	Partition   int32  `json:"partition"`
+	Offset      int64  `json:"offset"`
+	TimestampMs int64  `json:"timestampMs"`
+	Error       string `json:"error,omitempty"`
+}
+
+// BulkSummaryDTO is the bulk envelope's `summary` sub-object (FUNC-SPEC §8.3).
+type BulkSummaryDTO struct {
+	Total  int `json:"total"`
+	OK     int `json:"ok"`
+	Failed int `json:"failed"`
+}
+
+// ProduceResponseBody is M5 and M6's response body (FUNC-SPEC §8.3 Bulk).
+type ProduceResponseBody struct {
+	Items   []ProduceItemResultDTO `json:"items"`
+	Summary BulkSummaryDTO         `json:"summary"`
+}
+
+// ProduceOutput wraps ProduceResponseBody for Huma. Status is Huma's
+// dynamic-status-code field (matched by name, not tag): 200 when every item
+// succeeded, 207 when the outcome is mixed (FUNC-SPEC §8.3 Bulk).
+type ProduceOutput struct {
+	Status int
+	Body   ProduceResponseBody
+}
+
+// ProduceBulkInput is POST .../messages/bulk's parameters (FUNC-SPEC §8.7
+// M6): RawBody is the whole, unparsed body — NDJSON or a JSON array — so
+// Huma neither JSON-decodes nor schema-validates it (that would reject
+// NDJSON outright, or reject a JSON array against a binary-string schema —
+// Huma treats a "contentType:application/json" tag on RawBody as a signal
+// to run its own JSON schema validation, which is exactly what must not
+// happen here). The handler checks the real Content-Type header itself and
+// accepts either application/json or application/x-ndjson (FUNC-SPEC §8.2);
+// the OpenAPI doc this produces just says "octet-stream," Huma's generic
+// raw-body type, since RawBody cannot document two content types at once.
+type ProduceBulkInput struct {
+	Name        string `path:"name"`
+	ContentType string `header:"Content-Type"`
+	RawBody     []byte
+}
+
+// TombstoneBody is POST .../tombstones's request body (FUNC-SPEC §8.7 M7).
+// message.TombstoneItem already carries the wire tags.
+type TombstoneInput struct {
+	Name string `path:"name"`
+	Body message.TombstoneItem
+}
+
+// TombstoneResponseBody is M7's response body (FUNC-SPEC §8.7 M7).
+type TombstoneResponseBody struct {
+	Partition int32 `json:"partition"`
+	Offset    int64 `json:"offset"`
+}
+
+// TombstoneOutput wraps TombstoneResponseBody for Huma.
+type TombstoneOutput struct {
+	Body TombstoneResponseBody
 }

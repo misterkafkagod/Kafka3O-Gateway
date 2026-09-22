@@ -1,10 +1,13 @@
 package message
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/scan"
+	"github.com/misterkafkagod/kafka3o/internal/service/message"
 )
 
 // toRecordDTOs converts decoded scan.Record values into the wire shape.
@@ -30,6 +33,34 @@ func toRecordDTOs(records []scan.Record) []RecordDTO {
 		}
 	}
 	return out
+}
+
+// toProduceResponseBody converts the service's message.ProduceResult into
+// the wire bulk envelope (FUNC-SPEC §8.3 Bulk), and reports the HTTP status
+// to use: 200 when every item succeeded, 207 when the outcome is mixed.
+func toProduceResponseBody(r message.ProduceResult) (ProduceResponseBody, int) {
+	items := make([]ProduceItemResultDTO, len(r.Items))
+	for i, item := range r.Items {
+		status := "ok"
+		if item.Outcome != audit.OutcomeSucceeded {
+			status = "failed"
+		}
+		items[i] = ProduceItemResultDTO{
+			Index: item.Index, Status: status,
+			Partition: item.Partition, Offset: item.Offset, TimestampMs: item.TimestampMs,
+			Error: item.Error,
+		}
+	}
+	status := http.StatusOK
+	if r.Summary.Failed > 0 {
+		status = http.StatusMultiStatus
+	}
+	return ProduceResponseBody{
+		Items: items,
+		Summary: BulkSummaryDTO{
+			Total: r.Summary.Total, OK: r.Summary.Succeeded, Failed: r.Summary.Failed,
+		},
+	}, status
 }
 
 // toScanStatsDTO converts the service's scan.Stats into the wire shape,

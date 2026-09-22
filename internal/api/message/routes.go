@@ -1,16 +1,27 @@
 package message
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"mime"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
+	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
 	"github.com/misterkafkagod/kafka3o/internal/scan"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
 )
+
+// maxBulkRequestBytes bounds Huma's own raw-body read for M6 (a safety net
+// against an unbounded read from a broken or malicious client): the
+// service's own, configurable ceiling (FUNC-SPEC §8.8) is what actually
+// produces the documented 413 PAYLOAD_TOO_LARGE response, so this is set
+// generously above any reasonable configured value rather than tied to it.
+const maxBulkRequestBytes = 64 * 1024 * 1024
 
 // commandIDExtension is the x-command-id key every operation carries
 // (TECH-SPEC O5).
@@ -58,6 +69,95 @@ func Register(humaAPI huma.API, svc *message.Service) {
 		Tags:        []string{"Messages"},
 		Extensions:  commandExtension("M4"),
 	}, filterMessages(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "message-produce",
+		Method:      http.MethodPost,
+		Path:        "/v1/topics/{name}/messages",
+		Summary:     "Produce message(s)",
+		Tags:        []string{"Messages"},
+		Extensions:  commandExtension("M5"),
+	}, produceMessages(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID:  "message-produce-bulk",
+		Method:       http.MethodPost,
+		Path:         "/v1/topics/{name}/messages/bulk",
+		Summary:      "Bulk produce from an uploaded NDJSON or JSON-array body",
+		Tags:         []string{"Messages"},
+		Extensions:   commandExtension("M6"),
+		MaxBodyBytes: maxBulkRequestBytes,
+	}, produceBulk(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "message-tombstone",
+		Method:      http.MethodPost,
+		Path:        "/v1/topics/{name}/tombstones",
+		Summary:     "Send a tombstone for a key",
+		Tags:        []string{"Messages"},
+		Extensions:  commandExtension("M7"),
+	}, sendTombstone(svc))
+}
+
+func produceMessages(svc *message.Service) func(context.Context, *ProduceInput) (*ProduceOutput, error) {
+	return func(ctx context.Context, in *ProduceInput) (*ProduceOutput, error) {
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.Produce(ctx, caller, in.Name, in.Body.Records)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		body, status := toProduceResponseBody(result)
+		return &ProduceOutput{Status: status, Body: body}, nil
+	}
+}
+
+func produceBulk(svc *message.Service) func(context.Context, *ProduceBulkInput) (*ProduceOutput, error) {
+	return func(ctx context.Context, in *ProduceBulkInput) (*ProduceOutput, error) {
+		requestID := apierrors.RequestIDFrom(ctx)
+
+		ndjson, err := parseBulkContentType(in.ContentType)
+		if err != nil {
+			return nil, apierrors.UnsupportedMediaType(requestID, in.ContentType)
+		}
+
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.ProduceBulk(ctx, caller, in.Name, bytes.NewReader(in.RawBody), ndjson)
+		if err != nil {
+			return nil, apierrors.Map(err, requestID)
+		}
+		body, status := toProduceResponseBody(result)
+		return &ProduceOutput{Status: status, Body: body}, nil
+	}
+}
+
+// parseBulkContentType reports whether contentType names NDJSON (true),
+// the JSON-array default (false, including an absent Content-Type), or is
+// unsupported (FUNC-SPEC §8.2: only application/json and
+// application/x-ndjson are accepted).
+func parseBulkContentType(contentType string) (ndjson bool, err error) {
+	mt := contentType
+	if parsed, _, perr := mime.ParseMediaType(contentType); perr == nil {
+		mt = parsed
+	}
+	switch mt {
+	case "application/x-ndjson":
+		return true, nil
+	case "application/json", "":
+		return false, nil
+	default:
+		return false, fmt.Errorf("unsupported content type %q", contentType)
+	}
+}
+
+func sendTombstone(svc *message.Service) func(context.Context, *TombstoneInput) (*TombstoneOutput, error) {
+	return func(ctx context.Context, in *TombstoneInput) (*TombstoneOutput, error) {
+		caller, _ := middleware.CallerFrom(ctx)
+		result, err := svc.Tombstone(ctx, caller, in.Name, in.Body)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		return &TombstoneOutput{Body: TombstoneResponseBody{Partition: result.Partition, Offset: result.Offset}}, nil
+	}
 }
 
 func searchMessages(svc *message.Service) func(context.Context, *SearchInput) (*ReadMessagesOutput, error) {

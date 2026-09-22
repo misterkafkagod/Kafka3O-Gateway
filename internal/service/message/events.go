@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"errors"
 
 	"github.com/misterkafkagod/kafka3o/internal/audit"
@@ -64,6 +65,21 @@ func (s *Service) resultEventOutcome(attempt audit.Event, outcome audit.Outcome,
 		result.Error = &audit.EventError{Code: errCode}
 	}
 	return result
+}
+
+// checkGate runs gates.Check for commandID (FUNC-SPEC §9.1 nodes F-K3),
+// before anything else in Produce/ProduceBulk/Tombstone runs. On rejection
+// it emits a single REJECTED RESULT audit event — no ATTEMPT, since the
+// command never ran — and returns the *core.PolicyError.
+func (s *Service) checkGate(ctx context.Context, caller core.Caller, commandID, topic string) error {
+	desc, _ := command.Lookup(commandID)
+	if err := s.runner.Check(caller, desc, s.runner.Policy); err != nil {
+		code, _ := core.CodeOf(err)
+		attempt := s.newEvent(caller, commandID, topic)
+		s.auditor.Result(ctx, s.resultEventOutcome(attempt, audit.OutcomeRejected, code.String()))
+		return err
+	}
+	return nil
 }
 
 // resultEvent derives attempt's RESULT counterpart from a bulk operation's

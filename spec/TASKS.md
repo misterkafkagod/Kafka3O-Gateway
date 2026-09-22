@@ -499,13 +499,13 @@
   - 5.4.2: review-checklist item — the audit-topic settings paragraph exists in `docs/operations.md` (no automated test in TECH §4; accepted at Step 10)
 
 ### Task 5.5: Routes, tests, fuzz, acceptance (M5, M6, M7)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.2, §4.5 (O7, V2, V3), §4.6 (NDJSON fuzz), §4.8
 - **Subtasks:**
-  - [ ] 5.5.1 `POST /v1/topics/{name}/messages`, `POST …/messages/bulk` (`application/x-ndjson` and JSON array; `http.MaxBytesReader`), `POST …/tombstones` — TECH §6.2; FUNC §8.2 content types
-  - [ ] 5.5.2 Component tests: O7 matrix for M5–M7 (reader → 403, no key → 401), ATTEMPT→RESULT ordering, rejection `RESULT` on 403, V2 (`audittest.FailNext(ATTEMPT)` → 503 + zero `MutatingCalls`), V3, 413 — TECH §4.5
-  - [ ] 5.5.3 Fuzz target: NDJSON body parser — TECH §4.6
-  - [ ] 5.5.4 Acceptance tests M5, M6, M7; remove from `pending` — TECH §4.8
+  - [x] 5.5.1 `POST /v1/topics/{name}/messages`, `POST …/messages/bulk` (`application/x-ndjson` and JSON array; `http.MaxBytesReader`), `POST …/tombstones` — TECH §6.2; FUNC §8.2 content types
+  - [x] 5.5.2 Component tests: O7 matrix for M5–M7 (reader → 403, no key → 401), ATTEMPT→RESULT ordering, rejection `RESULT` on 403, V2 (`audittest.FailNext(ATTEMPT)` → 503 + zero `MutatingCalls`), V3, 413 — TECH §4.5
+  - [x] 5.5.3 Fuzz target: NDJSON body parser — TECH §4.6
+  - [x] 5.5.4 Acceptance tests M5, M6, M7; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestAPI_M5M6M7_ReaderIs403TierForbidden`, `TestAPI_M5M6M7_NoKeyIs401` — VC O7
   - `TestAPI_M5_AttemptBeforeProduceBeforeResult` (recording sink + fake call order) — FUNC §8.5

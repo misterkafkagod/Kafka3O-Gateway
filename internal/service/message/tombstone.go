@@ -31,6 +31,9 @@ type TombstoneResult struct {
 // unlike M5/M6, M7 is always exactly one record, so it sequences the two
 // phases directly rather than through core.BulkRun.
 func (s *Service) Tombstone(ctx context.Context, caller core.Caller, topic string, item TombstoneItem) (TombstoneResult, error) {
+	if err := s.checkGate(ctx, caller, "M7", topic); err != nil {
+		return TombstoneResult{}, err
+	}
 	partitionCount, err := s.partitionCount(ctx, topic)
 	if err != nil {
 		return TombstoneResult{}, err

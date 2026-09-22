@@ -11,12 +11,17 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/audit/audittest"
 	"github.com/misterkafkagod/kafka3o/internal/kafka/fake"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
+	"github.com/misterkafkagod/kafka3o/internal/service/gates"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
 )
 
 func newTestAuditor() (*audit.Auditor, *audittest.RecordingSink) {
 	rec := audittest.New()
 	return audit.NewAuditor(rec), rec
+}
+
+func testRunner() core.Runner {
+	return core.Runner{Check: gates.Check}
 }
 
 func testBoundsWithBulkBody(limit int64) message.Bounds {
@@ -30,13 +35,13 @@ func TestMessageService_Produce_SingleObjectAndArrayAccepted(t *testing.T) {
 	f := fake.New()
 	f.SeedTopic("t", 1)
 	auditor, _ := newTestAuditor()
-	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor)
+	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor, testRunner())
 
 	// M5 accepts a single record object or a records[] array (FUNC-SPEC §8.7
 	// M5); that JSON-shape normalisation happens in the API DTO (Task 5.5) —
 	// at the service layer, both already arrive as a []ProduceItem, so a
 	// 1-item slice stands in for "single object" here.
-	single, err := svc.Produce(context.Background(), core.Caller{}, "t", []message.ProduceItem{
+	single, err := svc.Produce(context.Background(), core.Caller{Tier: core.TierOperator}, "t", []message.ProduceItem{
 		{Value: "hello"},
 	})
 	if err != nil {
@@ -46,7 +51,7 @@ func TestMessageService_Produce_SingleObjectAndArrayAccepted(t *testing.T) {
 		t.Fatalf("Produce(single) = %+v, want one SUCCEEDED item", single)
 	}
 
-	array, err := svc.Produce(context.Background(), core.Caller{}, "t", []message.ProduceItem{
+	array, err := svc.Produce(context.Background(), core.Caller{Tier: core.TierOperator}, "t", []message.ProduceItem{
 		{Value: "a"}, {Value: "b"}, {Value: "c"},
 	})
 	if err != nil {
@@ -62,10 +67,10 @@ func TestMessageService_Produce_PartitionOutOfRangeInvalid(t *testing.T) {
 	f := fake.New()
 	f.SeedTopic("t", 2)
 	auditor, rec := newTestAuditor()
-	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor)
+	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor, testRunner())
 
 	outOfRange := int32(99)
-	_, err := svc.Produce(context.Background(), core.Caller{}, "t", []message.ProduceItem{
+	_, err := svc.Produce(context.Background(), core.Caller{Tier: core.TierOperator}, "t", []message.ProduceItem{
 		{Value: "a", Partition: &outOfRange},
 	})
 
@@ -85,10 +90,10 @@ func TestMessageService_Produce_EncodingsApplied(t *testing.T) {
 	f := fake.New()
 	f.SeedTopic("t", 1)
 	auditor, _ := newTestAuditor()
-	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor)
+	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor, testRunner())
 
 	wantValue := []byte{0xDE, 0xAD, 0xBE, 0xEF}
-	result, err := svc.Produce(context.Background(), core.Caller{}, "t", []message.ProduceItem{
+	result, err := svc.Produce(context.Background(), core.Caller{Tier: core.TierOperator}, "t", []message.ProduceItem{
 		{
 			Key: "the-key", KeyEncoding: "string",
 			Value: base64.StdEncoding.EncodeToString(wantValue), ValueEncoding: "base64",
@@ -119,10 +124,10 @@ func TestMessageService_ProduceBulk_NDJSONAndJSONArray(t *testing.T) {
 	f := fake.New()
 	f.SeedTopic("t", 1)
 	auditor, _ := newTestAuditor()
-	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor)
+	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor, testRunner())
 
 	ndjson := strings.NewReader("{\"value\":\"a\"}\n{\"value\":\"b\"}\n")
-	ndjsonResult, err := svc.ProduceBulk(context.Background(), core.Caller{}, "t", ndjson, true)
+	ndjsonResult, err := svc.ProduceBulk(context.Background(), core.Caller{Tier: core.TierOperator}, "t", ndjson, true)
 	if err != nil {
 		t.Fatalf("ProduceBulk(ndjson) error: %v", err)
 	}
@@ -131,7 +136,7 @@ func TestMessageService_ProduceBulk_NDJSONAndJSONArray(t *testing.T) {
 	}
 
 	jsonArray := strings.NewReader(`[{"value":"c"},{"value":"d"},{"value":"e"}]`)
-	arrayResult, err := svc.ProduceBulk(context.Background(), core.Caller{}, "t", jsonArray, false)
+	arrayResult, err := svc.ProduceBulk(context.Background(), core.Caller{Tier: core.TierOperator}, "t", jsonArray, false)
 	if err != nil {
 		t.Fatalf("ProduceBulk(array) error: %v", err)
 	}
@@ -145,10 +150,10 @@ func TestMessageService_ProduceBulk_BodyLimitIs413(t *testing.T) {
 	f := fake.New()
 	f.SeedTopic("t", 1)
 	auditor, rec := newTestAuditor()
-	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(16), auditor)
+	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(16), auditor, testRunner())
 
 	oversized := strings.NewReader(`[{"value":"this body is well over sixteen bytes"}]`)
-	_, err := svc.ProduceBulk(context.Background(), core.Caller{}, "t", oversized, false)
+	_, err := svc.ProduceBulk(context.Background(), core.Caller{Tier: core.TierOperator}, "t", oversized, false)
 
 	if !core.IsCode(err, core.PayloadTooLarge) {
 		t.Fatalf("ProduceBulk(oversized) error = %v, want *core.PolicyError{Code: PayloadTooLarge}", err)
@@ -166,9 +171,9 @@ func TestMessageService_Tombstone_NullValueProduced(t *testing.T) {
 	f := fake.New()
 	f.SeedTopic("t", 1)
 	auditor, rec := newTestAuditor()
-	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor)
+	svc := message.New(f, f, consumerFactory(f), testBoundsWithBulkBody(1<<20), auditor, testRunner())
 
-	result, err := svc.Tombstone(context.Background(), core.Caller{}, "t", message.TombstoneItem{Key: "k1"})
+	result, err := svc.Tombstone(context.Background(), core.Caller{Tier: core.TierOperator}, "t", message.TombstoneItem{Key: "k1"})
 	if err != nil {
 		t.Fatalf("Tombstone() error: %v", err)
 	}

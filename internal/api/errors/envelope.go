@@ -110,6 +110,18 @@ func FromValidation(requestID string, fields []FieldError) *Envelope {
 	}}
 }
 
+// UnsupportedMediaType builds the 415 UNSUPPORTED_MEDIA_TYPE envelope
+// (FUNC-SPEC §8.4) for a request whose Content-Type an endpoint does not
+// accept (M6: neither application/json nor application/x-ndjson).
+func UnsupportedMediaType(requestID, contentType string) *Envelope {
+	return &Envelope{ErrorBody: Body{
+		Code:      "UNSUPPORTED_MEDIA_TYPE",
+		Message:   "unsupported content type: " + contentType,
+		Status:    415,
+		RequestID: requestID,
+	}}
+}
+
 // FromInternal builds the 500 INTERNAL envelope for an error Huma's own
 // machinery raised that isn't a validation failure (FUNC-SPEC §8.4).
 func FromInternal(requestID string, cause error) *Envelope {

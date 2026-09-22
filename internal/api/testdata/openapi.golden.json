@@ -124,6 +124,29 @@
         ],
         "type": "object"
       },
+      "BulkSummaryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "failed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ok": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "ok",
+          "failed"
+        ],
+        "type": "object"
+      },
       "ClusterHealthBody": {
         "additionalProperties": false,
         "properties": {
@@ -639,6 +662,91 @@
         ],
         "type": "object"
       },
+      "ProduceHeader": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueEncoding": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "type": "object"
+      },
+      "ProduceItemResultDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "offset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timestampMs": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "status",
+          "partition",
+          "offset",
+          "timestampMs"
+        ],
+        "type": "object"
+      },
+      "ProduceResponseBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ProduceResponseBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProduceItemResultDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "summary": {
+            "$ref": "#/components/schemas/BulkSummaryDTO"
+          }
+        },
+        "required": [
+          "items",
+          "summary"
+        ],
+        "type": "object"
+      },
       "ReadMessagesBody": {
         "additionalProperties": false,
         "properties": {
@@ -946,6 +1054,70 @@
         "required": [
           "from",
           "regex"
+        ],
+        "type": "object"
+      },
+      "TombstoneItem": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TombstoneItem.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "$ref": "#/components/schemas/ProduceHeader"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "keyEncoding": {
+            "type": "string"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
+      "TombstoneResponseBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TombstoneResponseBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "offset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "partition",
+          "offset"
         ],
         "type": "object"
       },
@@ -1552,6 +1724,117 @@
           "Messages"
         ],
         "x-command-id": "M1"
+      },
+      "post": {
+        "operationId": "message-produce",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProduceResponseBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Produce message(s)",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M5"
+      }
+    },
+    "/v1/topics/{name}/messages/bulk": {
+      "post": {
+        "operationId": "message-produce-bulk",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "contentMediaType": "application/octet-stream",
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProduceResponseBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Bulk produce from an uploaded NDJSON or JSON-array body",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M6"
       }
     },
     "/v1/topics/{name}/messages/filter": {
@@ -1758,6 +2041,58 @@
           "Topics"
         ],
         "x-command-id": "T3"
+      }
+    },
+    "/v1/topics/{name}/tombstones": {
+      "post": {
+        "operationId": "message-tombstone",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TombstoneItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TombstoneResponseBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Send a tombstone for a key",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M7"
       }
     }
   }
