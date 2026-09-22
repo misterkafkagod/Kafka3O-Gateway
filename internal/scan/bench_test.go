@@ -55,3 +55,32 @@ func BenchmarkDecode(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkRegexMatch measures NewRegexMatcher's per-record cost (TECH-SPEC §4.7).
+func BenchmarkRegexMatch(b *testing.B) {
+	m, err := scan.NewRegexMatcher("FAILED", nil, false, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+	record := scan.Record{Value: "2026-01-01T00:00:00Z INFO something happened, not FAILED here"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m(record)
+	}
+}
+
+// BenchmarkJSONPathEval measures NewJSONPathMatcher's per-record cost,
+// including the JSON unmarshal it does on every call (TECH-SPEC §4.7).
+func BenchmarkJSONPathEval(b *testing.B) {
+	m, err := scan.NewJSONPathMatcher("$.status", scan.OpEq, "FAILED")
+	if err != nil {
+		b.Fatal(err)
+	}
+	record := scan.Record{Value: `{"status":"FAILED","code":500,"tags":["a","b","c"]}`}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m(record)
+	}
+}

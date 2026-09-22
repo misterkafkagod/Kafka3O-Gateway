@@ -408,14 +408,14 @@
   - `TestMessageService_Filter_SkippedCountedNotErrored` — FUNC §9.2
 
 ### Task 4.3: Routes, tests, fuzz, benchmarks (M3, M4)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.2, §4.5, §4.6, §4.7, §4.8
 - **Subtasks:**
-  - [ ] 4.3.1 `POST /v1/topics/{name}/messages/search`, `POST /v1/topics/{name}/messages/filter`; DTOs reject `limit` (`VALIDATION_FAILED`) — TECH §6.2; TECH §6.1 B8
-  - [ ] 4.3.2 Component tests: invalid regex/jsonpath → 400, skipped counting, each op through HTTP — TECH §4.5
-  - [ ] 4.3.3 Fuzz target: JSONPath `path` compile never panics — TECH §4.6
-  - [ ] 4.3.4 `BenchmarkRegexMatch`, `BenchmarkJSONPathEval` — TECH §4.7
-  - [ ] 4.3.5 Acceptance tests M3, M4; remove from `pending` — TECH §4.8
+  - [x] 4.3.1 `POST /v1/topics/{name}/messages/search`, `POST /v1/topics/{name}/messages/filter`; DTOs reject `limit` (`VALIDATION_FAILED`) — TECH §6.2; TECH §6.1 B8
+  - [x] 4.3.2 Component tests: invalid regex/jsonpath → 400, skipped counting, each op through HTTP — TECH §4.5
+  - [x] 4.3.3 Fuzz target: JSONPath `path` compile never panics — TECH §4.6
+  - [x] 4.3.4 `BenchmarkRegexMatch`, `BenchmarkJSONPathEval` — TECH §4.7
+  - [x] 4.3.5 Acceptance tests M3, M4; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestAPI_M3_InvalidRegex400`, `TestAPI_M4_InvalidJSONPath400`, `TestAPI_M3M4_LimitRejected400ValidationFailed` — VC O5; TECH §6.1 B8
   - `TestAPI_M3_MatchesAndScanStats`, `TestAPI_M4_EachOpThroughHTTP` (table over the 9 ops), `TestAPI_M4_SkippedReported` — FUNC §8.3 scan envelope

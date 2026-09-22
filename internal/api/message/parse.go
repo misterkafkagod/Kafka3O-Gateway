@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/misterkafkagod/kafka3o/internal/scan"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
 )
 
@@ -49,4 +50,43 @@ func parseTimestamp(raw string) (int64, error) {
 		return 0, fmt.Errorf("invalid timestamp %q: neither epoch milliseconds nor RFC3339", raw)
 	}
 	return t.UnixMilli(), nil
+}
+
+// parseRegexFields converts M3's `fields` strings into scan.RegexField
+// values. An empty list is left as nil — NewRegexMatcher defaults it to
+// []{FieldValue} (FUNC-SPEC §8.7 M3).
+func parseRegexFields(raw []string) ([]scan.RegexField, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	out := make([]scan.RegexField, len(raw))
+	for i, s := range raw {
+		switch s {
+		case "value":
+			out[i] = scan.FieldValue
+		case "key":
+			out[i] = scan.FieldKey
+		case "headers":
+			out[i] = scan.FieldHeaders
+		default:
+			return nil, fmt.Errorf("invalid fields entry %q: want value, key, or headers", s)
+		}
+	}
+	return out, nil
+}
+
+// filterOps maps M4's wire op names onto scan.FilterOp (FUNC-SPEC V4).
+var filterOps = map[string]scan.FilterOp{
+	"eq": scan.OpEq, "neq": scan.OpNeq, "contains": scan.OpContains,
+	"regex": scan.OpRegex, "exists": scan.OpExists,
+	"gt": scan.OpGt, "lt": scan.OpLt, "gte": scan.OpGte, "lte": scan.OpLte,
+}
+
+// parseFilterOp validates and converts one M4 `op` string.
+func parseFilterOp(s string) (scan.FilterOp, error) {
+	op, ok := filterOps[s]
+	if !ok {
+		return "", fmt.Errorf("invalid op %q: want one of eq, neq, contains, regex, exists, gt, lt, gte, lte", s)
+	}
+	return op, nil
 }

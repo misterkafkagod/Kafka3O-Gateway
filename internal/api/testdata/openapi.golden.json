@@ -316,6 +316,78 @@
         ],
         "type": "object"
       },
+      "FilterBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/FilterBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/FilterCriteria"
+          },
+          "format": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "limit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxMatches": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxScan": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxTimeMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "filter"
+        ],
+        "type": "object"
+      },
+      "FilterCriteria": {
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "value": {}
+        },
+        "required": [
+          "path",
+          "op"
+        ],
+        "type": "object"
+      },
       "HeaderDTO": {
         "additionalProperties": false,
         "properties": {
@@ -807,6 +879,73 @@
           "reachedEnd",
           "stoppedBy",
           "continuation"
+        ],
+        "type": "object"
+      },
+      "SearchBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/SearchBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "caseInsensitive": {
+            "type": "boolean"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "format": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "limit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxMatches": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxScan": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxTimeMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "regex": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "regex"
         ],
         "type": "object"
       },
@@ -1413,6 +1552,110 @@
           "Messages"
         ],
         "x-command-id": "M1"
+      }
+    },
+    "/v1/topics/{name}/messages/filter": {
+      "post": {
+        "operationId": "message-filter",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadMessagesBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Filter messages by JSONPath",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M4"
+      }
+    },
+    "/v1/topics/{name}/messages/search": {
+      "post": {
+        "operationId": "message-search",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadMessagesBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Search messages by regex",
+        "tags": [
+          "Messages"
+        ],
+        "x-command-id": "M3"
       }
     },
     "/v1/topics/{name}/partitions/{partition}/messages/{offset}": {

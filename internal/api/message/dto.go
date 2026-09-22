@@ -79,3 +79,56 @@ type GetMessageInput struct {
 type GetMessageOutput struct {
 	Body RecordDTO
 }
+
+// SearchBody is POST .../messages/search's request body (FUNC-SPEC §8.7 M3).
+// Limit is present only so its presence can be rejected with
+// VALIDATION_FAILED (FUNC-SPEC M3/M4 "limit is not accepted"; TECH-SPEC B8).
+type SearchBody struct {
+	Partition       *int32   `json:"partition,omitempty"`
+	From            string   `json:"from"`
+	To              string   `json:"to,omitempty"`
+	Regex           string   `json:"regex"`
+	Fields          []string `json:"fields,omitempty"`
+	CaseInsensitive bool     `json:"caseInsensitive,omitempty"`
+	MaxScan         int      `json:"maxScan,omitempty"`
+	MaxMatches      int      `json:"maxMatches,omitempty"`
+	MaxBytes        int64    `json:"maxBytes,omitempty"`
+	MaxTimeMs       int64    `json:"maxTimeMs,omitempty"`
+	Format          string   `json:"format,omitempty"`
+	Limit           *int     `json:"limit,omitempty"`
+}
+
+// SearchInput is POST .../messages/search's parameters.
+type SearchInput struct {
+	Name string `path:"name"`
+	Body SearchBody
+}
+
+// FilterCriteria is M4's nested `filter` object (FUNC-SPEC V4).
+type FilterCriteria struct {
+	Path  string `json:"path"`
+	Op    string `json:"op"`
+	Value any    `json:"value,omitempty"`
+}
+
+// FilterBody is POST .../messages/filter's request body (FUNC-SPEC §8.7 M4).
+// Limit is present only so its presence can be rejected with
+// VALIDATION_FAILED (FUNC-SPEC M3/M4 "limit is not accepted"; TECH-SPEC B8).
+type FilterBody struct {
+	Partition  *int32         `json:"partition,omitempty"`
+	From       string         `json:"from"`
+	To         string         `json:"to,omitempty"`
+	Filter     FilterCriteria `json:"filter"`
+	MaxScan    int            `json:"maxScan,omitempty"`
+	MaxMatches int            `json:"maxMatches,omitempty"`
+	MaxBytes   int64          `json:"maxBytes,omitempty"`
+	MaxTimeMs  int64          `json:"maxTimeMs,omitempty"`
+	Format     string         `json:"format,omitempty"`
+	Limit      *int           `json:"limit,omitempty"`
+}
+
+// FilterInput is POST .../messages/filter's parameters.
+type FilterInput struct {
+	Name string `path:"name"`
+	Body FilterBody
+}

@@ -83,9 +83,12 @@ func defaultSettings() settings {
 			AuthEnabled: true,
 			PageBounds:  apitopic.PageBounds{Default: 50, Ceiling: 500},
 			MessageBounds: message.Bounds{
-				Limit:    message.Range{Default: 100, Ceiling: 1000},
-				MaxBytes: message.RangeBytes{Default: 10 * 1024 * 1024, Ceiling: 100 * 1024 * 1024},
-				MaxTime:  message.RangeDuration{Default: 10 * time.Second, Ceiling: 60 * time.Second},
+				Limit:        message.Range{Default: 100, Ceiling: 1000},
+				MaxScan:      message.Range{Default: 10000, Ceiling: 100000},
+				MaxMatches:   message.Range{Default: 100, Ceiling: 1000},
+				MaxBytes:     message.RangeBytes{Default: 10 * 1024 * 1024, Ceiling: 100 * 1024 * 1024},
+				MaxTime:      message.RangeDuration{Default: 10 * time.Second, Ceiling: 60 * time.Second},
+				RegexTimeout: 100 * time.Millisecond,
 			},
 		},
 	}
