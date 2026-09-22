@@ -37,6 +37,10 @@ func wRoutes(topic string) map[string]routeFixture {
 		}},
 		"T9":  {http.MethodPatch, "/v1/topics/" + topic + "/config", map[string]any{"confirm": topic, "set": map[string]any{"retention.ms": "60000"}}},
 		"T10": {http.MethodPost, "/v1/topics/" + topic + "/partitions", map[string]any{"confirm": topic, "partitions": 4}},
+		"T7":  {http.MethodDelete, "/v1/topics/" + topic, map[string]any{"confirm": topic}},
+		"T8":  {http.MethodPost, "/v1/batch/topics/delete", map[string]any{"confirm": "irrelevant", "topics": []string{topic + "-t8-missing"}}},
+		"T11": {http.MethodPost, "/v1/topics/" + topic + "/delete-records", map[string]any{"confirm": topic, "offsets": map[string]any{"0": 0}}},
+		"T12": {http.MethodPost, "/v1/topics/" + topic + "/purge", map[string]any{"confirm": topic}},
 	}
 }
 

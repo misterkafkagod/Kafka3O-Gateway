@@ -362,3 +362,172 @@ type AddPartitionsBody struct {
 type AddPartitionsOutput struct {
 	Body AddPartitionsBody
 }
+
+// DeleteTopicRequestBody is DELETE /v1/topics/{name}'s request body
+// (FUNC-SPEC §8.7 T7). Carried in the DELETE body itself (TECH-SPEC R3: some
+// intermediaries strip it — a lost body fails closed as 400
+// CONFIRMATION_MISMATCH, since Confirm then arrives empty).
+type DeleteTopicRequestBody struct {
+	Confirm string `json:"confirm"`
+}
+
+// DeleteTopicInput is DELETE /v1/topics/{name}'s parameters (FUNC-SPEC §8.7
+// T7, §8.2 `?dryRun=true`).
+type DeleteTopicInput struct {
+	Name   string `path:"name"`
+	DryRun bool   `query:"dryRun"`
+	Body   DeleteTopicRequestBody
+}
+
+// DeleteTopicPlanDTO is a dry-run T7's plan (FUNC-SPEC §8.6).
+type DeleteTopicPlanDTO struct {
+	Topic          string `json:"topic"`
+	Partitions     int32  `json:"partitions"`
+	ApproxMessages int64  `json:"approxMessages"`
+}
+
+// DeleteTopicBody is DELETE /v1/topics/{name}'s response body: either the
+// deleted topic's name directly (FUNC-SPEC §8.7 T7), or — when DryRun — the
+// FUNC-SPEC §8.3 dry-run envelope. See CreateTopicBody for why both shapes
+// share one Go type.
+type DeleteTopicBody struct {
+	DryRun  bool                `json:"dryRun,omitempty"`
+	Plan    *DeleteTopicPlanDTO `json:"plan,omitempty"`
+	Deleted string              `json:"deleted,omitempty"`
+}
+
+// DeleteTopicOutput wraps DeleteTopicBody for Huma.
+type DeleteTopicOutput struct {
+	Body DeleteTopicBody
+}
+
+// BulkDeleteRequestBody is POST /v1/batch/topics/delete's request body
+// (FUNC-SPEC §8.7 T8): either an explicit Topics list or a Pattern, never
+// both (internal/service/topic.BulkDelete resolves Pattern first when set).
+// Confirm is the plan token from a prior dry-run (FUNC-SPEC V5) — omitempty
+// so a first dry-run call, which is how that token is discovered, need not
+// (and cannot) supply it; core.Destructive checks it only on the real
+// execute call.
+type BulkDeleteRequestBody struct {
+	Confirm string   `json:"confirm,omitempty"`
+	Topics  []string `json:"topics,omitempty"`
+	Pattern string   `json:"pattern,omitempty"`
+}
+
+// BulkDeleteInput is POST /v1/batch/topics/delete's parameters (FUNC-SPEC
+// §8.7 T8, §8.2 `?dryRun=true`).
+type BulkDeleteInput struct {
+	DryRun bool `query:"dryRun"`
+	Body   BulkDeleteRequestBody
+}
+
+// BulkDeletePlanDTO is a dry-run T8's plan (FUNC-SPEC §8.6, V5): Topics is
+// the resolved, sorted target list, PlanToken the confirmation the next
+// call must echo.
+type BulkDeletePlanDTO struct {
+	Topics    []string `json:"topics"`
+	PlanToken string   `json:"planToken"`
+}
+
+// BulkDeleteBody is POST /v1/batch/topics/delete's response body: either the
+// bulk envelope (FUNC-SPEC §8.7 T8), or — when DryRun — the FUNC-SPEC §8.3
+// dry-run envelope. See CreateTopicBody for why both shapes share one Go type.
+type BulkDeleteBody struct {
+	DryRun  bool                      `json:"dryRun,omitempty"`
+	Plan    *BulkDeletePlanDTO        `json:"plan,omitempty"`
+	Items   []CreateBulkItemResultDTO `json:"items,omitempty"`
+	Summary *TopicBulkSummaryDTO      `json:"summary,omitempty"`
+}
+
+// BulkDeleteOutput wraps BulkDeleteBody for Huma. Status is Huma's
+// dynamic-status-code field: 200 on a dry-run or a clean sweep, 207 when the
+// outcome is mixed (FUNC-SPEC §8.3 Bulk).
+type BulkDeleteOutput struct {
+	Status int
+	Body   BulkDeleteBody
+}
+
+// PartitionDeleteRecordsDetailDTO is one partition's planned truncation
+// (FUNC-SPEC §8.6 T11).
+type PartitionDeleteRecordsDetailDTO struct {
+	Partition             int32 `json:"partition"`
+	BeginOffset           int64 `json:"beginOffset"`
+	TruncateTo            int64 `json:"truncateTo"`
+	ApproxRecordsAffected int64 `json:"approxRecordsAffected"`
+}
+
+// DeleteRecordsPlanDTO is a dry-run T11 or T12's plan (FUNC-SPEC §8.6): T12
+// reuses this same shape with every partition's TruncateTo at its current
+// end offset.
+type DeleteRecordsPlanDTO struct {
+	Topic      string                            `json:"topic"`
+	Partitions []PartitionDeleteRecordsDetailDTO `json:"partitions"`
+}
+
+// PartitionWatermarkDTO is one partition's new begin (low watermark) offset
+// after a delete-records or purge apply (FUNC-SPEC §8.7 T11, T12).
+type PartitionWatermarkDTO struct {
+	ID           int32 `json:"id"`
+	LowWatermark int64 `json:"lowWatermark"`
+}
+
+// DeleteRecordsRequestBody is POST /v1/topics/{name}/delete-records's
+// request body (FUNC-SPEC §8.7 T11). Offsets keys are partition numbers as
+// decimal strings (JSON object keys are always strings) mapping to the
+// truncateTo offset for that partition.
+type DeleteRecordsRequestBody struct {
+	Confirm string           `json:"confirm"`
+	Offsets map[string]int64 `json:"offsets"`
+}
+
+// DeleteRecordsInput is POST /v1/topics/{name}/delete-records's parameters
+// (FUNC-SPEC §8.7 T11, §8.2 `?dryRun=true`).
+type DeleteRecordsInput struct {
+	Name   string `path:"name"`
+	DryRun bool   `query:"dryRun"`
+	Body   DeleteRecordsRequestBody
+}
+
+// DeleteRecordsBody is POST /v1/topics/{name}/delete-records's response
+// body: either the new per-partition low watermarks directly (FUNC-SPEC
+// §8.7 T11), or — when DryRun — the FUNC-SPEC §8.3 dry-run envelope. See
+// CreateTopicBody for why both shapes share one Go type.
+type DeleteRecordsBody struct {
+	DryRun     bool                    `json:"dryRun,omitempty"`
+	Plan       *DeleteRecordsPlanDTO   `json:"plan,omitempty"`
+	Partitions []PartitionWatermarkDTO `json:"partitions,omitempty"`
+}
+
+// DeleteRecordsOutput wraps DeleteRecordsBody for Huma.
+type DeleteRecordsOutput struct {
+	Body DeleteRecordsBody
+}
+
+// PurgeRequestBody is POST /v1/topics/{name}/purge's request body
+// (FUNC-SPEC §8.7 T12).
+type PurgeRequestBody struct {
+	Confirm string `json:"confirm"`
+}
+
+// PurgeInput is POST /v1/topics/{name}/purge's parameters (FUNC-SPEC §8.7
+// T12, §8.2 `?dryRun=true`).
+type PurgeInput struct {
+	Name   string `path:"name"`
+	DryRun bool   `query:"dryRun"`
+	Body   PurgeRequestBody
+}
+
+// PurgeBody is POST /v1/topics/{name}/purge's response body: either the new
+// per-partition low watermarks directly (FUNC-SPEC §8.7 T12), or — when
+// DryRun — the FUNC-SPEC §8.3 dry-run envelope (T11's plan shape). See
+// CreateTopicBody for why both shapes share one Go type.
+type PurgeBody struct {
+	DryRun     bool                    `json:"dryRun,omitempty"`
+	Plan       *DeleteRecordsPlanDTO   `json:"plan,omitempty"`
+	Partitions []PartitionWatermarkDTO `json:"partitions,omitempty"`
+}
+
+// PurgeOutput wraps PurgeBody for Huma.
+type PurgeOutput struct {
+	Body PurgeBody
+}

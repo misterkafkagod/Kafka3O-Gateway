@@ -97,6 +97,30 @@ func TestDestructive_DryRunReturnsPlanWithZeroMutatingCallsAndSingleResultAudit(
 	}
 }
 
+func TestDestructive_DryRunSkipsConfirmCheck(t *testing.T) {
+	t.Parallel()
+	runner, auditor, rec := testDestructiveSetup()
+
+	// Empty confirm, wrong confirm, still a dry-run: FUNC-SPEC V5's plan
+	// token is "returned by dry-run," so a caller cannot supply it in
+	// advance on the call that discovers it — confirm is only checked on
+	// the real execute call (core.Destructive's own doc comment).
+	result, err := core.Destructive(context.Background(), runner, auditor, core.Caller{Tier: core.TierOperator},
+		testDescriptor(), audit.Event{EventID: "e1", CommandID: "T8"}, "", true,
+		func() (testPlan, error) { return testPlan{target: "t8-plan-token"}, nil },
+		func(testPlan) (string, error) { t.Fatal("apply was called during a dry-run"); return "", nil },
+	)
+	if err != nil {
+		t.Fatalf("Destructive() error: %v", err)
+	}
+	if !result.DryRun || result.Plan.target != "t8-plan-token" {
+		t.Fatalf("Destructive() = %+v, want DryRun true, Plan.target t8-plan-token", result)
+	}
+	if events := rec.Events(); len(events) != 1 || events[0].Phase != audit.PhaseResult {
+		t.Fatalf("Events() = %+v, want exactly one RESULT", events)
+	}
+}
+
 func TestDestructive_AttemptThenApplyThenResultSucceeded(t *testing.T) {
 	t.Parallel()
 	runner, auditor, rec := testDestructiveSetup()

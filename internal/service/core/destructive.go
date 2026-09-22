@@ -34,13 +34,23 @@ type Result[P Plan, T any] struct {
 
 // Destructive sequences FUNC-SPEC §9.1's lower half for one destructive
 // command (§5.6): gate check (F1-F3, via gates.Check, reusing CheckAudited's
-// already-tested REJECTED-audit behavior) -> plan -> confirm check -> a
-// dry-run short-circuit (a single INFO RESULT, no ATTEMPT, no apply) ->
-// ATTEMPT (fail-closed, FUNC-SPEC §8.5 V2) -> apply -> RESULT (FAILED on
-// error). It never touches a Kafka port itself — plan and apply are the
-// caller's own closures — so it is the one place every destructive
+// already-tested REJECTED-audit behavior) -> plan -> a dry-run short-circuit
+// (a single INFO RESULT, no confirm check, no ATTEMPT, no apply) -> confirm
+// check -> ATTEMPT (fail-closed, FUNC-SPEC §8.5 V2) -> apply -> RESULT
+// (FAILED on error). It never touches a Kafka port itself — plan and apply
+// are the caller's own closures — so it is the one place every destructive
 // command's confirm/dryRun/audit sequencing lives (TECH-SPEC §2.3, O2), not
 // duplicated per command.
+//
+// dryRun is checked before confirm, not after (FUNC-SPEC §9.1's flowchart
+// draws the opposite order, but that diagram is explicitly non-exhaustive —
+// see its own "Rules not visible in the chart" note — and cannot hold for a
+// plan-token command, T8/C9/C12: FUNC-SPEC V5 defines the token as "returned
+// by dry-run," so a caller cannot possibly supply a correct confirm on the
+// very first dry-run call that discovers it). A dry-run's whole purpose is
+// preview without commitment, so skipping the confirm check there costs
+// nothing for a name-based command either (T7, T9-T12, ...): confirm still
+// gates the one call that actually mutates.
 //
 // attempt is the base audit.Event the caller has already built (EventID,
 // Target, Caller, CommandID, ...), exactly as message.Service.newEvent
@@ -78,15 +88,15 @@ func Destructive[P Plan, T any](
 		return zero, err
 	}
 
-	if confirm != p.ConfirmTarget() {
-		return zero, &PolicyError{Code: ConfirmationMismatch, Details: map[string]any{"plan": p}}
-	}
-
 	attempt.DryRun = dryRun
 
 	if dryRun {
 		auditor.Result(ctx, resultEvent(attempt, audit.OutcomeSucceeded, ""))
 		return Result[P, T]{DryRun: true, Plan: p}, nil
+	}
+
+	if confirm != p.ConfirmTarget() {
+		return zero, &PolicyError{Code: ConfirmationMismatch, Details: map[string]any{"plan": p}}
 	}
 
 	if err := auditor.Attempt(ctx, attempt); err != nil {

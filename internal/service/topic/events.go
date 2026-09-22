@@ -24,11 +24,11 @@ func errCodeOf(err error) string {
 	return "INTERNAL"
 }
 
-// newEvent builds the base audit.Event for one T5/T6/T9/T10 command
-// invocation (FUNC-SPEC §8.5): its ATTEMPT and RESULT (or, for a gate
-// rejection or a dry-run, its one RESULT) share this EventID and Target/
-// Caller/BreakGlass. commandID must name a T5/T6/T9/T10 command.Table
-// entry; topic is "" for T6, which targets many topics at once.
+// newEvent builds the base audit.Event for one T5-T12 command invocation
+// (FUNC-SPEC §8.5): its ATTEMPT and RESULT (or, for a gate rejection or a
+// dry-run, its one RESULT) share this EventID and Target/Caller/BreakGlass.
+// commandID must name a T5-T12 command.Table entry; topic is "" for T6 and
+// T8, which target many topics at once.
 func (s *Service) newEvent(caller core.Caller, commandID, topic string) audit.Event {
 	desc, _ := command.Lookup(commandID)
 
@@ -88,8 +88,8 @@ func (s *Service) resultEvent(attempt audit.Event, summary core.BulkSummary) aud
 // checkGate runs gates.Check for commandID (FUNC-SPEC §9.1 nodes F-K3),
 // before anything else in Create/CreateBulk runs. On rejection it emits a
 // single REJECTED RESULT audit event via core.CheckAudited — no ATTEMPT,
-// since the command never ran — and returns the *core.PolicyError. T9 and
-// T10 (FUNC-SPEC §5.6, destructive) run this same check as part of
+// since the command never ran — and returns the *core.PolicyError. T7-T12
+// (FUNC-SPEC §5.6, destructive) run this same check as part of
 // core.Destructive instead, not via this helper.
 func (s *Service) checkGate(ctx context.Context, caller core.Caller, commandID, topic string) error {
 	desc, _ := command.Lookup(commandID)

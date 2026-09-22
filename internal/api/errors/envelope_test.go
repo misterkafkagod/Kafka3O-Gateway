@@ -3,6 +3,7 @@ package errors
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
@@ -87,6 +88,39 @@ func TestMap_UnmappedKindAndCodeFallBack(t *testing.T) {
 	codeFallback := Map(&core.PolicyError{Code: core.Code(999)}, "req-7")
 	if codeFallback.ErrorBody.Code != "INTERNAL" || codeFallback.GetStatus() != 500 {
 		t.Errorf("Map(unmapped Code) = %+v, want INTERNAL/500", codeFallback.ErrorBody)
+	}
+}
+
+func TestMapDestructive_ConvertsPlanToDTOAndLeavesOtherErrorsAlone(t *testing.T) {
+	t.Parallel()
+
+	type plan struct{ Topic string }
+	type planDTO struct {
+		Topic string `json:"topic"`
+	}
+	toDTO := func(p plan) any { return planDTO{Topic: p.Topic} }
+
+	mismatch := &core.PolicyError{Code: core.ConfirmationMismatch, Details: map[string]any{"plan": plan{Topic: "t-new"}}}
+	env := MapDestructive(mismatch, toDTO, "req-9")
+	if env.ErrorBody.Code != "CONFIRMATION_MISMATCH" {
+		t.Fatalf("code = %q, want CONFIRMATION_MISMATCH", env.ErrorBody.Code)
+	}
+	got, ok := env.ErrorBody.Details["plan"].(planDTO)
+	if !ok || got.Topic != "t-new" {
+		t.Fatalf("details.plan = %v, want the converted DTO", env.ErrorBody.Details["plan"])
+	}
+
+	b, err := json.Marshal(env)
+	if err != nil {
+		t.Fatalf("json.Marshal() error: %v", err)
+	}
+	if !strings.Contains(string(b), `"topic":"t-new"`) {
+		t.Errorf("marshaled envelope = %s, want lower-case \"topic\" key from the DTO's json tag", b)
+	}
+
+	other := &core.PolicyError{Code: core.TierForbidden}
+	if got := MapDestructive[plan](other, toDTO, "req-10"); got.ErrorBody.Code != "TIER_FORBIDDEN" {
+		t.Errorf("MapDestructive(non-mismatch) code = %q, want TIER_FORBIDDEN (untouched)", got.ErrorBody.Code)
 	}
 }
 

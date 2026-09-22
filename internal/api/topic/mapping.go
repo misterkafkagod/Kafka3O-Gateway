@@ -2,6 +2,7 @@ package topic
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
@@ -162,4 +163,79 @@ func toAlterConfigPlanDTO(p topic.AlterConfigPlan) *AlterConfigPlanDTO {
 // wire shape.
 func toAddPartitionsPlanDTO(p topic.AddPartitionsPlan) *AddPartitionsPlanDTO {
 	return &AddPartitionsPlanDTO{Topic: p.Topic, From: p.From, To: p.To, Warning: p.Warning}
+}
+
+// toDeleteTopicPlanDTO converts the service's DeleteTopicPlan into the wire
+// shape.
+func toDeleteTopicPlanDTO(p topic.DeleteTopicPlan) *DeleteTopicPlanDTO {
+	return &DeleteTopicPlanDTO{Topic: p.Topic, Partitions: p.Partitions, ApproxMessages: p.ApproxMessages}
+}
+
+// toBulkDeletePlanDTO converts the service's BulkDeletePlan into the wire
+// shape.
+func toBulkDeletePlanDTO(p topic.BulkDeletePlan) *BulkDeletePlanDTO {
+	return &BulkDeletePlanDTO{Topics: p.Topics, PlanToken: p.PlanToken}
+}
+
+// toBulkDeleteBody converts the service's BulkResult (plus the resolved
+// plan's topic names, since core.BulkItemResult carries none) into the wire
+// bulk envelope (FUNC-SPEC §8.3 Bulk), and reports the HTTP status: 200 when
+// every item succeeded, 207 when the outcome is mixed.
+func toBulkDeleteBody(topics []string, r core.BulkResult) (BulkDeleteBody, int) {
+	items := make([]CreateBulkItemResultDTO, len(r.Items))
+	for i, item := range r.Items {
+		status := "ok"
+		if item.Outcome != audit.OutcomeSucceeded {
+			status = "failed"
+		}
+		name := ""
+		if item.Index < len(topics) {
+			name = topics[item.Index]
+		}
+		items[i] = CreateBulkItemResultDTO{Index: item.Index, Status: status, Name: name, Error: item.Error}
+	}
+	status := http.StatusOK
+	if r.Summary.Failed > 0 {
+		status = http.StatusMultiStatus
+	}
+	summary := TopicBulkSummaryDTO{Total: r.Summary.Total, OK: r.Summary.Succeeded, Failed: r.Summary.Failed}
+	return BulkDeleteBody{Items: items, Summary: &summary}, status
+}
+
+// toDeleteRecordsPlanDTO converts the service's DeleteRecordsPlan into the
+// wire shape (T11 and T12 share this shape).
+func toDeleteRecordsPlanDTO(p topic.DeleteRecordsPlan) *DeleteRecordsPlanDTO {
+	partitions := make([]PartitionDeleteRecordsDetailDTO, len(p.Partitions))
+	for i, d := range p.Partitions {
+		partitions[i] = PartitionDeleteRecordsDetailDTO{
+			Partition: d.Partition, BeginOffset: d.BeginOffset, TruncateTo: d.TruncateTo, ApproxRecordsAffected: d.ApproxRecordsAffected,
+		}
+	}
+	return &DeleteRecordsPlanDTO{Topic: p.Topic, Partitions: partitions}
+}
+
+// toPartitionWatermarkDTOs converts the service's PartitionWatermark slice
+// into the wire shape (T11 and T12 share this shape).
+func toPartitionWatermarkDTOs(ps []topic.PartitionWatermark) []PartitionWatermarkDTO {
+	out := make([]PartitionWatermarkDTO, len(ps))
+	for i, p := range ps {
+		out[i] = PartitionWatermarkDTO{ID: p.ID, LowWatermark: p.LowWatermark}
+	}
+	return out
+}
+
+// toOffsetsMap converts T11's request body offsets (partition numbers as
+// JSON-object string keys) into the port's map[int32]int64, rejecting a
+// non-integer key as *core.PolicyError{Code: Validation} (400
+// VALIDATION_FAILED — the manual test plan's malformed-key case).
+func toOffsetsMap(offsets map[string]int64) (map[int32]int64, error) {
+	out := make(map[int32]int64, len(offsets))
+	for key, truncateTo := range offsets {
+		partition, err := strconv.ParseInt(key, 10, 32)
+		if err != nil {
+			return nil, &core.PolicyError{Code: core.Validation, Message: "offsets key " + key + " is not a partition number"}
+		}
+		out[int32(partition)] = truncateTo
+	}
+	return out, nil
 }

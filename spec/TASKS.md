@@ -685,13 +685,13 @@
   - `porttest` cases `Admin_DeleteTopics_RemovesTopic`, `Admin_DeleteTopics_MissingIsNotFound`, `Admin_DeleteRecords_RaisesBeginOffset`, `Admin_DeleteRecords_BeyondEndIsError` — TECH L2
 
 ### Task 9.3: Topic service, routes, tests, acceptance (T7, T8, T11, T12)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.6 (T7, T8, T11, T12 rows), §8.7, V6 (HIGH), §8.2 `?pattern=`; TECH §6.2, §4.5 (O8, V6)
 - **Subtasks:**
-  - [ ] 9.3.1 `topic.Service`: `PlanDelete`/`ApplyDelete` (404 if missing), `PlanBulkDelete`/`Apply` (list or regex → resolved sorted topics + token; stale token → `ConfirmationMismatch` with fresh plan in `details`), `PlanDeleteRecords`/`Apply` (per partition `beginOffset`, `truncateTo`, `approxRecordsAffected`; `truncateTo ≤ end`), `PlanPurge`/`Apply` (= delete-records at end offsets) — FUNC §8.6
-  - [ ] 9.3.2 Routes: `DELETE /v1/topics/{name}` (JSON body), `POST /v1/batch/topics/delete`, `POST /v1/topics/{name}/delete-records`, `POST /v1/topics/{name}/purge` — TECH §6.2, R3 note in OpenAPI descriptions
-  - [ ] 9.3.3 Component tests: O8 rows incl. stale token, V6 HIGH on T7/T8/T11/T12, bulk 200/207 — TECH §4.5
-  - [ ] 9.3.4 Acceptance tests T7, T8, T11, T12; remove from `pending` — TECH §4.8
+  - [x] 9.3.1 `topic.Service`: `PlanDelete`/`ApplyDelete` (404 if missing), `PlanBulkDelete`/`Apply` (list or regex → resolved sorted topics + token; stale token → `ConfirmationMismatch` with fresh plan in `details`), `PlanDeleteRecords`/`Apply` (per partition `beginOffset`, `truncateTo`, `approxRecordsAffected`; `truncateTo ≤ end`), `PlanPurge`/`Apply` (= delete-records at end offsets) — FUNC §8.6
+  - [x] 9.3.2 Routes: `DELETE /v1/topics/{name}` (JSON body), `POST /v1/batch/topics/delete`, `POST /v1/topics/{name}/delete-records`, `POST /v1/topics/{name}/purge` — TECH §6.2, R3 note in OpenAPI descriptions
+  - [x] 9.3.3 Component tests: O8 rows incl. stale token, V6 HIGH on T7/T8/T11/T12, bulk 200/207 — TECH §4.5
+  - [x] 9.3.4 Acceptance tests T7, T8, T11, T12; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestTopicService_Delete_MissingIsNotFound`, `TestTopicService_Delete_PlanApproxMessages` — FUNC §8.6 T7
   - `TestTopicService_BulkDelete_PatternResolvesSortedTopics`, `TestTopicService_BulkDelete_ListMode`, `TestTopicService_BulkDelete_StaleTokenMismatchCarriesFreshPlan` — FUNC §8.6 T8, V5

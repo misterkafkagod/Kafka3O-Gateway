@@ -94,6 +94,27 @@ func Map(err error, requestID string) *Envelope {
 	return FromInternal(requestID, err)
 }
 
+// MapDestructive is Map for the result of a core.Destructive-based command
+// (T7-T12, and later G4-G7, C5, C9, C12, S1, S2): a *core.PolicyError{Code:
+// ConfirmationMismatch}'s Details["plan"] carries the fresh plan as a raw
+// service-layer value (TECH-SPEC I5: those carry no wire tags), so it would
+// otherwise serialize with Go field-name casing instead of the documented
+// wire shape. core.Destructive itself cannot fix this — it is generic over
+// the plan type and has no notion of a wire DTO — so every call site
+// converts it here via toDTO before rendering. Every other error is
+// unaffected.
+func MapDestructive[P any](err error, toDTO func(P) any, requestID string) *Envelope {
+	var pe *core.PolicyError
+	if errors.As(err, &pe) && pe.Code == core.ConfirmationMismatch {
+		if plan, ok := pe.Details["plan"].(P); ok {
+			fresh := *pe
+			fresh.Details = map[string]any{"plan": toDTO(plan)}
+			return Map(&fresh, requestID)
+		}
+	}
+	return Map(err, requestID)
+}
+
 // FromValidation builds the 400 VALIDATION_FAILED envelope Huma's own
 // request validation produces (FUNC-SPEC §8.3, §8.4).
 func FromValidation(requestID string, fields []FieldError) *Envelope {

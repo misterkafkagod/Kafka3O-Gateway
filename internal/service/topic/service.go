@@ -1,5 +1,5 @@
-// Package topic implements the topic commands (FUNC-SPEC §8.7 T1-T6, T9,
-// T10). Service holds only kafka.Admin (TECH-SPEC I2).
+// Package topic implements the topic commands (FUNC-SPEC §8.7 T1-T12).
+// Service holds only kafka.Admin (TECH-SPEC I2).
 package topic
 
 import (
@@ -16,15 +16,15 @@ import (
 // Service implements the topic commands over a kafka.Admin.
 type Service struct {
 	admin kafka.Admin
-	// auditor records T5, T6, T9, T10's ATTEMPT/RESULT audit trail
-	// (FUNC-SPEC §8.5) — T1-T4 are reads and stay unaudited (FUNC-SPEC §8.5
-	// scope).
+	// auditor records T5, T6, T7, T8, T9, T10, T11, T12's ATTEMPT/RESULT
+	// audit trail (FUNC-SPEC §8.5) — T1-T4 are reads and stay unaudited
+	// (FUNC-SPEC §8.5 scope).
 	auditor    *audit.Auditor
 	newEventID func() string
 	now        func() time.Time
-	// runner gates T5, T6, T9, T10 (FUNC-SPEC §9.1 nodes F-K3): an
-	// operator-only caller, plus (for T9, T10, both in FUNC-SPEC §5.6) F3's
-	// per-operation switch.
+	// runner gates T5-T12 (FUNC-SPEC §9.1 nodes F-K3): an operator-only
+	// caller, plus (for T7-T12, all in FUNC-SPEC §5.6) F3's per-operation
+	// switch.
 	runner core.Runner
 }
 
