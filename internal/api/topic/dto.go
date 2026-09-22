@@ -153,3 +153,38 @@ type TopicCountBody struct {
 type TopicCountOutput struct {
 	Body TopicCountBody
 }
+
+// TopicConsumerGroupsInput identifies the topic to find consumer groups for
+// (FUNC-SPEC §8.7 G3).
+type TopicConsumerGroupsInput struct {
+	Name string `path:"name"`
+}
+
+// GroupPartitionLagDTO is one partition of one group's consumption of the
+// topic (FUNC-SPEC §8.7 G3).
+type GroupPartitionLagDTO struct {
+	Partition int32 `json:"partition"`
+	Committed int64 `json:"committed"`
+	End       int64 `json:"end"`
+	Lag       int64 `json:"lag"`
+}
+
+// TopicConsumerGroupDTO is one group consuming the topic (FUNC-SPEC §8.7 G3).
+type TopicConsumerGroupDTO struct {
+	GroupID    string                 `json:"groupId"`
+	State      string                 `json:"state"`
+	TotalLag   int64                  `json:"totalLag"`
+	Partitions []GroupPartitionLagDTO `json:"partitions"`
+}
+
+// TopicConsumerGroupsBody is GET /v1/topics/{name}/consumer-groups's response
+// body (FUNC-SPEC §8.7 G3).
+type TopicConsumerGroupsBody struct {
+	Topic  string                  `json:"topic"`
+	Groups []TopicConsumerGroupDTO `json:"groups"`
+}
+
+// TopicConsumerGroupsOutput wraps TopicConsumerGroupsBody for Huma.
+type TopicConsumerGroupsOutput struct {
+	Body TopicConsumerGroupsBody
+}

@@ -9,6 +9,7 @@ import (
 
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
+	"github.com/misterkafkagod/kafka3o/internal/service/group"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 )
 
@@ -20,10 +21,11 @@ func commandExtension(id string) map[string]any {
 	return map[string]any{commandIDExtension: id}
 }
 
-// Register wires the topic commands onto humaAPI (FUNC-SPEC §8.7 T1-T4;
-// TECH-SPEC §6.2). pageBounds is the configured ?pageSize= default and
-// ceiling (FUNC-SPEC §8.8).
-func Register(humaAPI huma.API, svc *topic.Service, pageBounds PageBounds) {
+// Register wires the topic commands onto humaAPI, plus G3 (FUNC-SPEC §8.7
+// T1-T4, G3; TECH-SPEC §6.2: G3 lives on the topics path even though its
+// service method, groupSvc.ConsumersOfTopic, belongs to the group service).
+// pageBounds is the configured ?pageSize= default and ceiling (FUNC-SPEC §8.8).
+func Register(humaAPI huma.API, svc *topic.Service, groupSvc *group.Service, pageBounds PageBounds) {
 	huma.Register(humaAPI, huma.Operation{
 		OperationID: "topic-list",
 		Method:      http.MethodGet,
@@ -59,6 +61,15 @@ func Register(humaAPI huma.API, svc *topic.Service, pageBounds PageBounds) {
 		Tags:        []string{"Topics"},
 		Extensions:  commandExtension("T4"),
 	}, topicCount(svc))
+
+	huma.Register(humaAPI, huma.Operation{
+		OperationID: "topic-consumer-groups",
+		Method:      http.MethodGet,
+		Path:        "/v1/topics/{name}/consumer-groups",
+		Summary:     "Consumer groups for a topic",
+		Tags:        []string{"Topics"},
+		Extensions:  commandExtension("G3"),
+	}, topicConsumerGroups(groupSvc))
 }
 
 func listTopics(svc *topic.Service, bounds PageBounds) func(context.Context, *ListTopicsInput) (*ListTopicsOutput, error) {
@@ -128,5 +139,15 @@ func topicCount(svc *topic.Service) func(context.Context, *TopicCountInput) (*To
 			return nil, apierrors.Map(err, requestID)
 		}
 		return &TopicCountOutput{Body: toCountBody(c, in.From, in.To)}, nil
+	}
+}
+
+func topicConsumerGroups(groupSvc *group.Service) func(context.Context, *TopicConsumerGroupsInput) (*TopicConsumerGroupsOutput, error) {
+	return func(ctx context.Context, in *TopicConsumerGroupsInput) (*TopicConsumerGroupsOutput, error) {
+		groups, err := groupSvc.ConsumersOfTopic(ctx, in.Name)
+		if err != nil {
+			return nil, apierrors.Map(err, apierrors.RequestIDFrom(ctx))
+		}
+		return &TopicConsumerGroupsOutput{Body: toTopicConsumerGroupsBody(in.Name, groups)}, nil
 	}
 }

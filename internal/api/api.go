@@ -17,6 +17,7 @@ import (
 
 	apicluster "github.com/misterkafkagod/kafka3o/internal/api/cluster"
 	apierrors "github.com/misterkafkagod/kafka3o/internal/api/errors"
+	apigroup "github.com/misterkafkagod/kafka3o/internal/api/group"
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
 	apimessage "github.com/misterkafkagod/kafka3o/internal/api/message"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
@@ -26,6 +27,7 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/service/cluster"
 	"github.com/misterkafkagod/kafka3o/internal/service/core"
 	"github.com/misterkafkagod/kafka3o/internal/service/gates"
+	"github.com/misterkafkagod/kafka3o/internal/service/group"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
@@ -88,7 +90,10 @@ func New(deps Deps) http.Handler {
 	humaAPI := humago.New(mux, config)
 	registerHealth(humaAPI, deps)
 	apicluster.Register(humaAPI, cluster.New(deps.Admin))
-	apitopic.Register(humaAPI, topic.New(deps.Admin), deps.PageBounds)
+	groupSvc := group.New(deps.Admin)
+	groupPageBounds := apigroup.PageBounds{Default: deps.PageBounds.Default, Ceiling: deps.PageBounds.Ceiling}
+	apitopic.Register(humaAPI, topic.New(deps.Admin), groupSvc, deps.PageBounds)
+	apigroup.Register(humaAPI, groupSvc, groupPageBounds)
 	runner := core.Runner{Policy: deps.Policy, Check: gates.Check}
 	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor, runner))
 

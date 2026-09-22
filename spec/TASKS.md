@@ -585,12 +585,12 @@
   - `porttest` cases `Admin_ListGroups_StateAndMemberCount`, `Admin_DescribeGroups_MissingIsNotFound`, `Admin_FetchGroupOffsets_PerPartition` — TECH L2
 
 ### Task 7.2: Group service, routes, tests, acceptance (G1–G3)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 G1–G3, X3; TECH §6.2, S2, I2 (`Admin` only)
 - **Subtasks:**
-  - [ ] 7.2.1 `internal/service/group/service.go`: `List` (state filter, paging by id), `Describe` (lag = end − committed per partition, `totalLag`), `ConsumersOfTopic` — FUNC §8.7
-  - [ ] 7.2.2 `internal/api/group/routes.go`: `GET /v1/consumer-groups`, `GET /v1/consumer-groups/{groupId}`; `api/topic`: `GET /v1/topics/{name}/consumer-groups` — TECH §6.2
-  - [ ] 7.2.3 Component tests (pagination, 404, `AssertNoGroupJoin`), acceptance G1–G3; remove from `pending` — TECH §4.5, §4.8
+  - [x] 7.2.1 `internal/service/group/service.go`: `List` (state filter, paging by id), `Describe` (lag = end − committed per partition, `totalLag`), `ConsumersOfTopic` — FUNC §8.7
+  - [x] 7.2.2 `internal/api/group/routes.go`: `GET /v1/consumer-groups`, `GET /v1/consumer-groups/{groupId}`; `api/topic`: `GET /v1/topics/{name}/consumer-groups` — TECH §6.2
+  - [x] 7.2.3 Component tests (pagination, 404, `AssertNoGroupJoin`), acceptance G1–G3; remove from `pending` — TECH §4.5, §4.8
 - **Tests (Definition of Done):**
   - `TestGroupService_Describe_LagIsEndMinusCommittedAndTotal`, `TestGroupService_List_StateFilterAndStablePaging`, `TestGroupService_ConsumersOfTopic_ReverseLookup` — FUNC §8.7 G1–G3; 4.5 Pagination
   - `TestAPI_G1_PaginationEnvelope`, `TestAPI_G2_404Envelope`, `TestAPI_G3_GroupsForTopic`, `TestAPI_Groups_NoGroupJoinNoCommits` — VC O4, O5

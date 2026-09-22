@@ -258,6 +258,61 @@
         ],
         "type": "object"
       },
+      "DescribeGroupBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/DescribeGroupBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "coordinatorId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/GroupMemberDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "offsets": {
+            "items": {
+              "$ref": "#/components/schemas/GroupOffsetDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string"
+          },
+          "totalLag": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "groupId",
+          "state",
+          "coordinatorId",
+          "members",
+          "offsets",
+          "totalLag"
+        ],
+        "type": "object"
+      },
       "DescribeTopicBody": {
         "additionalProperties": false,
         "properties": {
@@ -411,6 +466,144 @@
         ],
         "type": "object"
       },
+      "GroupMemberDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/MemberAssignmentDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "memberId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "memberId",
+          "clientId",
+          "host",
+          "assignments"
+        ],
+        "type": "object"
+      },
+      "GroupOffsetDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "committed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "end": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lag": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "committed",
+          "end",
+          "lag"
+        ],
+        "type": "object"
+      },
+      "GroupPageDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "type": "object"
+      },
+      "GroupPartitionLagDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "committed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "end": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lag": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "partition",
+          "committed",
+          "end",
+          "lag"
+        ],
+        "type": "object"
+      },
+      "GroupSummaryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "memberCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "protocolType": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupId",
+          "state",
+          "protocolType",
+          "memberCount"
+        ],
+        "type": "object"
+      },
       "HeaderDTO": {
         "additionalProperties": false,
         "properties": {
@@ -445,6 +638,37 @@
         "required": [
           "code",
           "name"
+        ],
+        "type": "object"
+      },
+      "ListGroupsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ListGroupsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GroupSummaryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "page": {
+            "$ref": "#/components/schemas/GroupPageDTO"
+          }
+        },
+        "required": [
+          "items",
+          "page"
         ],
         "type": "object"
       },
@@ -497,6 +721,23 @@
         },
         "required": [
           "status"
+        ],
+        "type": "object"
+      },
+      "MemberAssignmentDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition"
         ],
         "type": "object"
       },
@@ -1152,6 +1393,68 @@
         ],
         "type": "object"
       },
+      "TopicConsumerGroupDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "partitions": {
+            "items": {
+              "$ref": "#/components/schemas/GroupPartitionLagDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string"
+          },
+          "totalLag": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "groupId",
+          "state",
+          "totalLag",
+          "partitions"
+        ],
+        "type": "object"
+      },
+      "TopicConsumerGroupsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TopicConsumerGroupsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TopicConsumerGroupDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "groups"
+        ],
+        "type": "object"
+      },
       "TopicCountBody": {
         "additionalProperties": false,
         "properties": {
@@ -1386,6 +1689,110 @@
         "x-command-id": "C4"
       }
     },
+    "/v1/consumer-groups": {
+      "get": {
+        "operationId": "group-list",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListGroupsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List consumer groups",
+        "tags": [
+          "Consumer Groups"
+        ],
+        "x-command-id": "G1"
+      }
+    },
+    "/v1/consumer-groups/{groupId}": {
+      "get": {
+        "operationId": "group-describe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescribeGroupBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Describe a consumer group",
+        "tags": [
+          "Consumer Groups"
+        ],
+        "x-command-id": "G2"
+      }
+    },
     "/v1/health/live": {
       "get": {
         "operationId": "health-live",
@@ -1560,6 +1967,48 @@
           "Topics"
         ],
         "x-command-id": "T2"
+      }
+    },
+    "/v1/topics/{name}/consumer-groups": {
+      "get": {
+        "operationId": "topic-consumer-groups",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicConsumerGroupsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Consumer groups for a topic",
+        "tags": [
+          "Topics"
+        ],
+        "x-command-id": "G3"
       }
     },
     "/v1/topics/{name}/count": {

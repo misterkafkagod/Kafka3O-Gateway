@@ -2,6 +2,7 @@ package topic
 
 import (
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
+	"github.com/misterkafkagod/kafka3o/internal/service/group"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 )
 
@@ -86,4 +87,18 @@ func toCountBody(c topic.Count, from, to string) TopicCountBody {
 		partitions[i] = PartitionCountDTO{ID: p.ID, FromOffset: p.FromOffset, ToOffset: p.ToOffset, Count: p.Count}
 	}
 	return TopicCountBody{Topic: c.Topic, From: from, To: to, Total: c.Total, Partitions: partitions}
+}
+
+// toTopicConsumerGroupsBody converts the group service's reverse-lookup
+// result into the wire shape (FUNC-SPEC §8.7 G3).
+func toTopicConsumerGroupsBody(topicName string, groups []group.TopicGroup) TopicConsumerGroupsBody {
+	out := make([]TopicConsumerGroupDTO, len(groups))
+	for i, g := range groups {
+		partitions := make([]GroupPartitionLagDTO, len(g.Partitions))
+		for j, p := range g.Partitions {
+			partitions[j] = GroupPartitionLagDTO{Partition: p.Partition, Committed: p.Committed, End: p.End, Lag: p.Lag}
+		}
+		out[i] = TopicConsumerGroupDTO{GroupID: g.GroupID, State: g.State, TotalLag: g.TotalLag, Partitions: partitions}
+	}
+	return TopicConsumerGroupsBody{Topic: topicName, Groups: out}
 }
