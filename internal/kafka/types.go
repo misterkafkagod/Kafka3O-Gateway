@@ -86,6 +86,15 @@ type GroupMember struct {
 	Assignments []TopicPartition
 }
 
+// GroupSummary is one row of a consumer-group listing (FUNC-SPEC §8.7 G1):
+// cheaper than Group, since it never fetches per-member assignment detail.
+type GroupSummary struct {
+	ID           string
+	State        string
+	ProtocolType string
+	MemberCount  int
+}
+
 // ConfigSource is the normalised origin of a configuration value
 // (FUNC-SPEC §5.1 T2: default / static / dynamic).
 type ConfigSource string

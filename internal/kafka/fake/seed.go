@@ -137,26 +137,52 @@ func (f *Fake) SeedCompactAway(topic string, partition int32, beforeOffset int64
 	p.beginOffset = beforeOffset
 }
 
-// GroupOffset is one committed offset seeded onto a consumer group.
-type GroupOffset struct {
-	Topic     string
-	Partition int32
-	Offset    int64
-}
-
 // SeedGroup creates a consumer group with the given committed offsets and no
-// members (TECH-SPEC §4.3 Seeding row).
-func (f *Fake) SeedGroup(id string, offsets ...GroupOffset) {
+// members (TECH-SPEC §4.3 Seeding row). offsets uses the port's own
+// kafka.TopicPartition (rather than a fake-local type) so
+// internal/kafka/porttest can declare a seeding capability interface for it
+// without importing this package. Its state defaults to "Empty" and its
+// protocol type to "consumer"; SeedGroupMeta overrides either, and
+// SeedGroupMember adds a live member (Task 7.1 G1, G2).
+func (f *Fake) SeedGroup(id string, offsets map[kafka.TopicPartition]int64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	g := &fakeGroup{id: id, state: "Empty", offsets: map[kafka.TopicPartition]int64{}}
-	for _, o := range offsets {
-		g.offsets[kafka.TopicPartition{Topic: o.Topic, Partition: o.Partition}] = o.Offset
+	g := &fakeGroup{id: id, state: "Empty", protocolType: "consumer", offsets: map[kafka.TopicPartition]int64{}}
+	for tp, offset := range offsets {
+		g.offsets[tp] = offset
 	}
 
 	if f.model.groups == nil {
 		f.model.groups = map[string]*fakeGroup{}
 	}
 	f.model.groups[id] = g
+}
+
+// SeedGroupMeta sets an already-seeded group's state, protocol type, and
+// coordinator broker id. It must be called after SeedGroup creates the group
+// (Task 7.1 G1, G2).
+func (f *Fake) SeedGroupMeta(id, state, protocolType string, coordinatorID int32) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	g := f.model.groups[id]
+	if g == nil {
+		return
+	}
+	g.state = state
+	g.protocolType = protocolType
+	g.coordinatorID = coordinatorID
+}
+
+// SeedGroupMember adds one live member and its assigned topic-partitions to
+// an already-seeded group. It must be called after SeedGroup creates the
+// group (Task 7.1 G2).
+func (f *Fake) SeedGroupMember(id string, member kafka.GroupMember) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	g := f.model.groups[id]
+	if g == nil {
+		return
+	}
+	g.members = append(g.members, member)
 }

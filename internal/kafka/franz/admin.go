@@ -189,6 +189,127 @@ func (c *Client) DescribeLogDirs(ctx context.Context, topic string) ([]kafka.Log
 	return out, nil
 }
 
+// ListGroups returns every consumer group's state, protocol type, and
+// member count (FUNC-SPEC §8.7 G1): kadm.ListGroups first, for cheap
+// server-side state filtering, then kadm.DescribeGroups over exactly that
+// filtered set for each group's member count (ListGroups' own response
+// carries no member count).
+func (c *Client) ListGroups(ctx context.Context, states ...string) ([]kafka.GroupSummary, error) {
+	listed, err := c.kadm.ListGroups(ctx, states...)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+	if len(listed) == 0 {
+		return nil, nil
+	}
+
+	described, err := c.kadm.DescribeGroups(ctx, listed.Groups()...)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	out := make([]kafka.GroupSummary, 0, len(listed))
+	for _, g := range listed.Sorted() {
+		memberCount := 0
+		if d, ok := described[g.Group]; ok && d.Err == nil {
+			memberCount = len(d.Members)
+		}
+		out = append(out, kafka.GroupSummary{
+			ID: g.Group, State: g.State, ProtocolType: g.ProtocolType, MemberCount: memberCount,
+		})
+	}
+	return out, nil
+}
+
+// DescribeGroups returns full detail for groupIDs, or every group in the
+// cluster when groupIDs is empty, via kadm.DescribeGroups (FUNC-SPEC §8.7
+// G2, G3). Given explicit ids, any missing or errored one fails the whole
+// call as NotFound; given none, a group kadm reports an error for is
+// silently omitted from the best-effort sweep.
+func (c *Client) DescribeGroups(ctx context.Context, groupIDs ...string) ([]kafka.Group, error) {
+	described, err := c.kadm.DescribeGroups(ctx, groupIDs...)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	if len(groupIDs) > 0 {
+		out := make([]kafka.Group, len(groupIDs))
+		for i, id := range groupIDs {
+			d, err := described.On(id, nil)
+			if err != nil {
+				return nil, wrapErr("group", err)
+			}
+			if d.Err != nil {
+				return nil, wrapErr("group", d.Err)
+			}
+			out[i] = toDomainGroup(d)
+		}
+		return out, nil
+	}
+
+	out := make([]kafka.Group, 0, len(described))
+	for _, d := range described.Sorted() {
+		if d.Err != nil {
+			continue
+		}
+		out = append(out, toDomainGroup(d))
+	}
+	return out, nil
+}
+
+// FetchGroupOffsets returns groupID's committed offset per topic partition
+// (FUNC-SPEC §8.7 G2 offsets[], G3 lag): kadm.DescribeGroups first, since
+// kadm.FetchOffsets alone does not distinguish an unknown group from one
+// with no committed offsets yet, then kadm.FetchOffsets for the values.
+func (c *Client) FetchGroupOffsets(ctx context.Context, groupID string) (map[kafka.TopicPartition]int64, error) {
+	described, err := c.kadm.DescribeGroups(ctx, groupID)
+	if err != nil {
+		return nil, wrapErr("group", err)
+	}
+	if _, err := described.On(groupID, nil); err != nil {
+		return nil, wrapErr("group", err)
+	}
+
+	responses, err := c.kadm.FetchOffsets(ctx, groupID)
+	if err != nil {
+		return nil, wrapErr("group", err)
+	}
+	out := make(map[kafka.TopicPartition]int64)
+	for topic, partitions := range responses {
+		for partition, o := range partitions {
+			if o.Err != nil {
+				continue
+			}
+			out[kafka.TopicPartition{Topic: topic, Partition: partition}] = o.At
+		}
+	}
+	return out, nil
+}
+
+// toDomainGroup converts a kadm.DescribedGroup into the port's Group shape,
+// extracting each member's assigned topic-partitions from its consumer
+// assignment (kmsg.ConsumerMemberAssignment) when present.
+func toDomainGroup(d kadm.DescribedGroup) kafka.Group {
+	members := make([]kafka.GroupMember, len(d.Members))
+	for i, m := range d.Members {
+		var assignments []kafka.TopicPartition
+		if consumer, ok := m.Assigned.AsConsumer(); ok {
+			for _, t := range consumer.Topics {
+				for _, p := range t.Partitions {
+					assignments = append(assignments, kafka.TopicPartition{Topic: t.Topic, Partition: p})
+				}
+			}
+		}
+		members[i] = kafka.GroupMember{
+			MemberID: m.MemberID, ClientID: m.ClientID, Host: m.ClientHost, Assignments: assignments,
+		}
+	}
+	return kafka.Group{
+		ID: d.Group, State: d.State, ProtocolType: d.ProtocolType,
+		CoordinatorID: d.Coordinator.NodeID, Members: members,
+	}
+}
+
 // toDomainBroker converts one kadm broker into the port's Broker shape.
 func toDomainBroker(b kadm.BrokerDetail) kafka.Broker {
 	var rack string

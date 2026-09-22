@@ -44,6 +44,25 @@ type Admin interface {
 	// DescribeLogDirs returns per-partition, per-replica on-disk byte sizes
 	// for one topic (T3).
 	DescribeLogDirs(ctx context.Context, topic string) ([]LogDirReplica, error)
+
+	// ListGroups returns every consumer group's state, protocol type, and
+	// member count, optionally filtered to the given states — an empty
+	// states filters nothing (G1).
+	ListGroups(ctx context.Context, states ...string) ([]GroupSummary, error)
+
+	// DescribeGroups returns full detail — members and their assignments —
+	// for the named groups, or every group in the cluster when groupIDs is
+	// empty (G2, and G3's reverse lookup). Given one or more explicit ids,
+	// any that is missing → *Error{Kind: NotFound, Resource: "group"} for
+	// the whole call (G2 always asks for exactly one); given none, a group
+	// this cluster can't describe is silently omitted rather than failing
+	// the whole sweep (G3's reverse lookup is best-effort across every group).
+	DescribeGroups(ctx context.Context, groupIDs ...string) ([]Group, error)
+
+	// FetchGroupOffsets returns groupID's committed offset per topic
+	// partition (G2 offsets[], G3 lag). Unknown group → *Error{Kind:
+	// NotFound, Resource: "group"}.
+	FetchGroupOffsets(ctx context.Context, groupID string) (map[TopicPartition]int64, error)
 }
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,

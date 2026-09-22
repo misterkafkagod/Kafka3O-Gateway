@@ -55,6 +55,24 @@ type logDirSeeder interface {
 	SeedLogDir(topic string, partition int32, brokerID int32, dir string, bytes int64)
 }
 
+// groupSeeder is the optional capability internal/kafka/fake exposes to seed
+// a consumer group with committed offsets (Task 7.1).
+type groupSeeder interface {
+	SeedGroup(id string, offsets map[kafka.TopicPartition]int64)
+}
+
+// groupMetaSeeder is the optional capability internal/kafka/fake exposes to
+// set an already-seeded group's state, protocol type, and coordinator id.
+type groupMetaSeeder interface {
+	SeedGroupMeta(id, state, protocolType string, coordinatorID int32)
+}
+
+// groupMemberSeeder is the optional capability internal/kafka/fake exposes to
+// add a live member to an already-seeded group.
+type groupMemberSeeder interface {
+	SeedGroupMember(id string, member kafka.GroupMember)
+}
+
 // RunAdmin exercises kafka.Admin (FUNC-SPEC §8.1, C1).
 func RunAdmin(t *testing.T, port kafka.Admin) {
 	t.Helper()
@@ -290,6 +308,101 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 			if e.Bytes != 4096 || e.LogDir != "/data/kafka-logs" || e.Partition != 0 {
 				t.Errorf("entry = %+v, want {Partition:0, LogDir:/data/kafka-logs, Bytes:4096}", e)
 			}
+		}
+	})
+
+	t.Run("Admin_ListGroups_StateAndMemberCount", func(t *testing.T) {
+		gs, ok := port.(groupSeeder)
+		gm, ok2 := port.(groupMetaSeeder)
+		gmem, ok3 := port.(groupMemberSeeder)
+		if !ok || !ok2 || !ok3 {
+			t.Skip("port does not implement the group seeding capability")
+		}
+		gs.SeedGroup("g-list-stable", nil)
+		gm.SeedGroupMeta("g-list-stable", "Stable", "consumer", 1)
+		gmem.SeedGroupMember("g-list-stable", kafka.GroupMember{MemberID: "m1", ClientID: "c1", Host: "h1"})
+		gmem.SeedGroupMember("g-list-stable", kafka.GroupMember{MemberID: "m2", ClientID: "c2", Host: "h2"})
+		gs.SeedGroup("g-list-empty", nil)
+
+		groups, err := port.ListGroups(context.Background())
+		if err != nil {
+			t.Fatalf("ListGroups() error: %v", err)
+		}
+		byID := map[string]kafka.GroupSummary{}
+		for _, g := range groups {
+			byID[g.ID] = g
+		}
+		stable, ok := byID["g-list-stable"]
+		if !ok || stable.State != "Stable" || stable.ProtocolType != "consumer" || stable.MemberCount != 2 {
+			t.Errorf("g-list-stable = %+v, want {State:Stable ProtocolType:consumer MemberCount:2}", stable)
+		}
+		if empty, ok := byID["g-list-empty"]; !ok || empty.MemberCount != 0 {
+			t.Errorf("g-list-empty = %+v, want MemberCount 0", empty)
+		}
+
+		filtered, err := port.ListGroups(context.Background(), "Stable")
+		if err != nil {
+			t.Fatalf("ListGroups(Stable) error: %v", err)
+		}
+		if len(filtered) == 0 {
+			t.Fatal("ListGroups(Stable) = [], want at least g-list-stable")
+		}
+		for _, g := range filtered {
+			if g.State != "Stable" {
+				t.Errorf("ListGroups(Stable) returned %+v, want only Stable groups", g)
+			}
+		}
+	})
+
+	t.Run("Admin_DescribeGroups_MissingIsNotFound", func(t *testing.T) {
+		if _, ok := port.(groupSeeder); !ok {
+			t.Skip("missing-group classification is exercised against the fake only; real-group kerr mapping is finalised when Level 2 is wired")
+		}
+		_, err := port.DescribeGroups(context.Background(), "g-does-not-exist")
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindNotFound {
+			t.Fatalf("DescribeGroups(missing) = %v, want *kafka.Error{Kind: KindNotFound}", err)
+		}
+	})
+
+	t.Run("Admin_FetchGroupOffsets_PerPartition", func(t *testing.T) {
+		gs, ok := port.(groupSeeder)
+		if !ok {
+			t.Skip("port does not implement the group seeding capability")
+		}
+		gs.SeedGroup("g-offsets", map[kafka.TopicPartition]int64{
+			{Topic: "t-a", Partition: 0}: 10,
+			{Topic: "t-a", Partition: 1}: 20,
+			{Topic: "t-b", Partition: 0}: 5,
+		})
+
+		offsets, err := port.FetchGroupOffsets(context.Background(), "g-offsets")
+		if err != nil {
+			t.Fatalf("FetchGroupOffsets() error: %v", err)
+		}
+		want := map[kafka.TopicPartition]int64{
+			{Topic: "t-a", Partition: 0}: 10,
+			{Topic: "t-a", Partition: 1}: 20,
+			{Topic: "t-b", Partition: 0}: 5,
+		}
+		if len(offsets) != len(want) {
+			t.Fatalf("FetchGroupOffsets() = %v, want %v", offsets, want)
+		}
+		for tp, wantOffset := range want {
+			if offsets[tp] != wantOffset {
+				t.Errorf("FetchGroupOffsets()[%v] = %d, want %d", tp, offsets[tp], wantOffset)
+			}
+		}
+	})
+
+	t.Run("Admin_FetchGroupOffsets_MissingGroupNotFound", func(t *testing.T) {
+		if _, ok := port.(groupSeeder); !ok {
+			t.Skip("missing-group classification is exercised against the fake only; real-group kerr mapping is finalised when Level 2 is wired")
+		}
+		_, err := port.FetchGroupOffsets(context.Background(), "g-does-not-exist")
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindNotFound {
+			t.Fatalf("FetchGroupOffsets(missing) = %v, want *kafka.Error{Kind: KindNotFound}", err)
 		}
 	})
 }

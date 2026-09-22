@@ -108,7 +108,7 @@ func TestFake_Race(t *testing.T) {
 			defer wg.Done()
 			f.SeedBroker(n, "b", 9092, "")
 			f.SeedTopic(fmt.Sprintf("t%d", n), 1, kafka.Record{Value: []byte("v")})
-			f.SeedGroup(fmt.Sprintf("g%d", n), GroupOffset{Topic: fmt.Sprintf("t%d", n), Partition: 0, Offset: 1})
+			f.SeedGroup(fmt.Sprintf("g%d", n), map[kafka.TopicPartition]int64{{Topic: fmt.Sprintf("t%d", n), Partition: 0}: 1})
 			_, _ = f.DescribeCluster(context.Background())
 			_ = f.Calls()
 			_ = f.MutatingCalls()

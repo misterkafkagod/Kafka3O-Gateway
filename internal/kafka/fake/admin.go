@@ -202,6 +202,107 @@ func (f *Fake) DescribeLogDirs(ctx context.Context, topic string) ([]kafka.LogDi
 	})
 }
 
+// ListGroups returns every seeded group's state, protocol type, and member
+// count, optionally filtered to the given states — an empty states filters
+// nothing (FUNC-SPEC §8.7 G1).
+func (f *Fake) ListGroups(ctx context.Context, states ...string) ([]kafka.GroupSummary, error) {
+	return invoke(f, ctx, "ListGroups", false, func() ([]kafka.GroupSummary, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		var filter map[string]bool
+		if len(states) > 0 {
+			filter = make(map[string]bool, len(states))
+			for _, s := range states {
+				filter[s] = true
+			}
+		}
+
+		out := make([]kafka.GroupSummary, 0, len(f.model.groups))
+		for _, g := range f.sortedGroups() {
+			if filter != nil && !filter[g.state] {
+				continue
+			}
+			out = append(out, kafka.GroupSummary{
+				ID: g.id, State: g.state, ProtocolType: g.protocolType, MemberCount: len(g.members),
+			})
+		}
+		return out, nil
+	})
+}
+
+// DescribeGroups returns full detail for groupIDs, or every seeded group
+// when groupIDs is empty (FUNC-SPEC §8.7 G2, G3). Given explicit ids, any
+// missing one fails the whole call as NotFound; given none, a missing group
+// simply can't occur — every seeded group is described.
+func (f *Fake) DescribeGroups(ctx context.Context, groupIDs ...string) ([]kafka.Group, error) {
+	return invoke(f, ctx, "DescribeGroups", false, func() ([]kafka.Group, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if len(groupIDs) > 0 {
+			out := make([]kafka.Group, len(groupIDs))
+			for i, id := range groupIDs {
+				g := f.model.groups[id]
+				if g == nil {
+					return nil, &kafka.Error{Kind: kafka.KindNotFound, Resource: "group"}
+				}
+				out[i] = toDomainGroup(g)
+			}
+			return out, nil
+		}
+
+		out := make([]kafka.Group, 0, len(f.model.groups))
+		for _, g := range f.sortedGroups() {
+			out = append(out, toDomainGroup(g))
+		}
+		return out, nil
+	})
+}
+
+// toDomainGroup converts a fakeGroup into the port's Group shape. Callers
+// must hold f.mu.
+func toDomainGroup(g *fakeGroup) kafka.Group {
+	return kafka.Group{
+		ID: g.id, State: g.state, ProtocolType: g.protocolType, CoordinatorID: g.coordinatorID,
+		Members: append([]kafka.GroupMember(nil), g.members...),
+	}
+}
+
+// FetchGroupOffsets returns groupID's committed offset per topic partition
+// (FUNC-SPEC §8.7 G2 offsets[], G3 lag). Unknown group → NotFound.
+func (f *Fake) FetchGroupOffsets(ctx context.Context, groupID string) (map[kafka.TopicPartition]int64, error) {
+	return invoke(f, ctx, "FetchGroupOffsets", false, func() (map[kafka.TopicPartition]int64, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		g := f.model.groups[groupID]
+		if g == nil {
+			return nil, &kafka.Error{Kind: kafka.KindNotFound, Resource: "group"}
+		}
+		out := make(map[kafka.TopicPartition]int64, len(g.offsets))
+		for tp, offset := range g.offsets {
+			out[tp] = offset
+		}
+		return out, nil
+	})
+}
+
+// sortedGroups returns every seeded group, ordered by id for stable listing
+// (FUNC-SPEC §9.7 Pagination "stable name ordering"). Callers must hold f.mu.
+func (f *Fake) sortedGroups() []*fakeGroup {
+	ids := make([]string, 0, len(f.model.groups))
+	for id := range f.model.groups {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]*fakeGroup, len(ids))
+	for i, id := range ids {
+		out[i] = f.model.groups[id]
+	}
+	return out
+}
+
 // hasBroker reports whether brokerID was seeded. Callers must hold f.mu.
 func (f *Fake) hasBroker(brokerID int32) bool {
 	for _, b := range f.model.brokers {

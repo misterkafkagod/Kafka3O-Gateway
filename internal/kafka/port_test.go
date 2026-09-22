@@ -32,6 +32,11 @@ func (nopAdmin) ListOffsetsAfterMilli(context.Context, string, int64) (map[int32
 	return nil, nil
 }
 func (nopAdmin) DescribeLogDirs(context.Context, string) ([]LogDirReplica, error) { return nil, nil }
+func (nopAdmin) ListGroups(context.Context, ...string) ([]GroupSummary, error)    { return nil, nil }
+func (nopAdmin) DescribeGroups(context.Context, ...string) ([]Group, error)       { return nil, nil }
+func (nopAdmin) FetchGroupOffsets(context.Context, string) (map[TopicPartition]int64, error) {
+	return nil, nil
+}
 
 type nopConsumer struct{}
 
@@ -116,6 +121,7 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[Broker](), reflect.TypeFor[ClusterInfo](), reflect.TypeFor[Topic](),
 		reflect.TypeFor[Partition](), reflect.TypeFor[TopicPartition](), reflect.TypeFor[Record](),
 		reflect.TypeFor[Header](), reflect.TypeFor[Group](), reflect.TypeFor[GroupMember](),
+		reflect.TypeFor[GroupSummary](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),

@@ -2,12 +2,12 @@ package fake
 
 import "github.com/misterkafkagod/kafka3o/internal/kafka"
 
-// model is the in-memory cluster state (TECH-SPEC §4.3 Model row). Phase 1
-// and Task 2.1 model what DescribeCluster, the inspection commands (C2, C4,
-// T1-T4), SeedTopic, and SeedGroup need now. Group members, SCRAM users,
+// model is the in-memory cluster state (TECH-SPEC §4.3 Model row). Phase 1,
+// Task 2.1, and Task 7.1 model what DescribeCluster, the inspection commands
+// (C2, C4, T1-T4), and the group commands (G1-G3) need now. SCRAM users,
 // client quotas, in-progress reassignments, and KRaft quorum state are added
-// by the tasks that implement the commands reading them (Tasks 7.1 G2,
-// 12.1.3, 13.1.2) — nothing here yet reads or sets them.
+// by the tasks that implement the commands reading them (Tasks 12.1.3,
+// 13.1.2) — nothing here yet reads or sets them.
 type model struct {
 	clusterID     string
 	controllerID  int32
@@ -51,7 +51,10 @@ type fakeLogDirEntry struct {
 
 // fakeGroup is one seeded consumer group.
 type fakeGroup struct {
-	id      string
-	state   string
-	offsets map[kafka.TopicPartition]int64
+	id            string
+	state         string
+	protocolType  string
+	coordinatorID int32
+	offsets       map[kafka.TopicPartition]int64
+	members       []kafka.GroupMember
 }

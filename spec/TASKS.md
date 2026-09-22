@@ -576,11 +576,11 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 7.1: Group port and adapters
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.1, §8.7 G1–G3; TECH L1–L4
 - **Subtasks:**
-  - [ ] 7.1.1 Port: `ListGroups`, `DescribeGroups`, `FetchGroupOffsets` — FUNC §8.7
-  - [ ] 7.1.2 `franz`, `fake`, `porttest` cases (missing group → `NotFound`) — TECH L2
+  - [x] 7.1.1 Port: `ListGroups`, `DescribeGroups`, `FetchGroupOffsets` — FUNC §8.7
+  - [x] 7.1.2 `franz`, `fake`, `porttest` cases (missing group → `NotFound`) — TECH L2
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_ListGroups_StateAndMemberCount`, `Admin_DescribeGroups_MissingIsNotFound`, `Admin_FetchGroupOffsets_PerPartition` — TECH L2
 
