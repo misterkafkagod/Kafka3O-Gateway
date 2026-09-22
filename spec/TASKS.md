@@ -652,7 +652,7 @@
 ---
 
 ## Phase 9: Destructive topic operations
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can delete a topic, bulk-delete by pattern with a plan token, truncate partitions, and purge — all HIGH-audited.
 - **Manual Test Plan:**
   1. CS3 `DELETE /v1/topics/t-new` body `{"confirm":"t-new"}` → `200 {"deleted":"t-new"}`; audit `RESULT` line `severity:"HIGH"`.
