@@ -405,4 +405,129 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 			t.Fatalf("FetchGroupOffsets(missing) = %v, want *kafka.Error{Kind: KindNotFound}", err)
 		}
 	})
+
+	// CreateTopics/IncrementalAlterTopicConfigs/CreatePartitions are
+	// self-contained (each case creates whatever topic it needs via
+	// CreateTopics itself), so they run against any Admin unconditionally —
+	// no seeding-capability skip guard, unlike the read-only cases above
+	// whose fixtures the fake alone can seed out of band.
+
+	t.Run("Admin_CreateTopics_ValidateOnlyCreatesNothing", func(t *testing.T) {
+		name := "porttest-validate-only"
+		results, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 1, ReplicationFactor: 1},
+		}, true)
+		if err != nil {
+			t.Fatalf("CreateTopics(validateOnly) error: %v", err)
+		}
+		if len(results) != 1 || results[0].Err != nil {
+			t.Fatalf("CreateTopics(validateOnly) = %+v, want one validated result, no error", results)
+		}
+
+		_, err = port.DescribeTopics(context.Background(), name)
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindNotFound {
+			t.Fatalf("DescribeTopics(%q) after validateOnly = %v, want NotFound (nothing was created)", name, err)
+		}
+	})
+
+	t.Run("Admin_CreateTopics_ExistingIsAlreadyExists", func(t *testing.T) {
+		name := "porttest-already-exists"
+		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 1, ReplicationFactor: 1},
+		}, false); err != nil {
+			t.Fatalf("CreateTopics() error: %v", err)
+		}
+
+		results, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 1, ReplicationFactor: 1},
+		}, false)
+		if err != nil {
+			t.Fatalf("CreateTopics(existing) error: %v", err)
+		}
+		if len(results) != 1 || !kafka.IsKind(results[0].Err, kafka.KindAlreadyExists) {
+			t.Fatalf("CreateTopics(existing) = %+v, want one AlreadyExists result", results)
+		}
+	})
+
+	t.Run("Admin_IncrementalAlterTopicConfigs_SetAndResetToDefault", func(t *testing.T) {
+		name := "porttest-alter-config"
+		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 1, ReplicationFactor: 1},
+		}, false); err != nil {
+			t.Fatalf("CreateTopics() error: %v", err)
+		}
+
+		newValue := "60000"
+		if err := port.IncrementalAlterTopicConfigs(context.Background(), name, []kafka.ConfigChange{
+			{Name: "retention.ms", Value: &newValue},
+		}); err != nil {
+			t.Fatalf("IncrementalAlterTopicConfigs(set) error: %v", err)
+		}
+		configs, err := port.DescribeTopicConfigs(context.Background(), name)
+		if err != nil {
+			t.Fatalf("DescribeTopicConfigs() error: %v", err)
+		}
+		found := false
+		for _, c := range configs {
+			if c.Name != "retention.ms" {
+				continue
+			}
+			found = true
+			if c.Value != "60000" || c.Source != kafka.SourceDynamic {
+				t.Errorf("retention.ms after set = %+v, want Value 60000, Source dynamic", c)
+			}
+		}
+		if !found {
+			t.Fatal("retention.ms missing after set")
+		}
+
+		if err := port.IncrementalAlterTopicConfigs(context.Background(), name, []kafka.ConfigChange{
+			{Name: "retention.ms", Value: nil},
+		}); err != nil {
+			t.Fatalf("IncrementalAlterTopicConfigs(reset) error: %v", err)
+		}
+		configs, err = port.DescribeTopicConfigs(context.Background(), name)
+		if err != nil {
+			t.Fatalf("DescribeTopicConfigs() after reset error: %v", err)
+		}
+		for _, c := range configs {
+			if c.Name == "retention.ms" && c.Source != kafka.SourceDefault {
+				t.Errorf("retention.ms after reset = %+v, want Source default", c)
+			}
+		}
+	})
+
+	t.Run("Admin_CreatePartitions_IncreaseSucceeds", func(t *testing.T) {
+		name := "porttest-add-partitions"
+		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 1, ReplicationFactor: 1},
+		}, false); err != nil {
+			t.Fatalf("CreateTopics() error: %v", err)
+		}
+
+		if err := port.CreatePartitions(context.Background(), name, 4); err != nil {
+			t.Fatalf("CreatePartitions(increase) error: %v", err)
+		}
+		topic, err := port.DescribeTopics(context.Background(), name)
+		if err != nil {
+			t.Fatalf("DescribeTopics() error: %v", err)
+		}
+		if len(topic.Partitions) != 4 {
+			t.Errorf("Partitions = %d, want 4", len(topic.Partitions))
+		}
+	})
+
+	t.Run("Admin_CreatePartitions_DecreaseIsError", func(t *testing.T) {
+		name := "porttest-decrease-partitions"
+		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
+			{Name: name, Partitions: 4, ReplicationFactor: 1},
+		}, false); err != nil {
+			t.Fatalf("CreateTopics() error: %v", err)
+		}
+
+		if err := port.CreatePartitions(context.Background(), name, 1); err == nil {
+			t.Fatal("CreatePartitions(decrease) = nil, want an error")
+		}
+	})
 }

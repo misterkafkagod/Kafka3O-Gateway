@@ -37,6 +37,13 @@ func (nopAdmin) DescribeGroups(context.Context, ...string) ([]Group, error)     
 func (nopAdmin) FetchGroupOffsets(context.Context, string) (map[TopicPartition]int64, error) {
 	return nil, nil
 }
+func (nopAdmin) CreateTopics(context.Context, []TopicSpec, bool) ([]TopicCreateResult, error) {
+	return nil, nil
+}
+func (nopAdmin) IncrementalAlterTopicConfigs(context.Context, string, []ConfigChange) error {
+	return nil
+}
+func (nopAdmin) CreatePartitions(context.Context, string, int32) error { return nil }
 
 type nopConsumer struct{}
 
@@ -121,7 +128,8 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[Broker](), reflect.TypeFor[ClusterInfo](), reflect.TypeFor[Topic](),
 		reflect.TypeFor[Partition](), reflect.TypeFor[TopicPartition](), reflect.TypeFor[Record](),
 		reflect.TypeFor[Header](), reflect.TypeFor[Group](), reflect.TypeFor[GroupMember](),
-		reflect.TypeFor[GroupSummary](),
+		reflect.TypeFor[GroupSummary](), reflect.TypeFor[TopicSpec](), reflect.TypeFor[TopicCreateResult](),
+		reflect.TypeFor[ConfigChange](),
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),

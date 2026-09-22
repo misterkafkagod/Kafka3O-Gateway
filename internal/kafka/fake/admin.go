@@ -288,6 +288,109 @@ func (f *Fake) FetchGroupOffsets(ctx context.Context, groupID string) (map[kafka
 	})
 }
 
+// CreateTopics creates every spec — or, when validateOnly, checks each
+// without creating anything (FUNC-SPEC §8.7 T5, T6). An already-existing
+// name reports that spec's own AlreadyExists; the rest of the batch is
+// unaffected.
+func (f *Fake) CreateTopics(ctx context.Context, specs []kafka.TopicSpec, validateOnly bool) ([]kafka.TopicCreateResult, error) {
+	return invoke(f, ctx, "CreateTopics", !validateOnly, func() ([]kafka.TopicCreateResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		out := make([]kafka.TopicCreateResult, len(specs))
+		for i, spec := range specs {
+			if f.model.topics[spec.Name] != nil {
+				out[i] = kafka.TopicCreateResult{Name: spec.Name, Err: &kafka.Error{Kind: kafka.KindAlreadyExists, Resource: "topic"}}
+				continue
+			}
+
+			configs := make([]kafka.ConfigEntry, 0, len(spec.Configs))
+			for name, value := range spec.Configs {
+				configs = append(configs, kafka.ConfigEntry{Name: name, Value: value, Source: kafka.SourceDynamic})
+			}
+			out[i] = kafka.TopicCreateResult{
+				Name: spec.Name, Partitions: spec.Partitions, ReplicationFactor: spec.ReplicationFactor, Configs: configs,
+			}
+			if validateOnly {
+				continue
+			}
+
+			if f.model.topics == nil {
+				f.model.topics = map[string]*fakeTopic{}
+			}
+			f.model.topics[spec.Name] = &fakeTopic{
+				name: spec.Name, replicationFactor: int(spec.ReplicationFactor),
+				partitions: make([]fakePartition, spec.Partitions),
+				configs:    configs,
+			}
+		}
+		return out, nil
+	})
+}
+
+// IncrementalAlterTopicConfigs applies changes to topic's configuration
+// (FUNC-SPEC §8.7 T9): a non-nil Value sets that key to Dynamic source, a
+// nil Value resets an already-set key to Default source (the fake models
+// no broker-level default catalog, so it keeps whatever value the key last
+// had — only Source changes). Unknown topic → NotFound.
+func (f *Fake) IncrementalAlterTopicConfigs(ctx context.Context, topic string, changes []kafka.ConfigChange) error {
+	_, err := invoke(f, ctx, "IncrementalAlterTopicConfigs", true, func() (struct{}, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		t := f.model.topics[topic]
+		if t == nil {
+			return struct{}{}, &kafka.Error{Kind: kafka.KindNotFound, Resource: "topic"}
+		}
+		for _, ch := range changes {
+			idx := -1
+			for i, c := range t.configs {
+				if c.Name == ch.Name {
+					idx = i
+					break
+				}
+			}
+			if ch.Value != nil {
+				entry := kafka.ConfigEntry{Name: ch.Name, Value: *ch.Value, Source: kafka.SourceDynamic}
+				if idx >= 0 {
+					t.configs[idx] = entry
+				} else {
+					t.configs = append(t.configs, entry)
+				}
+				continue
+			}
+			if idx >= 0 {
+				t.configs[idx].Source = kafka.SourceDefault
+			}
+		}
+		return struct{}{}, nil
+	})
+	return err
+}
+
+// CreatePartitions sets topic's partition count to the absolute total
+// (FUNC-SPEC §8.7 T10). Unknown topic → NotFound; total not greater than
+// the current count → a broker-side error (the fake's own safety net —
+// the service layer already checks this as PARTITION_MISMATCH before
+// calling the port at all).
+func (f *Fake) CreatePartitions(ctx context.Context, topic string, total int32) error {
+	_, err := invoke(f, ctx, "CreatePartitions", true, func() (struct{}, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		t := f.model.topics[topic]
+		if t == nil {
+			return struct{}{}, &kafka.Error{Kind: kafka.KindNotFound, Resource: "topic"}
+		}
+		if int(total) <= len(t.partitions) {
+			return struct{}{}, &kafka.Error{Kind: kafka.KindBroker, Resource: "topic"}
+		}
+		t.partitions = append(t.partitions, make([]fakePartition, int(total)-len(t.partitions))...)
+		return struct{}{}, nil
+	})
+	return err
+}
+
 // sortedGroups returns every seeded group, ordered by id for stable listing
 // (FUNC-SPEC §9.7 Pagination "stable name ordering"). Callers must hold f.mu.
 func (f *Fake) sortedGroups() []*fakeGroup {

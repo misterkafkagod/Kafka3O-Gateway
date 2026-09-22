@@ -625,11 +625,11 @@
   - `TestDestructive_AttemptSinkFailureAbortsBeforeApply` — VC V2
 
 ### Task 8.2: Port and adapters for topic administration
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 T5, T6, T9, T10; TECH L1–L4
 - **Subtasks:**
-  - [ ] 8.2.1 Port: `CreateTopics(ctx, specs, validateOnly)`, `IncrementalAlterTopicConfigs(set, reset)`, `CreatePartitions` — FUNC §8.7
-  - [ ] 8.2.2 `franz` (kadm), `fake` (model mutation, `AlreadyExists`, partition decrease error), `porttest` cases — TECH L2
+  - [x] 8.2.1 Port: `CreateTopics(ctx, specs, validateOnly)`, `IncrementalAlterTopicConfigs(set, reset)`, `CreatePartitions` — FUNC §8.7
+  - [x] 8.2.2 `franz` (kadm), `fake` (model mutation, `AlreadyExists`, partition decrease error), `porttest` cases — TECH L2
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_CreateTopics_ValidateOnlyCreatesNothing`, `Admin_CreateTopics_ExistingIsAlreadyExists`, `Admin_IncrementalAlterTopicConfigs_SetAndResetToDefault`, `Admin_CreatePartitions_IncreaseSucceeds`, `Admin_CreatePartitions_DecreaseIsError` — TECH L2
 

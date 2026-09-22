@@ -165,3 +165,29 @@ type ProduceResult struct {
 	Timestamp time.Time
 	Err       error
 }
+
+// TopicSpec is one topic to create (FUNC-SPEC §8.7 T5, T6).
+type TopicSpec struct {
+	Name              string
+	Partitions        int32
+	ReplicationFactor int16
+	Configs           map[string]string
+}
+
+// TopicCreateResult is one spec's outcome (FUNC-SPEC §8.7 T5, T6). Err is
+// set per-spec when only that topic was rejected (e.g. it already exists);
+// it never fails the rest of the batch.
+type TopicCreateResult struct {
+	Name              string
+	Partitions        int32
+	ReplicationFactor int16
+	Configs           []ConfigEntry
+	Err               error
+}
+
+// ConfigChange is one key to set (Value non-nil) or reset to its default
+// (Value nil) — FUNC-SPEC §8.7 T9's `set`/`reset`.
+type ConfigChange struct {
+	Name  string
+	Value *string
+}

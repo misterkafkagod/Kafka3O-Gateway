@@ -310,6 +310,114 @@ func toDomainGroup(d kadm.DescribedGroup) kafka.Group {
 	}
 }
 
+// CreateTopics creates every spec — or, when validateOnly, asks the broker
+// to check them without creating anything — one kadm call per spec, since
+// kadm.CreateTopics applies a single partitions/replicationFactor/configs
+// triple to every name it's given, and specs may each differ (FUNC-SPEC
+// §8.7 T5, T6).
+func (c *Client) CreateTopics(ctx context.Context, specs []kafka.TopicSpec, validateOnly bool) ([]kafka.TopicCreateResult, error) {
+	out := make([]kafka.TopicCreateResult, len(specs))
+	for i, spec := range specs {
+		configs := toKadmConfigPointers(spec.Configs)
+
+		if validateOnly {
+			resp, err := c.kadm.ValidateCreateTopics(ctx, spec.Partitions, spec.ReplicationFactor, configs, spec.Name)
+			if err != nil {
+				return nil, wrapErr("topic", err)
+			}
+			r, rerr := resp.On(spec.Name, nil)
+			out[i] = toTopicCreateResult(spec.Name, r, rerr)
+			continue
+		}
+
+		r, err := c.kadm.CreateTopic(ctx, spec.Partitions, spec.ReplicationFactor, configs, spec.Name)
+		out[i] = toTopicCreateResult(spec.Name, r, err)
+	}
+	return out, nil
+}
+
+// toTopicCreateResult converts one kadm create-topic response into the
+// port's shape; rerr (from CreateTopicResponses.On, or CreateTopic's own
+// returned error) and r.Err both surface as this spec's own error, never a
+// call-wide failure.
+func toTopicCreateResult(name string, r kadm.CreateTopicResponse, rerr error) kafka.TopicCreateResult {
+	if rerr != nil {
+		return kafka.TopicCreateResult{Name: name, Err: wrapErr("topic", rerr)}
+	}
+	if r.Err != nil {
+		return kafka.TopicCreateResult{Name: name, Err: wrapErr("topic", r.Err)}
+	}
+	configsSlice := make([]kadm.Config, 0, len(r.Configs))
+	for _, cfg := range r.Configs {
+		configsSlice = append(configsSlice, cfg)
+	}
+	return kafka.TopicCreateResult{
+		Name: r.Topic, Partitions: r.NumPartitions, ReplicationFactor: r.ReplicationFactor,
+		Configs: toConfigEntries(configsSlice),
+	}
+}
+
+// toKadmConfigPointers converts a plain string map into the *string map
+// kadm's config-bearing calls take, so a config can be distinguished from
+// "unset" (kadm's own convention).
+func toKadmConfigPointers(configs map[string]string) map[string]*string {
+	if len(configs) == 0 {
+		return nil
+	}
+	out := make(map[string]*string, len(configs))
+	for k, v := range configs {
+		v := v
+		out[k] = &v
+	}
+	return out
+}
+
+// IncrementalAlterTopicConfigs applies changes to topic's configuration via
+// kadm.AlterTopicConfigs (FUNC-SPEC §8.7 T9): a non-nil Value sets that key,
+// a nil Value resets it to its default. Unknown topic → NotFound.
+func (c *Client) IncrementalAlterTopicConfigs(ctx context.Context, topic string, changes []kafka.ConfigChange) error {
+	kadmChanges := make([]kadm.AlterConfig, len(changes))
+	for i, ch := range changes {
+		if ch.Value != nil {
+			kadmChanges[i] = kadm.AlterConfig{Op: kadm.SetConfig, Name: ch.Name, Value: ch.Value}
+		} else {
+			kadmChanges[i] = kadm.AlterConfig{Op: kadm.DeleteConfig, Name: ch.Name}
+		}
+	}
+
+	resp, err := c.kadm.AlterTopicConfigs(ctx, kadmChanges, topic)
+	if err != nil {
+		return wrapErr("topic", err)
+	}
+	r, err := resp.On(topic, nil)
+	if err != nil {
+		return wrapErr("topic", err)
+	}
+	if r.Err != nil {
+		return wrapErr("topic", r.Err)
+	}
+	return nil
+}
+
+// CreatePartitions sets topic's partition count to total via
+// kadm.UpdatePartitions (an absolute target, unlike kadm's own
+// CreatePartitions, which takes a delta) (FUNC-SPEC §8.7 T10). Unknown
+// topic → NotFound.
+func (c *Client) CreatePartitions(ctx context.Context, topic string, total int32) error {
+	resp, err := c.kadm.UpdatePartitions(ctx, int(total), topic)
+	if err != nil {
+		return wrapErr("topic", err)
+	}
+	r, err := resp.On(topic, nil)
+	if err != nil {
+		return wrapErr("topic", err)
+	}
+	if r.Err != nil {
+		return wrapErr("topic", r.Err)
+	}
+	return nil
+}
+
 // toDomainBroker converts one kadm broker into the port's Broker shape.
 func toDomainBroker(b kadm.BrokerDetail) kafka.Broker {
 	var rack string

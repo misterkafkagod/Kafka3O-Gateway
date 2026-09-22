@@ -63,6 +63,26 @@ type Admin interface {
 	// partition (G2 offsets[], G3 lag). Unknown group → *Error{Kind:
 	// NotFound, Resource: "group"}.
 	FetchGroupOffsets(ctx context.Context, groupID string) (map[TopicPartition]int64, error)
+
+	// CreateTopics creates every spec — or, when validateOnly is true, asks
+	// the broker to check they could be created without creating anything
+	// (T5's own dryRun; T6's own validate-all-must-not-exist is a
+	// service-layer pre-check, FUNC-SPEC §9.4, not this flag). Each spec's
+	// own result carries its own error (e.g. AlreadyExists); one bad spec
+	// never fails the rest of the batch (T5, T6).
+	CreateTopics(ctx context.Context, specs []TopicSpec, validateOnly bool) ([]TopicCreateResult, error)
+
+	// IncrementalAlterTopicConfigs applies changes to topic's configuration
+	// (T9). Unknown topic → *Error{Kind: NotFound, Resource: "topic"}.
+	IncrementalAlterTopicConfigs(ctx context.Context, topic string, changes []ConfigChange) error
+
+	// CreatePartitions sets topic's partition count to the absolute total
+	// (T10; kadm's own CreatePartitions takes a delta instead — this port
+	// method deliberately does not, to match T10's `{from, to}` plan
+	// directly). Unknown topic → NotFound; total not greater than the
+	// current count is checked at the service layer as PARTITION_MISMATCH
+	// (FUNC-SPEC §8.6) before this is ever called.
+	CreatePartitions(ctx context.Context, topic string, total int32) error
 }
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,
