@@ -427,7 +427,7 @@
 ---
 
 ## Phase 5: Produce messages, with audit
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can produce single, batch, NDJSON-bulk, and tombstone records; every write is audited two-phase; a reader is refused.
 - **Manual Test Plan:**
   1. CS2 with `auditSink: stdout`.
