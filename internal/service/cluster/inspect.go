@@ -42,10 +42,23 @@ func (s *Service) Reassignments(ctx context.Context) ([]kafka.PartitionReassignm
 	return s.admin.ListReassignments(ctx)
 }
 
-// LogDirs returns every broker's log directory usage, cluster-wide
-// (FUNC-SPEC §8.7 C8).
-func (s *Service) LogDirs(ctx context.Context) ([]kafka.BrokerLogDir, error) {
-	return s.admin.DescribeAllLogDirs(ctx)
+// LogDirs returns every broker's log directory usage, or — when brokerID is
+// non-negative — just that one broker's (FUNC-SPEC §8.7 C8 "brokerId?").
+func (s *Service) LogDirs(ctx context.Context, brokerID int32) ([]kafka.BrokerLogDir, error) {
+	all, err := s.admin.DescribeAllLogDirs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if brokerID < 0 {
+		return all, nil
+	}
+	out := make([]kafka.BrokerLogDir, 0, len(all))
+	for _, d := range all {
+		if d.BrokerID == brokerID {
+			out = append(out, d)
+		}
+	}
+	return out, nil
 }
 
 // ThroughputItem is one topic's message rate over a Throughput sample
@@ -140,24 +153,30 @@ type ExportTopic struct {
 	Configs           map[string]string
 }
 
+// Export is Export's timestamped result (FUNC-SPEC §8.7 C11).
+type Export struct {
+	ExportedAt time.Time
+	Topics     []ExportTopic
+}
+
 // Export snapshots every topic matching pattern (or every topic, when
 // pattern is empty) as a declarative definition C12 can later apply
 // (FUNC-SPEC §8.7 C11). An invalid pattern reports
 // *core.PolicyError{Code: core.InvalidRegex}, the same as T1's own
 // `?pattern=` (TECH-SPEC B7).
-func (s *Service) Export(ctx context.Context, pattern string) ([]ExportTopic, error) {
+func (s *Service) Export(ctx context.Context, pattern string) (Export, error) {
 	var re *regexp.Regexp
 	if pattern != "" {
 		compiled, err := regexp.Compile(pattern)
 		if err != nil {
-			return nil, &core.PolicyError{Code: core.InvalidRegex, Message: err.Error()}
+			return Export{}, &core.PolicyError{Code: core.InvalidRegex, Message: err.Error()}
 		}
 		re = compiled
 	}
 
 	all, err := s.admin.ListTopics(ctx)
 	if err != nil {
-		return nil, err
+		return Export{}, err
 	}
 	var matched []kafka.TopicSummary
 	for _, t := range all {
@@ -171,11 +190,11 @@ func (s *Service) Export(ctx context.Context, pattern string) ([]ExportTopic, er
 	}
 	sort.Slice(matched, func(i, j int) bool { return matched[i].Name < matched[j].Name })
 
-	out := make([]ExportTopic, len(matched))
+	topics := make([]ExportTopic, len(matched))
 	for i, t := range matched {
 		configs, err := s.admin.DescribeTopicConfigs(ctx, t.Name)
 		if err != nil {
-			return nil, err
+			return Export{}, err
 		}
 		overrides := map[string]string{}
 		for _, c := range configs {
@@ -183,10 +202,10 @@ func (s *Service) Export(ctx context.Context, pattern string) ([]ExportTopic, er
 				overrides[c.Name] = c.Value
 			}
 		}
-		out[i] = ExportTopic{
+		topics[i] = ExportTopic{
 			Name: t.Name, Partitions: int32(t.PartitionCount), ReplicationFactor: int16(t.ReplicationFactor),
 			Configs: overrides,
 		}
 	}
-	return out, nil
+	return Export{ExportedAt: s.now(), Topics: topics}, nil
 }

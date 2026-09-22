@@ -22,10 +22,14 @@ func TestClusterService_Export_PatternAndOverridesOnly(t *testing.T) {
 	auditor, _ := testClusterAuditor()
 	svc := cluster.New(f, auditor, testClusterRunner())
 
-	topics, err := svc.Export(context.Background(), "^t-")
+	export, err := svc.Export(context.Background(), "^t-")
 	if err != nil {
 		t.Fatalf("Export() error: %v", err)
 	}
+	if export.ExportedAt.IsZero() {
+		t.Error("ExportedAt is zero, want the time of the call")
+	}
+	topics := export.Topics
 	if len(topics) != 1 || topics[0].Name != "t-orders" {
 		t.Fatalf("Export() = %+v, want exactly [t-orders]", topics)
 	}

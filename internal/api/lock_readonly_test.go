@@ -52,6 +52,11 @@ func wRoutes(topic string) map[string]routeFixture {
 			"source":  map[string]any{"topic": topic, "from": "beginning"},
 			"target":  map[string]any{"topic": topic + "-m8dst"},
 		}},
+		"C5": {http.MethodPatch, "/v1/cluster/brokers/1/config", map[string]any{"confirm": "1", "set": map[string]any{"log.retention.hours": "168"}}},
+		"C9": {http.MethodPost, "/v1/cluster/reassignments", map[string]any{
+			"confirm": "irrelevant", "reassignments": []map[string]any{{"topic": topic, "partition": 0, "replicas": []int{1}}},
+		}},
+		"C12": {http.MethodPost, "/v1/batch/topics/apply", map[string]any{"confirm": "irrelevant", "topics": []map[string]any{}}},
 	}
 }
 

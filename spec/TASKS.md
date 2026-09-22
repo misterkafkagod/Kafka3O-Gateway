@@ -822,12 +822,12 @@
   - `TestErrorTables_ReassignmentInProgressIs409` — FUNC §8.4
 
 ### Task 12.3: Routes, tests, acceptance (C5–C12)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §6.2, §4.5, §4.8
 - **Subtasks:**
-  - [ ] 12.3.1 Routes: `GET /v1/cluster/quorum`, `/reassignments`, `/log-dirs`, `/throughput`, `/export`; `PATCH /v1/cluster/brokers/{brokerId}/config`; `POST /v1/cluster/reassignments`, `POST /v1/cluster/reassignments/cancel`, `POST /v1/cluster/elections`; `POST /v1/batch/topics/apply` — TECH §6.2
-  - [ ] 12.3.2 Component tests: O8 rows for C5/C9/C12 (stale tokens), bulk envelope, `Unsupported` → 502, throughput bound — TECH §4.5
-  - [ ] 12.3.3 Acceptance tests C5–C12; remove from `pending` — TECH §4.8
+  - [x] 12.3.1 Routes: `GET /v1/cluster/quorum`, `/reassignments`, `/log-dirs`, `/throughput`, `/export`; `PATCH /v1/cluster/brokers/{brokerId}/config`; `POST /v1/cluster/reassignments`, `POST /v1/cluster/reassignments/cancel`, `POST /v1/cluster/elections`; `POST /v1/batch/topics/apply` — TECH §6.2
+  - [x] 12.3.2 Component tests: O8 rows for C5/C9/C12 (stale tokens), bulk envelope, `Unsupported` → 502, throughput bound — TECH §4.5
+  - [x] 12.3.3 Acceptance tests C5–C12; remove from `pending` — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestAPI_C6_Unsupported502WithKafkaErrorName`, `TestAPI_C7_ListsReassignments`, `TestAPI_C8_LogDirs`, `TestAPI_C10_SecondsAboveCeiling400` — VC O5; TECH C3
   - `TestAPI_C5_ConfirmationMismatch400`, `TestAPI_C9_DryRunThenExecuteEachOp` (reassign, cancel, elect), `TestAPI_C9_StaleToken400`, `TestAPI_C12_DryRunThenApplyThenUnchanged`, `TestAPI_C11_ExportShape` — VC O8

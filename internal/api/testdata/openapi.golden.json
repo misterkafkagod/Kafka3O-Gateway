@@ -102,6 +102,98 @@
         ],
         "type": "object"
       },
+      "AlterBrokerConfigBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AlterBrokerConfigBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "brokerId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/BrokerConfigEntryDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/AlterBrokerConfigPlanDTO"
+          }
+        },
+        "type": "object"
+      },
+      "AlterBrokerConfigPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "brokerId": {
+            "type": "string"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterConfigChangeDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "brokerId",
+          "changes"
+        ],
+        "type": "object"
+      },
+      "AlterBrokerConfigRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/AlterBrokerConfigRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "reset": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "set": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "type": "object"
+      },
       "AlterConfigBody": {
         "additionalProperties": false,
         "properties": {
@@ -193,6 +285,147 @@
         ],
         "type": "object"
       },
+      "ApplyTopicsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ApplyTopicsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ApplyTopicsItemResultDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ApplyTopicsPlanDTO"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ClusterBulkSummaryDTO"
+          }
+        },
+        "type": "object"
+      },
+      "ApplyTopicsItemResultDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "action",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ApplyTopicsPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "alter": {
+            "items": {
+              "$ref": "#/components/schemas/ImportAlterActionDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "create": {
+            "items": {
+              "$ref": "#/components/schemas/ExportTopicDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "delete": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "planToken": {
+            "type": "string"
+          },
+          "unchanged": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "create",
+          "alter",
+          "delete",
+          "unchanged",
+          "planToken"
+        ],
+        "type": "object"
+      },
+      "ApplyTopicsRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ApplyTopicsRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "allowDelete": {
+            "type": "boolean"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/ExportTopicDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "topics"
+        ],
+        "type": "object"
+      },
       "Body": {
         "additionalProperties": false,
         "properties": {
@@ -279,6 +512,33 @@
           "host",
           "port",
           "rack"
+        ],
+        "type": "object"
+      },
+      "BrokerLogDirDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "brokerId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "logDir": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "totalBytes": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brokerId",
+          "logDir",
+          "totalBytes",
+          "partitions"
         ],
         "type": "object"
       },
@@ -380,6 +640,26 @@
         },
         "type": "object"
       },
+      "BulkItemResultDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "index": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "status"
+        ],
+        "type": "object"
+      },
       "BulkSummaryDTO": {
         "additionalProperties": false,
         "properties": {
@@ -400,6 +680,53 @@
           "total",
           "ok",
           "failed"
+        ],
+        "type": "object"
+      },
+      "CancelReassignmentTargetDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition"
+        ],
+        "type": "object"
+      },
+      "CancelReassignmentsRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/CancelReassignmentsRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "cancel": {
+            "items": {
+              "$ref": "#/components/schemas/CancelReassignmentTargetDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "confirm": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cancel"
         ],
         "type": "object"
       },
@@ -534,6 +861,49 @@
         "required": [
           "confirm",
           "source"
+        ],
+        "type": "object"
+      },
+      "ClusterBulkSummaryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "failed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ok": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "ok",
+          "failed"
+        ],
+        "type": "object"
+      },
+      "ClusterConfigChangeDetailDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "from",
+          "to"
         ],
         "type": "object"
       },
@@ -1184,6 +1554,124 @@
         ],
         "type": "object"
       },
+      "ElectPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "elections": {
+            "items": {
+              "$ref": "#/components/schemas/ElectTargetDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "planToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "elections",
+          "planToken"
+        ],
+        "type": "object"
+      },
+      "ElectSpecDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "partitions": {
+            "items": {
+              "$ref": "#/components/schemas/ElectTargetDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "partitions"
+        ],
+        "type": "object"
+      },
+      "ElectTargetDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition"
+        ],
+        "type": "object"
+      },
+      "ElectionsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ElectionsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkItemResultDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ElectPlanDTO"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ClusterBulkSummaryDTO"
+          }
+        },
+        "type": "object"
+      },
+      "ElectionsRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ElectionsRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "elect": {
+            "$ref": "#/components/schemas/ElectSpecDTO"
+          }
+        },
+        "required": [
+          "elect"
+        ],
+        "type": "object"
+      },
       "Envelope": {
         "additionalProperties": false,
         "properties": {
@@ -1202,6 +1690,65 @@
         },
         "required": [
           "error"
+        ],
+        "type": "object"
+      },
+      "ExportBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ExportBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "exportedAt": {
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/ExportTopicDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "exportedAt",
+          "topics"
+        ],
+        "type": "object"
+      },
+      "ExportTopicDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "configs": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partitions": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "replicationFactor": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "partitions",
+          "replicationFactor"
         ],
         "type": "object"
       },
@@ -1435,6 +1982,28 @@
         ],
         "type": "object"
       },
+      "ImportAlterActionDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterConfigChangeDetailDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "changes"
+        ],
+        "type": "object"
+      },
       "KafkaErrorInfo": {
         "additionalProperties": false,
         "properties": {
@@ -1480,6 +2049,33 @@
         "required": [
           "items",
           "page"
+        ],
+        "type": "object"
+      },
+      "ListReassignmentsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ListReassignmentsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReassignmentDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
         ],
         "type": "object"
       },
@@ -1532,6 +2128,33 @@
         },
         "required": [
           "status"
+        ],
+        "type": "object"
+      },
+      "LogDirsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/LogDirsBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BrokerLogDirDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items"
         ],
         "type": "object"
       },
@@ -1896,6 +2519,76 @@
         ],
         "type": "object"
       },
+      "QuorumBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/QuorumBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "epoch": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "leaderId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "observers": {
+            "items": {
+              "$ref": "#/components/schemas/QuorumReplicaStateDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "voters": {
+            "items": {
+              "$ref": "#/components/schemas/QuorumReplicaStateDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "leaderId",
+          "epoch",
+          "voters",
+          "observers"
+        ],
+        "type": "object"
+      },
+      "QuorumReplicaStateDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "lagMs": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "logEndOffset": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "logEndOffset",
+          "lagMs"
+        ],
+        "type": "object"
+      },
       "ReadMessagesBody": {
         "additionalProperties": false,
         "properties": {
@@ -1991,6 +2684,169 @@
           "reachable",
           "brokersSeen",
           "latencyMs"
+        ],
+        "type": "object"
+      },
+      "ReassignBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ReassignBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkItemResultDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ReassignPlanDTO"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ClusterBulkSummaryDTO"
+          }
+        },
+        "type": "object"
+      },
+      "ReassignMoveDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "replicas": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "replicas"
+        ],
+        "type": "object"
+      },
+      "ReassignPlanDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/ReassignMoveDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "planToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "moves",
+          "planToken"
+        ],
+        "type": "object"
+      },
+      "ReassignRequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ReassignRequestBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "confirm": {
+            "type": "string"
+          },
+          "reassignments": {
+            "items": {
+              "$ref": "#/components/schemas/ReassignMoveDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reassignments"
+        ],
+        "type": "object"
+      },
+      "ReassignmentDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "addingReplicas": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "partition": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "removingReplicas": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "replicas": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "partition",
+          "replicas",
+          "addingReplicas",
+          "removingReplicas"
         ],
         "type": "object"
       },
@@ -2585,6 +3441,71 @@
         ],
         "type": "object"
       },
+      "ThroughputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ThroughputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ThroughputItemDTO"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "seconds": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seconds",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ThroughputItemDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "finishEndOffsets": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "messagesPerSecond": {
+            "format": "double",
+            "type": "number"
+          },
+          "startEndOffsets": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "messagesPerSecond",
+          "startEndOffsets",
+          "finishEndOffsets"
+        ],
+        "type": "object"
+      },
       "TombstoneItem": {
         "additionalProperties": false,
         "properties": {
@@ -2934,6 +3855,58 @@
         "x-command-id": "T6"
       }
     },
+    "/v1/batch/topics/apply": {
+      "post": {
+        "operationId": "topics-apply",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyTopicsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyTopicsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Reconcile topic definitions against the cluster",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C12"
+      }
+    },
     "/v1/batch/topics/delete": {
       "post": {
         "operationId": "topic-delete-bulk",
@@ -3059,6 +4032,159 @@
           "Cluster"
         ],
         "x-command-id": "C2"
+      },
+      "patch": {
+        "operationId": "cluster-alter-broker-config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brokerId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterBrokerConfigRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlterBrokerConfigBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Alter a broker's configuration",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C5"
+      }
+    },
+    "/v1/cluster/elections": {
+      "post": {
+        "operationId": "cluster-elections",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ElectionsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Trigger a leader election",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C9"
+      }
+    },
+    "/v1/cluster/export": {
+      "get": {
+        "operationId": "cluster-export",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "pattern",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Export topic definitions",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C11"
       }
     },
     "/v1/cluster/health": {
@@ -3091,6 +4217,267 @@
           "Cluster"
         ],
         "x-command-id": "C4"
+      }
+    },
+    "/v1/cluster/log-dirs": {
+      "get": {
+        "operationId": "cluster-log-dirs",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "brokerId",
+            "schema": {
+              "default": -1,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogDirsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Broker log directory usage",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C8"
+      }
+    },
+    "/v1/cluster/quorum": {
+      "get": {
+        "operationId": "cluster-quorum",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuorumBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "KRaft quorum status",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C6"
+      }
+    },
+    "/v1/cluster/reassignments": {
+      "get": {
+        "operationId": "cluster-reassignments-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListReassignmentsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List in-progress partition reassignments",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C7"
+      },
+      "post": {
+        "operationId": "cluster-reassign",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Reassign partition replicas",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C9"
+      }
+    },
+    "/v1/cluster/reassignments/cancel": {
+      "post": {
+        "operationId": "cluster-cancel-reassignments",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelReassignmentsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Cancel in-progress partition reassignments",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C9"
+      }
+    },
+    "/v1/cluster/throughput": {
+      "get": {
+        "operationId": "cluster-throughput",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "topic",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "seconds",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThroughputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Sample messages-per-second for one or every topic",
+        "tags": [
+          "Cluster"
+        ],
+        "x-command-id": "C10"
       }
     },
     "/v1/consumer-groups": {
