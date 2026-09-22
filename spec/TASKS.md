@@ -611,12 +611,12 @@
 - **Step 10 verification:** concrete ✓ (step 3 `source` normalised — F3) · self-contained ✓ · automated coverage ✓
 
 ### Task 8.1: Plan / Apply helper for destructive commands
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC F3, F4, O8, §8.6 (confirmation targets, plans), §9.1 lower half (confirm → dryRun → ATTEMPT → execute → RESULT), §9.1 rules (lock applies with `dryRun`); TECH §2.3 (Plan/Apply), O2
 - **Subtasks:**
-  - [ ] 8.1.1 `internal/service/core/destructive.go`: `Destructive[P, T](ctx, caller, descriptor, confirm, dryRun, plan func() (P, error), apply func(P) (T, error))` — checks F3 via `gates`, compares `confirm` to `plan.ConfirmTarget()`, returns `{dryRun:true, plan}` without ATTEMPT, else ATTEMPT → apply → RESULT (FAILED on error) — FUNC §9.1, §8.6
-  - [ ] 8.1.2 `Plan` interface `{ ConfirmTarget() string }`; dry-run envelope type — FUNC §8.3 dry-run
-  - [ ] 8.1.3 Unit tests: missing/wrong confirm, dry-run zero mutations, ATTEMPT/RESULT ordering, F3 switch — TECH §4.5 O8/O9
+  - [x] 8.1.1 `internal/service/core/destructive.go`: `Destructive[P, T](ctx, caller, descriptor, confirm, dryRun, plan func() (P, error), apply func(P) (T, error))` — checks F3 via `gates`, compares `confirm` to `plan.ConfirmTarget()`, returns `{dryRun:true, plan}` without ATTEMPT, else ATTEMPT → apply → RESULT (FAILED on error) — FUNC §9.1, §8.6
+  - [x] 8.1.2 `Plan` interface `{ ConfirmTarget() string }`; dry-run envelope type — FUNC §8.3 dry-run
+  - [x] 8.1.3 Unit tests: missing/wrong confirm, dry-run zero mutations, ATTEMPT/RESULT ordering, F3 switch — TECH §4.5 O8/O9
 - **Tests (Definition of Done):**
   - `TestDestructive_MissingConfirmIsConfirmationMismatch`, `TestDestructive_WrongConfirmIsConfirmationMismatch` — VC O8
   - `TestDestructive_DryRunReturnsPlanWithZeroMutatingCallsAndSingleResultAudit` — VC O8; FUNC §8.5
