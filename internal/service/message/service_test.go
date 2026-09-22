@@ -21,6 +21,7 @@ func testBounds() message.Bounds {
 		MaxMatches: message.Range{Default: 2, Ceiling: 5},
 		MaxBytes:   message.RangeBytes{Default: 1 << 20, Ceiling: 1 << 21},
 		MaxTime:    message.RangeDuration{Default: 0, Ceiling: 0}, // unbounded in tests: 0 = no context timeout
+		Replay:     message.Range{Default: 1000, Ceiling: 10000},
 	}
 }
 

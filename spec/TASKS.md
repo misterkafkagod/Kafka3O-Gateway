@@ -753,11 +753,11 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 11.1: Replay service (M8)
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §9.3 (procedure, at-least-once), D4, §8.6 (M8 row), §8.7 M8, §8.8 (N 1 000 / 10 000), §8.4 (`PARTITION_MISMATCH`, 502 with `progress`); TECH §2.3 (one scan loop reuse)
 - **Subtasks:**
-  - [ ] 11.1.1 `internal/service/message/replay.go`: `PlanReplay` (resolve source partitions, start offsets, end snapshot, target partition count; `preservePartition` check; `estimatedRecords`), `ApplyReplay` (`scan.Run` with `MatchAll`, emit = produce verbatim, partition by key or preserved; cursor; mid-batch produce failure → `KafkaError` with `details.progress{copied, cursor}`) — FUNC §9.3
-  - [ ] 11.1.2 OpenAPI description states at-least-once semantics — FUNC §9.3 step 5
+  - [x] 11.1.1 `internal/service/message/replay.go`: `PlanReplay` (resolve source partitions, start offsets, end snapshot, target partition count; `preservePartition` check; `estimatedRecords`), `ApplyReplay` (`scan.Run` with `MatchAll`, emit = produce verbatim, partition by key or preserved; cursor; mid-batch produce failure → `KafkaError` with `details.progress{copied, cursor}`) — FUNC §9.3
+  - [x] 11.1.2 OpenAPI description states at-least-once semantics — FUNC §9.3 step 5
 - **Tests (Definition of Done):**
   - `TestReplay_Plan_ResolvesPartitionsSnapshotAndEstimate`, `TestReplay_Plan_PreservePartitionMismatch` — FUNC §9.3 step 1
   - `TestReplay_Apply_CopiedCountAndCursor`, `TestReplay_Apply_ResumeFromCursorNoGapNoOverlap`, `TestReplay_Apply_ReachedEndOnLastBatch` — FUNC §9.3 step 4

@@ -20,10 +20,10 @@ func errCodeOf(err error) string {
 	return "INTERNAL"
 }
 
-// newEvent builds the base audit.Event for one M1-M7 command invocation
+// newEvent builds the base audit.Event for one M1-M8 command invocation
 // (FUNC-SPEC §8.5): its ATTEMPT and RESULT (or, for a gate rejection or a
 // break-glass read, its one RESULT) share this EventID and Target/Caller/
-// BreakGlass. commandID must name an M1-M7 command.Table entry.
+// BreakGlass. commandID must name an M1-M8 command.Table entry.
 func (s *Service) newEvent(caller core.Caller, commandID, topic string) audit.Event {
 	desc, _ := command.Lookup(commandID)
 

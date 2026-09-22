@@ -58,6 +58,8 @@ type Bounds struct {
 	// than this many bytes reports *core.PolicyError{Code: PayloadTooLarge}
 	// before any parsing completes.
 	MaxBulkBodyBytes int64
+	// Replay bounds M8's `limit` (FUNC-SPEC §8.8, D4: N records per call).
+	Replay Range
 }
 
 // Service implements the message commands.

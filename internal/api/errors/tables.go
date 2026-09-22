@@ -53,6 +53,7 @@ func codeTable() map[core.Code]httpMapping {
 		core.AuditUnavailable:     {503, "AUDIT_UNAVAILABLE"},
 		core.PayloadTooLarge:      {413, "PAYLOAD_TOO_LARGE"},
 		core.PartitionMismatch:    {400, "PARTITION_MISMATCH"},
+		core.ReplayFailed:         {502, "KAFKA_ERROR"},
 	}
 }
 

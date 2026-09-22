@@ -32,6 +32,7 @@ const (
 	AuditUnavailable
 	PayloadTooLarge
 	PartitionMismatch
+	ReplayFailed
 )
 
 // String returns the Code's FUNC-SPEC §8.4 wire name.
@@ -63,6 +64,8 @@ func (c Code) String() string {
 		return "PAYLOAD_TOO_LARGE"
 	case PartitionMismatch:
 		return "PARTITION_MISMATCH"
+	case ReplayFailed:
+		return "KAFKA_ERROR"
 	}
 	return fmt.Sprintf("code(%d)", int(c))
 }
@@ -73,7 +76,7 @@ func Codes() []Code {
 	return []Code{
 		TierForbidden, ReadOnlyMode, OperationDisabled, DataPlaneLocked,
 		ConfirmationMismatch, BoundExceeded, Validation, InvalidRegex, InvalidJSONPath,
-		BulkValidationFailed, AuditUnavailable, PayloadTooLarge, PartitionMismatch,
+		BulkValidationFailed, AuditUnavailable, PayloadTooLarge, PartitionMismatch, ReplayFailed,
 	}
 }
 

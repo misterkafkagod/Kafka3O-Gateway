@@ -145,6 +145,7 @@ func defaultSettings() settings {
 				MaxTime:          message.RangeDuration{Default: 10 * time.Second, Ceiling: 60 * time.Second},
 				RegexTimeout:     100 * time.Millisecond,
 				MaxBulkBodyBytes: 10 * 1024 * 1024,
+				Replay:           message.Range{Default: 1000, Ceiling: 10000},
 			},
 		},
 	}
