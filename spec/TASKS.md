@@ -599,7 +599,7 @@
 ---
 
 ## Phase 8: Topic administration — create, bulk create, alter config, add partitions
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can create topics (with validate-only), bulk-create, change configs and add partitions — the first destructive commands, with confirm echo, dry-run, and per-operation switches.
 - **Manual Test Plan:**
   1. CS3 `POST /v1/topics` `{"name":"t-new","partitions":2,"replicationFactor":1}` → `201`; repeat → `409 ALREADY_EXISTS`; `?dryRun=true` with a new name → `200 {"dryRun":true,"plan":…}` and the topic does not exist afterwards.
