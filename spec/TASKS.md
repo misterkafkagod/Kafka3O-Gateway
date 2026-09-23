@@ -899,11 +899,11 @@
   - Phase 14 MTP steps 2–4 pass (accepted CI + manual DoD)
 
 ### Task 14.2: Release pipeline
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §1.0 (SBOM, signed reproducible images), §1.1 (goreleaser, syft, cosign, SLSA), §5.0 Y4 (artifact names), §5.1 (`release.yml`)
 - **Subtasks:**
-  - [ ] 14.2.1 `.goreleaser.yaml`: binary `kafka3o-gateway`, reproducible builds, `syft` SBOM (CycloneDX + SPDX), image `ghcr.io/misterkafkagod/kafka3o-gateway`, cosign keyless signing, Helm chart OCI push — TECH §1.1, Y4
-  - [ ] 14.2.2 `.github/workflows/release.yml` on tag: goreleaser + GitHub Actions SLSA provenance attestations — TECH §1.1
+  - [x] 14.2.1 `.goreleaser.yaml`: binary `kafka3o-gateway`, reproducible builds, `syft` SBOM (CycloneDX + SPDX), image `ghcr.io/misterkafkagod/kafka3o-gateway`, cosign keyless signing, Helm chart OCI push — TECH §1.1, Y4
+  - [x] 14.2.2 `.github/workflows/release.yml` on tag: goreleaser + GitHub Actions SLSA provenance attestations — TECH §1.1
 - **Tests (Definition of Done):**
   - `goreleaser check` exit 0 in `ci.yml` — TECH §1.1
   - `release.yml` green on a tag pushed to a fork: image, CycloneDX + SPDX SBOMs, cosign signature, SLSA provenance present; `cosign verify` succeeds; SBOM lists `github.com/twmb/franz-go` `v1.21.7` — TECH §1.0, §1.1, Y4

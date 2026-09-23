@@ -3,7 +3,9 @@
 # built with the pinned Go toolchain, copied onto distroless/static nonroot —
 # no shell, no package manager, non-root user.
 
-FROM golang:1.27.1 AS build
+# The builder runs on the build host's platform and cross-compiles, so a
+# multi-arch release build never runs the Go toolchain under emulation.
+FROM --platform=$BUILDPLATFORM golang:1.27.1 AS build
 WORKDIR /src
 
 COPY go.mod go.sum ./
@@ -13,7 +15,10 @@ COPY cmd ./cmd
 COPY internal ./internal
 
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" \
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" \
       -o /out/kafka3o-gateway ./cmd/gateway
 
 # Digest-pinned (TECH-SPEC §1.0: reproducible images); Renovate bumps it.

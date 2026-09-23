@@ -51,6 +51,13 @@ jobs:
       - name: OpenAPI document is up to date
         run: make openapi-check
 
+      - name: GoReleaser config is valid
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+
       - name: Benchmarks
         run: make benchstat-report
 

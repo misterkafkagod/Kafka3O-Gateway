@@ -1,0 +1,109 @@
+# Release pipeline (TECH-SPEC §1.0, §1.1, §5.1): on a v* tag, goreleaser
+# builds reproducible archives + CycloneDX/SPDX SBOMs, a multi-arch distroless
+# image on GHCR, and keyless cosign signatures; GitHub Actions then attaches
+# SLSA build provenance to both the archives and the image digest.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write       # create the GitHub release
+  packages: write       # push to ghcr.io
+  id-token: write       # keyless cosign + provenance (OIDC)
+  attestations: write   # actions/attest-build-provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      # GHCR names must be lower-case; a fork publishes under its own owner.
+      - name: Image repository
+        run: echo "IMAGE_REPO=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/kafka3o-gateway" >> "$GITHUB_ENV"
+
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image digest
+        id: image
+        run: |
+          digest=$(docker buildx imagetools inspect "$IMAGE_REPO:${GITHUB_REF_NAME#v}" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "name=$IMAGE_REPO" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Image SBOMs (CycloneDX + SPDX) attached as cosign attestations
+        run: |
+          img="${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}"
+          syft "$img" -o cyclonedx-json=image.cdx.json -o spdx-json=image.spdx.json
+          cosign attest --yes --type cyclonedx --predicate image.cdx.json "$img"
+          cosign attest --yes --type spdxjson --predicate image.spdx.json "$img"
+
+      - name: Provenance for release archives
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+
+      - name: Provenance for the image
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Verify the image signature
+        run: |
+          cosign verify "${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}" \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/release.yml@" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+      # The Helm chart arrives in Phase 15; until then this step is a no-op.
+      - name: Push Helm chart (OCI)
+        run: |
+          chart=deploy/helm/kafka3o-gateway
+          if [ ! -f "$chart/Chart.yaml" ]; then echo "no chart yet; skipping"; exit 0; fi
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package "$chart" --version "${GITHUB_REF_NAME#v}" --app-version "${GITHUB_REF_NAME#v}" -d dist/chart
+          helm push dist/chart/*.tgz "oci://${IMAGE_REPO%/kafka3o-gateway}/charts"
