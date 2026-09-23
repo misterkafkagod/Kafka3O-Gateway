@@ -60,3 +60,33 @@ jobs:
           name: benchstat
           path: benchstat.txt
           if-no-files-found: error
+
+  image:
+    name: image build, non-root check, scan gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Final stage is digest-pinned distroless
+        run: |
+          final=$(grep -E '^FROM ' Dockerfile | tail -1)
+          echo "$final"
+          echo "$final" | grep -Eq '^FROM gcr\.io/distroless/static-debian12:nonroot@sha256:[0-9a-f]{64}$'
+
+      - name: Build image
+        run: make image VERSION=ci-${{ github.sha }}
+
+      - name: Image runs as nonroot
+        run: |
+          user=$(docker inspect kafka3o-gateway:ci-${{ github.sha }} --format '{{.Config.User}}')
+          echo "user=$user"
+          test "$user" = nonroot
+
+      - name: Scan gate (grype, fail on high)
+        uses: anchore/scan-action@v6
+        with:
+          image: kafka3o-gateway:ci-${{ github.sha }}
+          fail-build: true
+          severity-cutoff: high
+          output-format: table

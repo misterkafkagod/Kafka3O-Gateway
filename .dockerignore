@@ -1,0 +1,17 @@
+.git
+.github
+bin
+dist
+docs
+spec
+test
+deploy
+configs/dev.yaml
+configs/*.local.yaml
+.env
+*.test
+*.prof
+coverage.out
+bench.txt
+benchstat.txt
+acceptance.json

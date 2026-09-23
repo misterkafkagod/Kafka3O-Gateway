@@ -127,7 +127,7 @@ govulncheck: ## TECH-SPEC §1.3 CVE policy
 build: ## static binary in bin/
 	CGO_ENABLED=0 $(GO) build $(GOFLAGS_BUILD) -ldflags="-s -w -X main.version=$(VERSION)" -o bin/$(BINARY)$(EXE) ./cmd/gateway
 
-image: ## container image (Dockerfile arrives in Phase 14)
+image: ## distroless container image $(BINARY):$(VERSION) (TECH-SPEC §1.1)
 	docker build --build-arg VERSION=$(VERSION) -t $(BINARY):$(VERSION) .
 
 openapi: ## export docs/api/openapi.json from the tested golden (Task 13.2)

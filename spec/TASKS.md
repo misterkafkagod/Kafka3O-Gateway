@@ -889,11 +889,11 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage: workflow runs + this plan (accepted at Step 10 — no unit tests exist for build artefacts in TECH §4)
 
 ### Task 14.1: Dockerfile
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §1.1 (container row), §1.0 (supply chain), §5.1
 - **Subtasks:**
-  - [ ] 14.1.1 Multi-stage `Dockerfile`: `golang:1.27.1` builder (`CGO_ENABLED=0 -trimpath -ldflags=-s -w`), final `gcr.io/distroless/static-debian12:nonroot@sha256:<digest>`; entrypoint `/kafka3o-gateway` — TECH §1.1
-  - [ ] 14.1.2 `make image` target — TECH §5.1
+  - [x] 14.1.1 Multi-stage `Dockerfile`: `golang:1.27.1` builder (`CGO_ENABLED=0 -trimpath -ldflags=-s -w`), final `gcr.io/distroless/static-debian12:nonroot@sha256:<digest>`; entrypoint `/kafka3o-gateway` — TECH §1.1
+  - [x] 14.1.2 `make image` target — TECH §5.1
 - **Tests (Definition of Done):**
   - `ci.yml` image job: `docker build` succeeds; `docker inspect` user is `nonroot`; the final `FROM` is digest-pinned (grep in the job); `grype --fail-on high` exit 0 — TECH §1.1, §1.3
   - Phase 14 MTP steps 2–4 pass (accepted CI + manual DoD)
