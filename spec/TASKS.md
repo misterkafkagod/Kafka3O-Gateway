@@ -837,7 +837,7 @@
 ---
 
 ## Phase 13: SCRAM credentials, client quotas, and the complete OpenAPI document
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** An operator can manage SCRAM users and quotas; all 41 commands (48 operations) are present in the served OpenAPI document.
 - **Manual Test Plan:**
   1. CS3 `POST /v1/scram-users` `{"name":"alice","mechanism":"SCRAM-SHA-256","password":"s3cret"}` → `201 {"name":"alice","mechanism":"SCRAM-SHA-256"}`; the audit line contains no `s3cret`.
