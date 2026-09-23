@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -475,6 +476,30 @@ func TestExampleConfig_LoadsAndListsEveryKey(t *testing.T) {
 	for p := range present {
 		if _, ok := schema().leaves[p]; !ok {
 			t.Errorf("config.example.yaml has key %q that Config does not define", p)
+		}
+	}
+}
+
+// TestOperationsDoc_DocumentsEveryKey keeps docs/operations.md in step with
+// Config: every key, and every operations topic TECH-SPEC §5.1 names.
+func TestOperationsDoc_DocumentsEveryKey(t *testing.T) {
+	t.Parallel()
+	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "operations.md"))
+	if err != nil {
+		t.Fatalf("read docs/operations.md: %v", err)
+	}
+	text := string(doc)
+	for _, p := range Paths() {
+		if !strings.Contains(text, "`"+p+"`") {
+			t.Errorf("docs/operations.md does not document key %q", p)
+		}
+	}
+	for _, section := range []string{
+		"## Supported brokers", "## Command line", "## Health probes", "## Shutdown",
+		"## Audit topic provisioning", "## Break-glass", "## DELETE requests carry a JSON body",
+	} {
+		if !strings.Contains(text, section) {
+			t.Errorf("docs/operations.md is missing section %q", section)
 		}
 	}
 }

@@ -920,10 +920,10 @@
   - `ci.yml` contains the image scan step and it fails on an image with a known-high CVE (one-time negative check) — TECH §1.3
 
 ### Task 14.4: Operations documentation
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §5.1 (`docs/operations.md`), §6.3 (configuration keys), §6.5 R3, §5.4 (shutdown), FUNC §9.5 (break-glass procedure)
 - **Subtasks:**
-  - [ ] 14.4.1 Configuration reference generated from `config.example.yaml` including every §6.3 key; probes and `probe`/`keygen` subcommands; shutdown order; audit sink and topic; break-glass procedure; DELETE-with-body caveat (R3); supported broker range Kafka 3.3 → 4.x and the `UNSUPPORTED_VERSION` behaviour (Step 11 N4 — TECH C3) — TECH §5.1, §6.3, §6.5, C3
+  - [x] 14.4.1 Configuration reference generated from `config.example.yaml` including every §6.3 key; probes and `probe`/`keygen` subcommands; shutdown order; audit sink and topic; break-glass procedure; DELETE-with-body caveat (R3); supported broker range Kafka 3.3 → 4.x and the `UNSUPPORTED_VERSION` behaviour (Step 11 N4 — TECH C3) — TECH §5.1, §6.3, §6.5, C3
 - **Tests (Definition of Done):**
   - Review-checklist item (accepted at Step 10 — no automated test in TECH §4): every key in `configs/config.example.yaml` appears in `docs/operations.md`; sections present for probes, subcommands, shutdown, audit topic, break-glass, R3 caveat, supported broker range — TECH §5.1, §6.3, §6.5, C3
 
