@@ -3,10 +3,9 @@ package fake
 import "github.com/misterkafkagod/kafka3o/internal/kafka"
 
 // model is the in-memory cluster state (TECH-SPEC §4.3 Model row). Phase 1,
-// Task 2.1, Task 7.1, and Task 12.1.3 model what DescribeCluster, the
-// inspection commands (C2, C4, T1-T4), the group commands (G1-G3), and the
-// advanced cluster commands (C5-C9) need now. SCRAM users and client quotas
-// are added by Task 13.1.2 — nothing here yet reads or sets them.
+// Task 2.1, Task 7.1, Task 12.1.3, and Task 13.1.2 model what DescribeCluster,
+// the inspection commands (C2, C4, T1-T4), the group commands (G1-G3), the
+// advanced cluster commands (C5-C9), and the security commands (S1, S2) need.
 type model struct {
 	clusterID     string
 	controllerID  int32
@@ -16,6 +15,24 @@ type model struct {
 	topics        map[string]*fakeTopic
 	groups        map[string]*fakeGroup
 	quorum        fakeQuorum
+	scramUsers    map[string]*fakeScramUser
+	quotas        map[string]*fakeQuota
+}
+
+// fakeScramUser is one user's configured SCRAM credentials, keyed by
+// mechanism. It stores mechanism and iteration count only — never a
+// password, salt, or salted password (Task 13.1.2: "no secrets stored";
+// TestFake_SCRAM_StoresNoPasswordMaterial asserts this at the type level).
+type fakeScramUser struct {
+	name        string
+	credentials map[kafka.ScramMechanism]int32
+}
+
+// fakeQuota is one entity's configured quota values, keyed by the entity
+// descriptor toEntityKey builds from it (Task 13.1.2 S2).
+type fakeQuota struct {
+	entity kafka.QuotaEntity
+	values map[string]float64
 }
 
 // fakeQuorum is the seeded KRaft quorum status (Task 12.1.3 C6). Its zero

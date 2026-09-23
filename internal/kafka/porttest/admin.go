@@ -928,4 +928,132 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 			t.Errorf("DescribeAllLogDirs() = %+v, want a broker 1 /var/kafka/data entry with totalBytes >= 1024", dirs)
 		}
 	})
+
+	t.Run("Admin_SCRAM_UpsertThenDescribeNoSecret", func(t *testing.T) {
+		user := "porttest-scram-upsert"
+		results, err := port.AlterUserSCRAMs(context.Background(), []kafka.ScramUpsert{
+			{User: user, Mechanism: kafka.ScramSha256, Iterations: 4096, Password: "s3cret"},
+		}, nil)
+		if err != nil {
+			t.Fatalf("AlterUserSCRAMs(upsert) error: %v", err)
+		}
+		if len(results) != 1 || results[0].Err != nil {
+			t.Fatalf("AlterUserSCRAMs(upsert) results = %+v, want one clean result", results)
+		}
+
+		// ScramUser/ScramCredential carry mechanism and iterations only — no
+		// Password/Salt field exists on the port's types to leak through
+		// (TECH-SPEC C7), so a successful describe is itself the "no secret"
+		// proof: there is no field to assert absent.
+		users, err := port.DescribeUserSCRAMs(context.Background(), user)
+		if err != nil {
+			t.Fatalf("DescribeUserSCRAMs() error: %v", err)
+		}
+		if len(users) != 1 || users[0].Name != user {
+			t.Fatalf("DescribeUserSCRAMs() = %+v, want one entry for %s", users, user)
+		}
+		if len(users[0].Credentials) != 1 || users[0].Credentials[0].Mechanism != kafka.ScramSha256 || users[0].Credentials[0].Iterations != 4096 {
+			t.Errorf("DescribeUserSCRAMs() credentials = %+v, want SCRAM-SHA-256 iterations 4096", users[0].Credentials)
+		}
+	})
+
+	t.Run("Admin_SCRAM_DeleteRemoves", func(t *testing.T) {
+		user := "porttest-scram-delete"
+		if _, err := port.AlterUserSCRAMs(context.Background(), []kafka.ScramUpsert{
+			{User: user, Mechanism: kafka.ScramSha256, Iterations: 4096, Password: "s3cret"},
+		}, nil); err != nil {
+			t.Fatalf("AlterUserSCRAMs(upsert) error: %v", err)
+		}
+
+		results, err := port.AlterUserSCRAMs(context.Background(), nil, []kafka.ScramDelete{
+			{User: user, Mechanism: kafka.ScramSha256},
+		})
+		if err != nil {
+			t.Fatalf("AlterUserSCRAMs(delete) error: %v", err)
+		}
+		if len(results) != 1 || results[0].Err != nil {
+			t.Fatalf("AlterUserSCRAMs(delete) results = %+v, want one clean result", results)
+		}
+
+		_, err = port.DescribeUserSCRAMs(context.Background(), user)
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindNotFound {
+			t.Fatalf("DescribeUserSCRAMs() after delete error = %v, want *kafka.Error{Kind: KindNotFound}", err)
+		}
+	})
+
+	t.Run("Admin_SCRAM_DescribeMissingIsNotFound", func(t *testing.T) {
+		_, err := port.DescribeUserSCRAMs(context.Background(), "porttest-scram-missing")
+		var ke *kafka.Error
+		if !errors.As(err, &ke) || ke.Kind != kafka.KindNotFound {
+			t.Fatalf("DescribeUserSCRAMs() error = %v, want *kafka.Error{Kind: KindNotFound}", err)
+		}
+	})
+
+	t.Run("Admin_Quotas_AlterThenDescribe", func(t *testing.T) {
+		user := "porttest-quota-user"
+		entity := kafka.QuotaEntity{{Type: "user", Name: &user}}
+		results, err := port.AlterClientQuotas(context.Background(), []kafka.QuotaAlterEntry{
+			{Entity: entity, Ops: []kafka.QuotaOp{{Key: "producer_byte_rate", Value: 1048576}}},
+		})
+		if err != nil {
+			t.Fatalf("AlterClientQuotas(set) error: %v", err)
+		}
+		if len(results) != 1 || results[0].Err != nil {
+			t.Fatalf("AlterClientQuotas(set) results = %+v, want one clean result", results)
+		}
+
+		quotas, err := port.DescribeClientQuotas(context.Background(), "user")
+		if err != nil {
+			t.Fatalf("DescribeClientQuotas() error: %v", err)
+		}
+		found := false
+		for _, q := range quotas {
+			for _, c := range q.Entity {
+				if c.Type != "user" || c.Name == nil || *c.Name != user {
+					continue
+				}
+				for _, v := range q.Values {
+					if v.Key == "producer_byte_rate" && v.Value == 1048576 {
+						found = true
+					}
+				}
+			}
+		}
+		if !found {
+			t.Errorf("DescribeClientQuotas() = %+v, want %s producer_byte_rate=1048576", quotas, user)
+		}
+	})
+
+	t.Run("Admin_Quotas_RemoveKey", func(t *testing.T) {
+		user := "porttest-quota-removekey"
+		entity := kafka.QuotaEntity{{Type: "user", Name: &user}}
+		if _, err := port.AlterClientQuotas(context.Background(), []kafka.QuotaAlterEntry{
+			{Entity: entity, Ops: []kafka.QuotaOp{{Key: "producer_byte_rate", Value: 2097152}}},
+		}); err != nil {
+			t.Fatalf("AlterClientQuotas(set) error: %v", err)
+		}
+
+		results, err := port.AlterClientQuotas(context.Background(), []kafka.QuotaAlterEntry{
+			{Entity: entity, Ops: []kafka.QuotaOp{{Key: "producer_byte_rate", Remove: true}}},
+		})
+		if err != nil {
+			t.Fatalf("AlterClientQuotas(remove) error: %v", err)
+		}
+		if len(results) != 1 || results[0].Err != nil {
+			t.Fatalf("AlterClientQuotas(remove) results = %+v, want one clean result", results)
+		}
+
+		quotas, err := port.DescribeClientQuotas(context.Background(), "user")
+		if err != nil {
+			t.Fatalf("DescribeClientQuotas() error: %v", err)
+		}
+		for _, q := range quotas {
+			for _, c := range q.Entity {
+				if c.Type == "user" && c.Name != nil && *c.Name == user {
+					t.Errorf("DescribeClientQuotas() still lists %s after removing its only key", user)
+				}
+			}
+		}
+	})
 }

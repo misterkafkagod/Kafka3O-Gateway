@@ -767,5 +767,150 @@ func (c *Client) DescribeAllLogDirs(ctx context.Context) ([]kafka.BrokerLogDir, 
 	return out, nil
 }
 
+// toKadmScramMechanism maps the domain's wire-shaped mechanism onto kadm's
+// int8 enum (FUNC-SPEC §8.7 S1). The API layer's DTO enum tag is the only
+// gate on which values reach here (TECH-SPEC I5), so an unrecognised value
+// falls back to SCRAM-SHA-256 rather than panicking (TECH-SPEC L4).
+func toKadmScramMechanism(m kafka.ScramMechanism) kadm.ScramMechanism {
+	if m == kafka.ScramSha512 {
+		return kadm.ScramSha512
+	}
+	return kadm.ScramSha256
+}
+
+// toDomainScramMechanism is toKadmScramMechanism's inverse.
+func toDomainScramMechanism(m kadm.ScramMechanism) kafka.ScramMechanism {
+	if m == kadm.ScramSha512 {
+		return kafka.ScramSha512
+	}
+	return kafka.ScramSha256
+}
+
+// DescribeUserSCRAMs returns SCRAM credential metadata — never secret
+// material — for users, or every user with credentials configured when
+// users is empty (FUNC-SPEC §8.7 S1 list, and the delete plan's existence
+// check) via kadm.DescribeUserSCRAMs. Given one or more explicit users, any
+// missing one fails the whole call as NotFound (kmsg:
+// "RESOURCE_NOT_FOUND if the user does not exist or has no credentials").
+func (c *Client) DescribeUserSCRAMs(ctx context.Context, users ...string) ([]kafka.ScramUser, error) {
+	described, err := c.kadm.DescribeUserSCRAMs(ctx, users...)
+	if err != nil {
+		return nil, wrapErr("user", err)
+	}
+
+	out := make([]kafka.ScramUser, 0, len(described))
+	for _, u := range described.Sorted() {
+		if u.Err != nil {
+			return nil, wrapErr("user", u.Err)
+		}
+		creds := make([]kafka.ScramCredential, len(u.CredInfos))
+		for i, ci := range u.CredInfos {
+			creds[i] = kafka.ScramCredential{Mechanism: toDomainScramMechanism(ci.Mechanism), Iterations: ci.Iterations}
+		}
+		out = append(out, kafka.ScramUser{Name: u.User, Credentials: creds})
+	}
+	return out, nil
+}
+
+// AlterUserSCRAMs deletes and/or upserts SCRAM credentials (FUNC-SPEC §8.7
+// S1 create, delete) via kadm.AlterUserSCRAMs — which itself salts and hashes
+// a plaintext Password before it ever reaches the wire; the salted password
+// is the only form that leaves this process. Each entry's own error
+// surfaces on its own result; one failure never fails the rest of the batch.
+func (c *Client) AlterUserSCRAMs(ctx context.Context, upserts []kafka.ScramUpsert, deletes []kafka.ScramDelete) ([]kafka.ScramAlterResult, error) {
+	kadmUpserts := make([]kadm.UpsertSCRAM, len(upserts))
+	for i, u := range upserts {
+		kadmUpserts[i] = kadm.UpsertSCRAM{
+			User: u.User, Mechanism: toKadmScramMechanism(u.Mechanism), Iterations: u.Iterations, Password: u.Password,
+		}
+	}
+	kadmDeletes := make([]kadm.DeleteSCRAM, len(deletes))
+	for i, d := range deletes {
+		kadmDeletes[i] = kadm.DeleteSCRAM{User: d.User, Mechanism: toKadmScramMechanism(d.Mechanism)}
+	}
+
+	altered, err := c.kadm.AlterUserSCRAMs(ctx, kadmDeletes, kadmUpserts)
+	if err != nil {
+		return nil, wrapErr("user", err)
+	}
+
+	out := make([]kafka.ScramAlterResult, 0, len(altered))
+	for _, a := range altered.Sorted() {
+		out = append(out, kafka.ScramAlterResult{User: a.User, Err: wrapErr("user", a.Err)})
+	}
+	return out, nil
+}
+
+// toDomainQuotaEntity converts a kadm entity into the port's shape.
+func toDomainQuotaEntity(e kadm.ClientQuotaEntity) kafka.QuotaEntity {
+	out := make(kafka.QuotaEntity, len(e))
+	for i, c := range e {
+		out[i] = kafka.QuotaEntityComponent{Type: c.Type, Name: c.Name}
+	}
+	return out
+}
+
+// toKadmQuotaEntity is toDomainQuotaEntity's inverse.
+func toKadmQuotaEntity(e kafka.QuotaEntity) kadm.ClientQuotaEntity {
+	out := make(kadm.ClientQuotaEntity, len(e))
+	for i, c := range e {
+		out[i] = kadm.ClientQuotaEntityComponent{Type: c.Type, Name: c.Name}
+	}
+	return out
+}
+
+// DescribeClientQuotas returns every configured client quota, optionally
+// restricted to one entity type — an empty entityType matches every type
+// (FUNC-SPEC §8.7 S2 list) via kadm.DescribeClientQuotas. A restricted call
+// matches any name of that type (kmsg.QuotasMatchTypeAny), not just the
+// type's default.
+func (c *Client) DescribeClientQuotas(ctx context.Context, entityType string) ([]kafka.DescribedQuota, error) {
+	var components []kadm.DescribeClientQuotaComponent
+	if entityType != "" {
+		components = []kadm.DescribeClientQuotaComponent{{Type: entityType, MatchType: kmsg.QuotasMatchTypeAny}}
+	}
+
+	described, err := c.kadm.DescribeClientQuotas(ctx, false, components)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	out := make([]kafka.DescribedQuota, len(described))
+	for i, d := range described {
+		values := make([]kafka.QuotaValue, len(d.Values))
+		for j, v := range d.Values {
+			values[j] = kafka.QuotaValue{Key: v.Key, Value: v.Value}
+		}
+		out[i] = kafka.DescribedQuota{Entity: toDomainQuotaEntity(d.Entity), Values: values}
+	}
+	return out, nil
+}
+
+// AlterClientQuotas sets or removes quota keys for the given entities
+// (FUNC-SPEC §8.7 S2 alter) via kadm.AlterClientQuotas. Each entry's own
+// error surfaces on its own result; one failure never fails the rest of the
+// batch.
+func (c *Client) AlterClientQuotas(ctx context.Context, entries []kafka.QuotaAlterEntry) ([]kafka.QuotaAlterResult, error) {
+	kadmEntries := make([]kadm.AlterClientQuotaEntry, len(entries))
+	for i, e := range entries {
+		ops := make([]kadm.AlterClientQuotaOp, len(e.Ops))
+		for j, op := range e.Ops {
+			ops[j] = kadm.AlterClientQuotaOp{Key: op.Key, Value: op.Value, Remove: op.Remove}
+		}
+		kadmEntries[i] = kadm.AlterClientQuotaEntry{Entity: toKadmQuotaEntity(e.Entity), Ops: ops}
+	}
+
+	altered, err := c.kadm.AlterClientQuotas(ctx, kadmEntries)
+	if err != nil {
+		return nil, wrapErr("", err)
+	}
+
+	out := make([]kafka.QuotaAlterResult, len(altered))
+	for i, a := range altered {
+		out[i] = kafka.QuotaAlterResult{Entity: toDomainQuotaEntity(a.Entity), Err: wrapErr("", a.Err)}
+	}
+	return out, nil
+}
+
 // compile-time proof that Client satisfies the Admin surface it implements so far.
 var _ kafka.Admin = (*Client)(nil)

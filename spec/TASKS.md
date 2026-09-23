@@ -849,11 +849,11 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 13.1: Port and adapters for security commands
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.7 S1, S2; TECH §1.1 (kadm SCRAM, quotas), L1–L4
 - **Subtasks:**
-  - [ ] 13.1.1 Port: `DescribeUserSCRAMs`, `AlterUserSCRAMs(upsert, delete)`, `DescribeClientQuotas`, `AlterClientQuotas` — FUNC §8.7
-  - [ ] 13.1.2 `franz`, `fake` (no secrets stored), `porttest` cases — TECH §4.3
+  - [x] 13.1.1 Port: `DescribeUserSCRAMs`, `AlterUserSCRAMs(upsert, delete)`, `DescribeClientQuotas`, `AlterClientQuotas` — FUNC §8.7
+  - [x] 13.1.2 `franz`, `fake` (no secrets stored), `porttest` cases — TECH §4.3
 - **Tests (Definition of Done):**
   - `porttest` cases `Admin_SCRAM_UpsertThenDescribeNoSecret`, `Admin_SCRAM_DeleteRemoves`, `Admin_SCRAM_DescribeMissingIsNotFound`, `Admin_Quotas_AlterThenDescribe`, `Admin_Quotas_RemoveKey` — TECH L2
   - `TestFake_SCRAM_StoresNoPasswordMaterial` — TECH §4.3

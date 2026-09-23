@@ -281,3 +281,101 @@ type BrokerLogDir struct {
 	TotalBytes     int64
 	PartitionCount int
 }
+
+// ScramMechanism is a SCRAM credential's hash mechanism (FUNC-SPEC §8.7 S1).
+type ScramMechanism string
+
+// ScramMechanism values.
+const (
+	ScramSha256 ScramMechanism = "SCRAM-SHA-256"
+	ScramSha512 ScramMechanism = "SCRAM-SHA-512"
+)
+
+// ScramCredential is one mechanism a user has a password configured for, and
+// its iteration count (FUNC-SPEC §8.7 S1 list). No secret material ever
+// appears here (TECH-SPEC C7): describing credentials never returns a
+// password, salt, or salted password.
+type ScramCredential struct {
+	Mechanism  ScramMechanism
+	Iterations int32
+}
+
+// ScramUser is one user's configured SCRAM credentials (FUNC-SPEC §8.7 S1 list).
+type ScramUser struct {
+	Name        string
+	Credentials []ScramCredential
+}
+
+// ScramUpsert creates or replaces one user's password for one mechanism
+// (FUNC-SPEC §8.7 S1 create). Password is plaintext in transit to the
+// adapter only; it is never stored, logged, or echoed back (TECH-SPEC C7).
+type ScramUpsert struct {
+	User       string
+	Mechanism  ScramMechanism
+	Iterations int32
+	Password   string
+}
+
+// ScramDelete names one user+mechanism credential to remove (FUNC-SPEC §8.7
+// S1 delete).
+type ScramDelete struct {
+	User      string
+	Mechanism ScramMechanism
+}
+
+// ScramAlterResult is one user's outcome of AlterUserSCRAMs (FUNC-SPEC §8.7
+// S1 create, delete). Err is set per-user when only that one was rejected;
+// it never fails the rest of the batch.
+type ScramAlterResult struct {
+	User string
+	Err  error
+}
+
+// QuotaEntityComponent is one component of a client-quota entity — e.g.
+// user=alice or client-id=<default> (FUNC-SPEC §8.7 S2). A nil Name matches
+// the entity type's default.
+type QuotaEntityComponent struct {
+	Type string
+	Name *string
+}
+
+// QuotaEntity is the full entity a set of quotas apply to — usually one
+// component, occasionally a user+client-id pair (FUNC-SPEC §8.7 S2).
+type QuotaEntity []QuotaEntityComponent
+
+// QuotaValue is one quota key and its numeric value (FUNC-SPEC §8.7 S2:
+// producerByteRate, consumerByteRate, requestPercentage).
+type QuotaValue struct {
+	Key   string
+	Value float64
+}
+
+// DescribedQuota is one entity's currently configured quotas (FUNC-SPEC §8.7
+// S2 list).
+type DescribedQuota struct {
+	Entity QuotaEntity
+	Values []QuotaValue
+}
+
+// QuotaOp sets Key to Value, or removes it when Remove is true (FUNC-SPEC
+// §8.7 S2 alter: `set`/`remove`).
+type QuotaOp struct {
+	Key    string
+	Value  float64
+	Remove bool
+}
+
+// QuotaAlterEntry pairs one entity with the quota ops to apply to it
+// (FUNC-SPEC §8.7 S2 alter).
+type QuotaAlterEntry struct {
+	Entity QuotaEntity
+	Ops    []QuotaOp
+}
+
+// QuotaAlterResult is one entity's outcome of AlterClientQuotas. Err is set
+// per-entity when only that one was rejected; it never fails the rest of the
+// batch.
+type QuotaAlterResult struct {
+	Entity QuotaEntity
+	Err    error
+}

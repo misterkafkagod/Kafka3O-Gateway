@@ -26,6 +26,8 @@ func classify(code int16) (kind kafka.Kind, resource string) {
 		return kafka.KindGroupActive, "group"
 	case kerr.UnsupportedVersion.Code:
 		return kafka.KindUnsupported, ""
+	case kerr.ResourceNotFound.Code:
+		return kafka.KindNotFound, ""
 	default:
 		return kafka.KindBroker, ""
 	}

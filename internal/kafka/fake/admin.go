@@ -3,6 +3,7 @@ package fake
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
@@ -807,6 +808,217 @@ func toDomainTopic(name string, t *fakeTopic) kafka.Topic {
 		ReplicationFactor: t.replicationFactor,
 		Partitions:        partitions,
 	}
+}
+
+// DescribeUserSCRAMs returns seeded SCRAM credential metadata for users, or
+// every user with credentials configured when users is empty (FUNC-SPEC
+// §8.7 S1 list, and the delete plan's existence check). Given explicit
+// users, any missing one fails the whole call as NotFound.
+func (f *Fake) DescribeUserSCRAMs(ctx context.Context, users ...string) ([]kafka.ScramUser, error) {
+	return invoke(f, ctx, "DescribeUserSCRAMs", false, func() ([]kafka.ScramUser, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if len(users) > 0 {
+			out := make([]kafka.ScramUser, len(users))
+			for i, name := range users {
+				u := f.model.scramUsers[name]
+				if u == nil {
+					return nil, &kafka.Error{Kind: kafka.KindNotFound, Resource: "user"}
+				}
+				out[i] = toDomainScramUser(u)
+			}
+			return out, nil
+		}
+
+		names := make([]string, 0, len(f.model.scramUsers))
+		for name := range f.model.scramUsers {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		out := make([]kafka.ScramUser, len(names))
+		for i, name := range names {
+			out[i] = toDomainScramUser(f.model.scramUsers[name])
+		}
+		return out, nil
+	})
+}
+
+// toDomainScramUser converts a fakeScramUser into the port's ScramUser
+// shape, sorted by mechanism for a stable response. Callers must hold f.mu.
+func toDomainScramUser(u *fakeScramUser) kafka.ScramUser {
+	mechs := make([]kafka.ScramMechanism, 0, len(u.credentials))
+	for m := range u.credentials {
+		mechs = append(mechs, m)
+	}
+	sort.Slice(mechs, func(i, j int) bool { return mechs[i] < mechs[j] })
+	creds := make([]kafka.ScramCredential, len(mechs))
+	for i, m := range mechs {
+		creds[i] = kafka.ScramCredential{Mechanism: m, Iterations: u.credentials[m]}
+	}
+	return kafka.ScramUser{Name: u.name, Credentials: creds}
+}
+
+// AlterUserSCRAMs deletes and/or upserts SCRAM credentials (FUNC-SPEC §8.7
+// S1 create, delete), storing only mechanism and iteration count — never
+// the password (Task 13.1.2: "no secrets stored"). Each touched user's own
+// result carries its own error (e.g. deleting a credential that isn't
+// configured → NotFound); one failure never fails the rest of the batch.
+func (f *Fake) AlterUserSCRAMs(ctx context.Context, upserts []kafka.ScramUpsert, deletes []kafka.ScramDelete) ([]kafka.ScramAlterResult, error) {
+	return invoke(f, ctx, "AlterUserSCRAMs", true, func() ([]kafka.ScramAlterResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if f.model.scramUsers == nil {
+			f.model.scramUsers = map[string]*fakeScramUser{}
+		}
+
+		seen := map[string]bool{}
+		var order []string
+		mark := func(user string) {
+			if !seen[user] {
+				seen[user] = true
+				order = append(order, user)
+			}
+		}
+		errs := map[string]error{}
+
+		for _, u := range upserts {
+			mark(u.User)
+			target := f.model.scramUsers[u.User]
+			if target == nil {
+				target = &fakeScramUser{name: u.User, credentials: map[kafka.ScramMechanism]int32{}}
+				f.model.scramUsers[u.User] = target
+			}
+			target.credentials[u.Mechanism] = u.Iterations
+		}
+		for _, d := range deletes {
+			mark(d.User)
+			target := f.model.scramUsers[d.User]
+			if target == nil {
+				errs[d.User] = &kafka.Error{Kind: kafka.KindNotFound, Resource: "user"}
+				continue
+			}
+			if _, ok := target.credentials[d.Mechanism]; !ok {
+				errs[d.User] = &kafka.Error{Kind: kafka.KindNotFound, Resource: "user"}
+				continue
+			}
+			delete(target.credentials, d.Mechanism)
+			if len(target.credentials) == 0 {
+				delete(f.model.scramUsers, d.User)
+			}
+		}
+
+		out := make([]kafka.ScramAlterResult, len(order))
+		for i, user := range order {
+			out[i] = kafka.ScramAlterResult{User: user, Err: errs[user]}
+		}
+		return out, nil
+	})
+}
+
+// entityKey builds a canonical, order-independent string key for a quota
+// entity, used as the fake's internal map key (FUNC-SPEC §8.7 S2): a
+// component's absent Name renders as "<default>", and components sort by
+// type so equivalent entities submitted in a different component order
+// still hit the same fakeQuota.
+func entityKey(e kafka.QuotaEntity) string {
+	parts := make([]string, len(e))
+	for i, c := range e {
+		name := "<default>"
+		if c.Name != nil {
+			name = *c.Name
+		}
+		parts[i] = c.Type + "=" + name
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+// entityHasType reports whether e has a component of type t.
+func entityHasType(e kafka.QuotaEntity, t string) bool {
+	for _, c := range e {
+		if c.Type == t {
+			return true
+		}
+	}
+	return false
+}
+
+// DescribeClientQuotas returns every seeded client quota, optionally
+// restricted to one entity type — an empty entityType matches every type
+// (FUNC-SPEC §8.7 S2 list).
+func (f *Fake) DescribeClientQuotas(ctx context.Context, entityType string) ([]kafka.DescribedQuota, error) {
+	return invoke(f, ctx, "DescribeClientQuotas", false, func() ([]kafka.DescribedQuota, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		keys := make([]string, 0, len(f.model.quotas))
+		for k, q := range f.model.quotas {
+			if entityType != "" && !entityHasType(q.entity, entityType) {
+				continue
+			}
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		out := make([]kafka.DescribedQuota, len(keys))
+		for i, k := range keys {
+			out[i] = toDomainDescribedQuota(f.model.quotas[k])
+		}
+		return out, nil
+	})
+}
+
+// toDomainDescribedQuota converts a fakeQuota into the port's DescribedQuota
+// shape, sorted by key for a stable response. Callers must hold f.mu.
+func toDomainDescribedQuota(q *fakeQuota) kafka.DescribedQuota {
+	keys := make([]string, 0, len(q.values))
+	for k := range q.values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	values := make([]kafka.QuotaValue, len(keys))
+	for i, k := range keys {
+		values[i] = kafka.QuotaValue{Key: k, Value: q.values[k]}
+	}
+	return kafka.DescribedQuota{Entity: append(kafka.QuotaEntity(nil), q.entity...), Values: values}
+}
+
+// AlterClientQuotas sets or removes quota keys for the given entities
+// (FUNC-SPEC §8.7 S2 alter). An entity left with no values after removal is
+// dropped entirely, so a later DescribeClientQuotas no longer lists it.
+func (f *Fake) AlterClientQuotas(ctx context.Context, entries []kafka.QuotaAlterEntry) ([]kafka.QuotaAlterResult, error) {
+	return invoke(f, ctx, "AlterClientQuotas", true, func() ([]kafka.QuotaAlterResult, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if f.model.quotas == nil {
+			f.model.quotas = map[string]*fakeQuota{}
+		}
+
+		out := make([]kafka.QuotaAlterResult, len(entries))
+		for i, e := range entries {
+			key := entityKey(e.Entity)
+			q := f.model.quotas[key]
+			if q == nil {
+				q = &fakeQuota{entity: append(kafka.QuotaEntity(nil), e.Entity...), values: map[string]float64{}}
+				f.model.quotas[key] = q
+			}
+			for _, op := range e.Ops {
+				if op.Remove {
+					delete(q.values, op.Key)
+					continue
+				}
+				q.values[op.Key] = op.Value
+			}
+			if len(q.values) == 0 {
+				delete(f.model.quotas, key)
+			}
+			out[i] = kafka.QuotaAlterResult{Entity: e.Entity}
+		}
+		return out, nil
+	})
 }
 
 // compile-time proof that Fake satisfies the Admin surface it implements so far.

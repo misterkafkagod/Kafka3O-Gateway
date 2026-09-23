@@ -143,6 +143,30 @@ type Admin interface {
 	// DescribeAllLogDirs returns every broker's log directory usage,
 	// cluster-wide (C8).
 	DescribeAllLogDirs(ctx context.Context) ([]BrokerLogDir, error)
+
+	// DescribeUserSCRAMs returns SCRAM credential metadata — mechanism and
+	// iteration count, never secret material — for the named users, or
+	// every user with credentials configured when users is empty (S1 list,
+	// and the delete plan's existence check). Given one or more explicit
+	// users, any that has no credentials configured →
+	// *Error{Kind: NotFound, Resource: "user"} for the whole call; given
+	// none, only users with credentials configured are returned.
+	DescribeUserSCRAMs(ctx context.Context, users ...string) ([]ScramUser, error)
+
+	// AlterUserSCRAMs deletes and/or upserts SCRAM credentials (S1 create,
+	// delete). Each entry's own result carries its own error; one failure
+	// never fails the rest of the batch.
+	AlterUserSCRAMs(ctx context.Context, upserts []ScramUpsert, deletes []ScramDelete) ([]ScramAlterResult, error)
+
+	// DescribeClientQuotas returns every configured client quota, optionally
+	// restricted to one entity type ("user", "client-id", "ip") — an empty
+	// entityType matches every type (S2 list's `entityType` filter).
+	DescribeClientQuotas(ctx context.Context, entityType string) ([]DescribedQuota, error)
+
+	// AlterClientQuotas sets or removes quota keys for the given entities
+	// (S2 alter). Each entry's own result carries its own error; one
+	// failure never fails the rest of the batch.
+	AlterClientQuotas(ctx context.Context, entries []QuotaAlterEntry) ([]QuotaAlterResult, error)
 }
 
 // Consumer is the message-reading surface (FUNC-SPEC §8.1: M1–M4, M8 source,

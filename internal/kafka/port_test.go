@@ -71,6 +71,18 @@ func (nopAdmin) IncrementalAlterBrokerConfigs(context.Context, int32, []ConfigCh
 	return nil
 }
 func (nopAdmin) DescribeAllLogDirs(context.Context) ([]BrokerLogDir, error) { return nil, nil }
+func (nopAdmin) DescribeUserSCRAMs(context.Context, ...string) ([]ScramUser, error) {
+	return nil, nil
+}
+func (nopAdmin) AlterUserSCRAMs(context.Context, []ScramUpsert, []ScramDelete) ([]ScramAlterResult, error) {
+	return nil, nil
+}
+func (nopAdmin) DescribeClientQuotas(context.Context, string) ([]DescribedQuota, error) {
+	return nil, nil
+}
+func (nopAdmin) AlterClientQuotas(context.Context, []QuotaAlterEntry) ([]QuotaAlterResult, error) {
+	return nil, nil
+}
 
 type nopConsumer struct{}
 
@@ -163,6 +175,10 @@ func TestTypes_NoJSONTags(t *testing.T) {
 		reflect.TypeFor[ConfigEntry](), reflect.TypeFor[Error](),
 		reflect.TypeFor[TopicSummary](), reflect.TypeFor[LogDirReplica](), reflect.TypeFor[ClusterMetadata](),
 		reflect.TypeFor[ProduceRequest](), reflect.TypeFor[ProduceResult](),
+		reflect.TypeFor[ScramCredential](), reflect.TypeFor[ScramUser](), reflect.TypeFor[ScramUpsert](),
+		reflect.TypeFor[ScramDelete](), reflect.TypeFor[ScramAlterResult](), reflect.TypeFor[QuotaEntityComponent](),
+		reflect.TypeFor[QuotaValue](), reflect.TypeFor[DescribedQuota](), reflect.TypeFor[QuotaOp](),
+		reflect.TypeFor[QuotaAlterEntry](), reflect.TypeFor[QuotaAlterResult](),
 	}
 	for _, typ := range types {
 		for i := range typ.NumField() {

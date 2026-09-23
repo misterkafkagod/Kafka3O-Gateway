@@ -3,6 +3,8 @@ package fake
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -152,4 +154,57 @@ func TestFake_SeedTopic_AssignsSequentialOffsetsPerPartition(t *testing.T) {
 	if !p0[0].Timestamp.Equal(fixed) {
 		t.Errorf("Timestamp = %v, want the injected clock value %v", p0[0].Timestamp, fixed)
 	}
+}
+
+// TestFake_SCRAM_StoresNoPasswordMaterial proves the fake's model never
+// retains a SCRAM password anywhere reachable after AlterUserSCRAMs (Task
+// 13.1.2: "no secrets stored"; TECH-SPEC C7). Rather than trust
+// fakeScramUser's field shape not to grow a secret field later, it walks the
+// whole model by reflection for the literal password value.
+func TestFake_SCRAM_StoresNoPasswordMaterial(t *testing.T) {
+	t.Parallel()
+	f := New()
+	const password = "s3cret-canary-9f3a2b"
+	if _, err := f.AlterUserSCRAMs(context.Background(), []kafka.ScramUpsert{
+		{User: "alice", Mechanism: kafka.ScramSha256, Iterations: 4096, Password: password},
+	}, nil); err != nil {
+		t.Fatalf("AlterUserSCRAMs() error: %v", err)
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if containsString(reflect.ValueOf(f.model), password) {
+		t.Fatal("fake model retains password material after AlterUserSCRAMs")
+	}
+}
+
+// containsString recursively scans v for a string value containing needle.
+// v.String() works on unexported struct fields (unlike Interface()), so this
+// needs no special-casing for the model's unexported fields.
+func containsString(v reflect.Value, needle string) bool {
+	switch v.Kind() {
+	case reflect.String:
+		return strings.Contains(v.String(), needle)
+	case reflect.Pointer, reflect.Interface:
+		return !v.IsNil() && containsString(v.Elem(), needle)
+	case reflect.Struct:
+		for i := range v.NumField() {
+			if containsString(v.Field(i), needle) {
+				return true
+			}
+		}
+	case reflect.Map:
+		for _, k := range v.MapKeys() {
+			if containsString(k, needle) || containsString(v.MapIndex(k), needle) {
+				return true
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		for i := range v.Len() {
+			if containsString(v.Index(i), needle) {
+				return true
+			}
+		}
+	}
+	return false
 }
