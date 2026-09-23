@@ -1,0 +1,87 @@
+# Nightly pipeline (TECH-SPEC §4.10, T4, §1.3): every Fuzz* target for
+# 10 minutes (one parallel job per target), a benchmark trend artifact, and a
+# re-scan of the image so CVEs published since the last build still fail loud.
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz-targets:
+    name: discover fuzz targets
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        run: |
+          matrix=$(grep -rH --include='*_test.go' -o '^func Fuzz[A-Za-z0-9_]*' ./internal ./cmd ./tools 2>/dev/null \
+            | sed -E 's#^(.*)/[^/]+_test\.go:func (Fuzz[A-Za-z0-9_]*)$#{"pkg":"\1","fn":"\2"}#' \
+            | jq -sc '{include: .}')
+          echo "$matrix"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  fuzz:
+    name: fuzz ${{ matrix.fn }}
+    needs: fuzz-targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.fuzz-targets.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Fuzz for 10 minutes
+        run: go test -run='^$' -fuzz='^${{ matrix.fn }}$' -fuzztime=10m ${{ matrix.pkg }}
+      - name: Upload failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus-${{ matrix.fn }}
+          path: ${{ matrix.pkg }}/testdata/fuzz
+
+  bench:
+    name: benchmark trend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Benchmarks (count=5 for benchstat)
+        run: go test -run='^$' -bench=. -benchmem -count=5 ./... | tee bench.txt
+      - name: benchstat
+        run: go run golang.org/x/perf/cmd/benchstat@latest bench.txt | tee benchstat.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ github.run_number }}
+          path: |
+            bench.txt
+            benchstat.txt
+          retention-days: 90
+
+  image-rescan:
+    name: image re-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image from main
+        run: make image VERSION=nightly
+      - name: grype (fail on high)
+        uses: anchore/scan-action@v6
+        with:
+          image: kafka3o-gateway:nightly
+          fail-build: true
+          severity-cutoff: high
+          output-format: table

@@ -910,11 +910,11 @@
   - Phase 14 MTP steps 1 and 5 pass (accepted CI + manual DoD)
 
 ### Task 14.3: Nightly pipeline and image scan gate
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.10 (nightly), §1.3 (continuous policy), T4
 - **Subtasks:**
-  - [ ] 14.3.1 `.github/workflows/nightly.yml`: fuzz 10 min per target, benchmark trend artifact, image re-scan (`grype`/`trivy`, fail on critical/high) — TECH §4.10
-  - [ ] 14.3.2 Image scan gate added to `ci.yml` after build — TECH §1.3
+  - [x] 14.3.1 `.github/workflows/nightly.yml`: fuzz 10 min per target, benchmark trend artifact, image re-scan (`grype`/`trivy`, fail on critical/high) — TECH §4.10
+  - [x] 14.3.2 Image scan gate added to `ci.yml` after build — TECH §1.3
 - **Tests (Definition of Done):**
   - `nightly.yml` dispatched manually: fuzz step runs every `Fuzz*` target for 10 min and is green; benchmark artifact uploaded; image re-scan step green — TECH §4.10, T4
   - `ci.yml` contains the image scan step and it fails on an image with a known-high CVE (one-time negative check) — TECH §1.3
