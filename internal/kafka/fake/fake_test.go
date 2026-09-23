@@ -181,6 +181,8 @@ func TestFake_SCRAM_StoresNoPasswordMaterial(t *testing.T) {
 // containsString recursively scans v for a string value containing needle.
 // v.String() works on unexported struct fields (unlike Interface()), so this
 // needs no special-casing for the model's unexported fields.
+//
+//nolint:exhaustive // reflect.Kind is a stdlib enum, not a project domain type (O4 targets kafka.Kind/PolicyCode); every kind not listed carries no string to find
 func containsString(v reflect.Value, needle string) bool {
 	switch v.Kind() {
 	case reflect.String:

@@ -48,6 +48,9 @@ jobs:
       - name: Build
         run: make build
 
+      - name: OpenAPI document is up to date
+        run: make openapi-check
+
       - name: Benchmarks
         run: make benchstat-report
 

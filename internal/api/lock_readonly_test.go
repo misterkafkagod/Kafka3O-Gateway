@@ -57,6 +57,10 @@ func wRoutes(topic string) map[string]routeFixture {
 			"confirm": "irrelevant", "reassignments": []map[string]any{{"topic": topic, "partition": 0, "replicas": []int{1}}},
 		}},
 		"C12": {http.MethodPost, "/v1/batch/topics/apply", map[string]any{"confirm": "irrelevant", "topics": []map[string]any{}}},
+		"S1":  {http.MethodPost, "/v1/scram-users", map[string]any{"name": topic + "-s1", "mechanism": "SCRAM-SHA-256", "password": "pw"}},
+		"S2": {http.MethodPatch, "/v1/quotas", map[string]any{
+			"confirm": "user:" + topic, "entity": map[string]any{"user": topic}, "set": map[string]any{"producerByteRate": 1048576},
+		}},
 	}
 }
 

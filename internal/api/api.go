@@ -21,6 +21,7 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/api/health"
 	apimessage "github.com/misterkafkagod/kafka3o/internal/api/message"
 	"github.com/misterkafkagod/kafka3o/internal/api/middleware"
+	apisecurity "github.com/misterkafkagod/kafka3o/internal/api/security"
 	apitopic "github.com/misterkafkagod/kafka3o/internal/api/topic"
 	"github.com/misterkafkagod/kafka3o/internal/audit"
 	"github.com/misterkafkagod/kafka3o/internal/kafka"
@@ -29,6 +30,7 @@ import (
 	"github.com/misterkafkagod/kafka3o/internal/service/gates"
 	"github.com/misterkafkagod/kafka3o/internal/service/group"
 	"github.com/misterkafkagod/kafka3o/internal/service/message"
+	"github.com/misterkafkagod/kafka3o/internal/service/security"
 	"github.com/misterkafkagod/kafka3o/internal/service/topic"
 	"github.com/misterkafkagod/kafka3o/internal/telemetry"
 )
@@ -96,6 +98,7 @@ func New(deps Deps) http.Handler {
 	apitopic.Register(humaAPI, topic.New(deps.Admin, deps.Auditor, runner), groupSvc, deps.PageBounds)
 	apigroup.Register(humaAPI, groupSvc, groupPageBounds)
 	apimessage.Register(humaAPI, message.New(deps.Admin, deps.Producer, deps.NewConsumer, deps.MessageBounds, deps.Auditor, runner))
+	apisecurity.Register(humaAPI, security.New(deps.Admin, deps.Auditor, runner))
 
 	routeLookup := buildRouteLookup(mux, humaAPI)
 

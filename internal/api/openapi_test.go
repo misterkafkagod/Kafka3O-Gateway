@@ -118,6 +118,7 @@ func TestOpenAPI_PendingIsTableMinusImplemented(t *testing.T) {
 		"G4": true, "G5": true, "G6": true, "G7": true,
 		"M8": true,
 		"C5": true, "C6": true, "C7": true, "C8": true, "C9": true, "C10": true, "C11": true, "C12": true,
+		"S1": true, "S2": true,
 	}
 	want := make([]string, 0, len(command.Table()))
 	for _, d := range command.Table() {
@@ -135,6 +136,41 @@ func TestOpenAPI_PendingIsTableMinusImplemented(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("Pending()[%d] = %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+func TestOpenAPI_PendingListEmpty(t *testing.T) {
+	t.Parallel()
+	if got := api.Pending(); len(got) != 0 {
+		t.Errorf("Pending() = %v, want empty (FUNC-SPEC §9.7 O1: every catalog command is now wired)", got)
+	}
+}
+
+// TestOpenAPI_41IDsOver48Operations locks in the operation count TASKS.md's
+// Phase 13 Manual Test Plan step 5 names. TECH-SPEC §6.2's own route table
+// is the authoritative source: 41 rows (12 C + 12 T + 8 M + 7 G + 2 S), four
+// of which carry more than one operation — C3 x2, C9 x3, S1 x3, S2 x2 (+1
+// each beyond the 37 single-operation ids' own +1) — summing to 47, not the
+// 48 TECH-SPEC §6.1 B2's prose states; the prose figure does not match its
+// own table and this test follows the table.
+func TestOpenAPI_41IDsOver48Operations(t *testing.T) {
+	t.Parallel()
+	ids := commandIDsOf(t, fetchOpenAPI(t))
+
+	unique := map[string]bool{}
+	total := 0
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		unique[id] = true
+		total++
+	}
+	if len(unique) != 41 {
+		t.Errorf("unique x-command-id count = %d, want 41", len(unique))
+	}
+	if total != 47 {
+		t.Errorf("operations carrying an x-command-id = %d, want 47 (TECH-SPEC §6.2 route table: C3 x2, C9 x3, S1 x3, S2 x2)", total)
 	}
 }
 

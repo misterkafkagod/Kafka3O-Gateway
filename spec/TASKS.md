@@ -859,13 +859,13 @@
   - `TestFake_SCRAM_StoresNoPasswordMaterial` — TECH §4.3
 
 ### Task 13.2: Security service, routes, tests, acceptance; close the bijection
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** FUNC §8.6 (S1 delete, S2 alter rows), §8.7 S1, S2, §8.2 (passwords never echoed/logged), O1 (reworded); TECH §6.1 B2, §6.2, §5.1 (`docs/api/openapi.json`), C7, C11 (iterations 4096)
 - **Subtasks:**
-  - [ ] 13.2.1 `internal/service/security/service.go`: `ListUsers`, `CreateUser` (iterations default 4096; password never logged), `PlanDeleteUser`/`Apply`, `ListQuotas`, `PlanAlterQuota`/`Apply` (confirm = entity descriptor) — FUNC §8.6, §8.7
-  - [ ] 13.2.2 Routes: `GET/POST /v1/scram-users`, `DELETE /v1/scram-users/{name}`, `GET /v1/quotas`, `PATCH /v1/quotas` — TECH §6.2
-  - [ ] 13.2.3 Component tests (password absent from audit and logs, O8 rows), acceptance S1, S2 — TECH §4.5
-  - [ ] 13.2.4 Empty the `pending` list; bijection test asserts 41 ids over 48 operations; `make openapi` exports `docs/api/openapi.json` from the golden — FUNC O1; TECH §6.1 B2, §5.1
+  - [x] 13.2.1 `internal/service/security/service.go`: `ListUsers`, `CreateUser` (iterations default 4096; password never logged), `PlanDeleteUser`/`Apply`, `ListQuotas`, `PlanAlterQuota`/`Apply` (confirm = entity descriptor) — FUNC §8.6, §8.7
+  - [x] 13.2.2 Routes: `GET/POST /v1/scram-users`, `DELETE /v1/scram-users/{name}`, `GET /v1/quotas`, `PATCH /v1/quotas` — TECH §6.2
+  - [x] 13.2.3 Component tests (password absent from audit and logs, O8 rows), acceptance S1, S2 — TECH §4.5
+  - [x] 13.2.4 Empty the `pending` list; bijection test asserts 41 ids over 48 operations; `make openapi` exports `docs/api/openapi.json` from the golden — FUNC O1; TECH §6.1 B2, §5.1
 - **Tests (Definition of Done):**
   - `TestSecurityService_CreateUser_PasswordAbsentFromAuditAndLogs`, `TestSecurityService_CreateUser_IterationsDefault4096`, `TestSecurityService_CreateUser_ExistingIsAlreadyExists` — TECH C7, C11; FUNC §8.4
   - `TestSecurityService_DeleteUser_ConfirmIsName`, `TestSecurityService_AlterQuota_ConfirmIsEntityDescriptor`, `TestSecurityService_AlterQuota_SetAndRemove` — FUNC §8.6 S1, S2

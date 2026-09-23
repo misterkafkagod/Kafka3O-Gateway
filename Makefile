@@ -43,7 +43,7 @@ BENCHSTAT     := $(GO) run golang.org/x/perf/cmd/benchstat@$(BENCHSTAT_VERSION)
 GO_LICENSES   := $(GO) run github.com/google/go-licenses@$(GO_LICENSES_VERSION)
 
 .PHONY: all help tools lint lint-golangci lint-filelen lint-negative test cover license fuzz bench \
-        benchstat-report govulncheck build image openapi acceptance report ci clean
+        benchstat-report govulncheck build image openapi openapi-check acceptance report ci clean
 
 all: build
 
@@ -134,6 +134,10 @@ openapi: ## export docs/api/openapi.json from the tested golden (Task 13.2)
 	@test -f internal/api/testdata/openapi.golden.json || { echo "openapi: golden not generated yet (Tasks 1.8 / 13.2)"; exit 1; }
 	@mkdir -p docs/api && cp internal/api/testdata/openapi.golden.json docs/api/openapi.json && echo "openapi: docs/api/openapi.json updated"
 
+openapi-check: openapi ## CI: fail if the committed docs/api/openapi.json is stale (Task 13.2.4)
+	@git diff --exit-code -- docs/api/openapi.json || { echo "openapi-check: docs/api/openapi.json is stale; run 'make openapi' and commit it"; exit 1; }
+	@echo "openapi-check: docs/api/openapi.json matches the golden"
+
 # ---------------------------------------------------------------- acceptance (Level 2)
 
 acceptance: ## run the acceptance + integration suites against KAFKA_BOOTSTRAP (Phase 16)
@@ -144,7 +148,7 @@ report: ## render docs/acceptance/<version>-<date>.md from acceptance.json (Phas
 
 # ---------------------------------------------------------------- CI
 
-ci: lint license cover fuzz govulncheck build ## everything the PR pipeline runs (TECH-SPEC §4.10)
+ci: lint license cover fuzz govulncheck build openapi-check ## everything the PR pipeline runs (TECH-SPEC §4.10)
 
 clean:
 	rm -rf bin/ coverage.out bench.txt benchstat.txt acceptance.json
