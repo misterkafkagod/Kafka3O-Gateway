@@ -877,7 +877,7 @@
 ---
 
 ## Phase 14: Supply chain and release
-- **Phase Status:** Not Started
+- **Phase Status:** Awaiting Manual Verification
 - **Goal:** A tagged commit produces a signed, SBOM-bearing, distroless image and release archives; nightly jobs fuzz longer and re-scan the image.
 - **Manual Test Plan:**
   1. `goreleaser build --snapshot --clean` → `dist/` contains `kafka3o-gateway` binaries; `./dist/…/kafka3o-gateway --version` prints the snapshot version.
