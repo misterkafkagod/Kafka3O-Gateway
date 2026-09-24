@@ -19,5 +19,14 @@ import (
 // — so the identical call works against a live cluster's adapter too.
 func Run(t *testing.T, port kafka.Admin) {
 	t.Helper()
-	t.Run("Admin", func(t *testing.T) { RunAdmin(t, port) })
+	RunPrefixed(t, port, "")
+}
+
+// RunPrefixed is Run with every topic, group, SCRAM user, and quota entity
+// the cases create named prefix + "porttest-...". Case names are unchanged,
+// so a prefixed run against a live cluster reports exactly the fake run's
+// case list (TECH-SPEC L1).
+func RunPrefixed(t *testing.T, port kafka.Admin, prefix string) {
+	t.Helper()
+	t.Run("Admin", func(t *testing.T) { runAdmin(t, port, prefix) })
 }

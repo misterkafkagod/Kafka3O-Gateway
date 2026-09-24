@@ -33,6 +33,11 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Integration and acceptance suites compile (no cluster)
+        run: |
+          go vet -tags integration ./internal/kafka/franz
+          go vet -tags acceptance ./test/acceptance
+
       - name: Test (-race, -covermode=atomic) and coverage gate
         run: make cover
 

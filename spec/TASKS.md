@@ -984,10 +984,10 @@
   - `TestAcceptanceReport_MarkdownGolden` (`testdata/report.golden.md`) — TECH §4.8
 
 ### Task 16.2: franz contract run under the `integration` tag
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH L1, §4.8, §5.1 (`franz_integration_test.go`)
 - **Subtasks:**
-  - [ ] 16.2.1 `internal/kafka/franz/franz_integration_test.go` (`//go:build integration`): `porttest.Run(t, franz.New(cfg))` against `KAFKA_BOOTSTRAP` with prefixed resources and cleanup — TECH L1
+  - [x] 16.2.1 `internal/kafka/franz/franz_integration_test.go` (`//go:build integration`): `porttest.Run(t, franz.New(cfg))` against `KAFKA_BOOTSTRAP` with prefixed resources and cleanup — TECH L1
 - **Tests (Definition of Done):**
   - `go vet -tags integration ./internal/kafka/franz` exit 0 in CI (compiles without a cluster) — TECH L1
   - `TestPortTest_CaseListStable` (the `porttest` case-name list equals a committed golden, so the franz and fake runs cover identical cases) — TECH L1

@@ -97,6 +97,7 @@ linters:
           allow:
             - $gostd
             - github.com/misterkafkagod/kafka3o/internal/kafka
+            - github.com/misterkafkagod/kafka3o/internal/kafka/porttest # franz_integration_test.go (TECH-SPEC L1)
             - github.com/twmb/franz-go
             - github.com/google/go-cmp
           deny:

@@ -90,6 +90,14 @@ type faultInjector interface {
 // RunAdmin exercises kafka.Admin (FUNC-SPEC §8.1, C1).
 func RunAdmin(t *testing.T, port kafka.Admin) {
 	t.Helper()
+	runAdmin(t, port, "")
+}
+
+// runAdmin is RunAdmin with every resource the cases create named px +
+// "porttest-...", so a run against a shared live cluster (Task 16.2) stays
+// inside its own prefix and can be cleaned up by it.
+func runAdmin(t *testing.T, port kafka.Admin, px string) {
+	t.Helper()
 
 	t.Run("Admin_DescribeCluster_ReturnsSeededBrokers", func(t *testing.T) {
 		seeder, ok := port.(adminSeeder)
@@ -427,7 +435,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	// whose fixtures the fake alone can seed out of band.
 
 	t.Run("Admin_CreateTopics_ValidateOnlyCreatesNothing", func(t *testing.T) {
-		name := "porttest-validate-only"
+		name := px + "porttest-validate-only"
 		results, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
 			{Name: name, Partitions: 1, ReplicationFactor: 1},
 		}, true)
@@ -446,7 +454,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_CreateTopics_ExistingIsAlreadyExists", func(t *testing.T) {
-		name := "porttest-already-exists"
+		name := px + "porttest-already-exists"
 		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
 			{Name: name, Partitions: 1, ReplicationFactor: 1},
 		}, false); err != nil {
@@ -465,7 +473,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_IncrementalAlterTopicConfigs_SetAndResetToDefault", func(t *testing.T) {
-		name := "porttest-alter-config"
+		name := px + "porttest-alter-config"
 		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
 			{Name: name, Partitions: 1, ReplicationFactor: 1},
 		}, false); err != nil {
@@ -513,7 +521,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_CreatePartitions_IncreaseSucceeds", func(t *testing.T) {
-		name := "porttest-add-partitions"
+		name := px + "porttest-add-partitions"
 		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
 			{Name: name, Partitions: 1, ReplicationFactor: 1},
 		}, false); err != nil {
@@ -533,7 +541,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_CreatePartitions_DecreaseIsError", func(t *testing.T) {
-		name := "porttest-decrease-partitions"
+		name := px + "porttest-decrease-partitions"
 		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
 			{Name: name, Partitions: 4, ReplicationFactor: 1},
 		}, false); err != nil {
@@ -546,7 +554,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_DeleteTopics_RemovesTopic", func(t *testing.T) {
-		name := "porttest-delete-topic"
+		name := px + "porttest-delete-topic"
 		if _, err := port.CreateTopics(context.Background(), []kafka.TopicSpec{
 			{Name: name, Partitions: 1, ReplicationFactor: 1},
 		}, false); err != nil {
@@ -567,7 +575,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_DeleteTopics_MissingIsNotFound", func(t *testing.T) {
-		results, err := port.DeleteTopics(context.Background(), []string{"porttest-delete-missing"})
+		results, err := port.DeleteTopics(context.Background(), []string{px + "porttest-delete-missing"})
 		if err != nil {
 			t.Fatalf("DeleteTopics() error: %v", err)
 		}
@@ -585,14 +593,14 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok {
 			t.Skip("port does not implement the topic seeding capability")
 		}
-		ts.SeedTopic("porttest-delete-records", 1,
+		ts.SeedTopic(px+"porttest-delete-records", 1,
 			kafka.Record{Partition: 0, Value: []byte("a")},
 			kafka.Record{Partition: 0, Value: []byte("b")},
 			kafka.Record{Partition: 0, Value: []byte("c")},
 			kafka.Record{Partition: 0, Value: []byte("d")},
 		)
 
-		results, err := port.DeleteRecords(context.Background(), "porttest-delete-records", map[int32]int64{0: 2})
+		results, err := port.DeleteRecords(context.Background(), px+"porttest-delete-records", map[int32]int64{0: 2})
 		if err != nil {
 			t.Fatalf("DeleteRecords() error: %v", err)
 		}
@@ -600,7 +608,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 			t.Fatalf("DeleteRecords() results = %+v, want one {partition:0 lowWatermark:2}", results)
 		}
 
-		start, err := port.ListStartOffsets(context.Background(), "porttest-delete-records")
+		start, err := port.ListStartOffsets(context.Background(), px+"porttest-delete-records")
 		if err != nil {
 			t.Fatalf("ListStartOffsets() error: %v", err)
 		}
@@ -614,17 +622,17 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok {
 			t.Skip("port does not implement the topic seeding capability")
 		}
-		ts.SeedTopic("porttest-delete-records-beyond-end", 1,
+		ts.SeedTopic(px+"porttest-delete-records-beyond-end", 1,
 			kafka.Record{Partition: 0, Value: []byte("a")},
 		)
 
-		if _, err := port.DeleteRecords(context.Background(), "porttest-delete-records-beyond-end", map[int32]int64{0: 999}); err == nil {
+		if _, err := port.DeleteRecords(context.Background(), px+"porttest-delete-records-beyond-end", map[int32]int64{0: 999}); err == nil {
 			t.Fatal("DeleteRecords(truncateTo beyond end) = nil, want an error")
 		}
 	})
 
 	t.Run("Admin_CommitGroupOffsets_CreatesAbsentGroup", func(t *testing.T) {
-		name := "porttest-commit-absent"
+		name := px + "porttest-commit-absent"
 		offsets := map[kafka.TopicPartition]int64{{Topic: "t", Partition: 0}: 5}
 
 		if err := port.CommitGroupOffsets(context.Background(), name, offsets); err != nil {
@@ -646,7 +654,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok || !ok2 {
 			t.Skip("port does not implement the group seeding capabilities")
 		}
-		name := "porttest-commit-active"
+		name := px + "porttest-commit-active"
 		gs.SeedGroup(name, nil)
 		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m1"})
 
@@ -663,7 +671,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok || !ok2 {
 			t.Skip("port does not implement the group seeding capabilities")
 		}
-		name := "porttest-delete-group-active"
+		name := px + "porttest-delete-group-active"
 		gs.SeedGroup(name, nil)
 		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m1"})
 
@@ -685,7 +693,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok {
 			t.Skip("port does not implement the group seeding capability")
 		}
-		name := "porttest-delete-group-inactive"
+		name := px + "porttest-delete-group-inactive"
 		gs.SeedGroup(name, nil)
 
 		results, err := port.DeleteGroups(context.Background(), []string{name})
@@ -707,7 +715,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok || !ok2 {
 			t.Skip("port does not implement the group seeding capabilities")
 		}
-		name := "porttest-leave-group"
+		name := px + "porttest-leave-group"
 		gs.SeedGroup(name, nil)
 		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m1"})
 		ms.SeedGroupMember(name, kafka.GroupMember{MemberID: "m2"})
@@ -774,7 +782,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok {
 			t.Skip("port does not implement the topic seeding capability")
 		}
-		name := "porttest-reassign-list"
+		name := px + "porttest-reassign-list"
 		ts.SeedTopic(name, 1)
 
 		results, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
@@ -807,7 +815,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok {
 			t.Skip("port does not implement the topic seeding capability")
 		}
-		name := "porttest-reassign-cancel"
+		name := px + "porttest-reassign-cancel"
 		ts.SeedTopic(name, 1)
 
 		if _, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
@@ -837,7 +845,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok {
 			t.Skip("port does not implement the topic seeding capability")
 		}
-		name := "porttest-elect"
+		name := px + "porttest-elect"
 		ts.SeedTopic(name, 1)
 		if _, err := port.AlterPartitionAssignments(context.Background(), map[kafka.TopicPartition][]int32{
 			{Topic: name, Partition: 0}: {2, 1},
@@ -910,7 +918,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 		if !ok || !ok2 {
 			t.Skip("port does not implement the topic/log-dir seeding capabilities")
 		}
-		name := "porttest-alldirs"
+		name := px + "porttest-alldirs"
 		ts.SeedTopic(name, 1)
 		lds.SeedLogDir(name, 0, 1, "/var/kafka/data", 1024)
 
@@ -930,7 +938,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_SCRAM_UpsertThenDescribeNoSecret", func(t *testing.T) {
-		user := "porttest-scram-upsert"
+		user := px + "porttest-scram-upsert"
 		results, err := port.AlterUserSCRAMs(context.Background(), []kafka.ScramUpsert{
 			{User: user, Mechanism: kafka.ScramSha256, Iterations: 4096, Password: "s3cret"},
 		}, nil)
@@ -958,7 +966,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_SCRAM_DeleteRemoves", func(t *testing.T) {
-		user := "porttest-scram-delete"
+		user := px + "porttest-scram-delete"
 		if _, err := port.AlterUserSCRAMs(context.Background(), []kafka.ScramUpsert{
 			{User: user, Mechanism: kafka.ScramSha256, Iterations: 4096, Password: "s3cret"},
 		}, nil); err != nil {
@@ -983,7 +991,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_SCRAM_DescribeMissingIsNotFound", func(t *testing.T) {
-		_, err := port.DescribeUserSCRAMs(context.Background(), "porttest-scram-missing")
+		_, err := port.DescribeUserSCRAMs(context.Background(), px+"porttest-scram-missing")
 		var ke *kafka.Error
 		if !errors.As(err, &ke) || ke.Kind != kafka.KindNotFound {
 			t.Fatalf("DescribeUserSCRAMs() error = %v, want *kafka.Error{Kind: KindNotFound}", err)
@@ -991,7 +999,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_Quotas_AlterThenDescribe", func(t *testing.T) {
-		user := "porttest-quota-user"
+		user := px + "porttest-quota-user"
 		entity := kafka.QuotaEntity{{Type: "user", Name: &user}}
 		results, err := port.AlterClientQuotas(context.Background(), []kafka.QuotaAlterEntry{
 			{Entity: entity, Ops: []kafka.QuotaOp{{Key: "producer_byte_rate", Value: 1048576}}},
@@ -1026,7 +1034,7 @@ func RunAdmin(t *testing.T, port kafka.Admin) {
 	})
 
 	t.Run("Admin_Quotas_RemoveKey", func(t *testing.T) {
-		user := "porttest-quota-removekey"
+		user := px + "porttest-quota-removekey"
 		entity := kafka.QuotaEntity{{Type: "user", Name: &user}}
 		if _, err := port.AlterClientQuotas(context.Background(), []kafka.QuotaAlterEntry{
 			{Entity: entity, Ops: []kafka.QuotaOp{{Key: "producer_byte_rate", Value: 2097152}}},
