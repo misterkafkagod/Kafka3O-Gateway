@@ -974,10 +974,10 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage ✓
 
 ### Task 16.1: Acceptance report tool
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.8 (report), §5.1 (`tools/acceptance-report`), T2
 - **Subtasks:**
-  - [ ] 16.1.1 `tools/acceptance-report/main.go`: reads `go test -json`, maps `TestAcceptance_<ID>_*` to catalog ids, writes `docs/acceptance/<version>-<date>.md` (id, name, result, duration, broker version, run id); non-zero exit if any id is missing or failed — TECH §4.8
+  - [x] 16.1.1 `tools/acceptance-report/main.go`: reads `go test -json`, maps `TestAcceptance_<ID>_*` to catalog ids, writes `docs/acceptance/<version>-<date>.md` (id, name, result, duration, broker version, run id); non-zero exit if any id is missing or failed — TECH §4.8
 - **Tests (Definition of Done):**
   - `TestAcceptanceReport_MapsTestNamesToCatalogIDs` (fixture `testdata/gotest.json`) — TECH §4.8
   - `TestAcceptanceReport_FailsOnMissingID`, `TestAcceptanceReport_FailsOnAnyFail` — TECH §4.8

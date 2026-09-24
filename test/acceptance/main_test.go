@@ -63,6 +63,11 @@ func run(m *testing.M) int {
 		return 1
 	}
 
+	// Read by tools/acceptance-report for the report header. This package may
+	// not import franz-go (depguard), so the broker version is supplied by
+	// whoever runs the suite (acceptance.yml passes it through).
+	fmt.Printf("ACCEPTANCE-META run-id=%s broker-version=%s\n", runID, envOr("KAFKA_BROKER_VERSION", "unknown"))
+
 	code := m.Run()
 
 	cancel()

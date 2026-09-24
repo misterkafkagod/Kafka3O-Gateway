@@ -1,0 +1,41 @@
+C1	Describe cluster
+C2	Describe broker configuration
+C3	Gateway health & connectivity
+C4	Cluster health summary
+T1	List topics
+T2	Describe topic
+T3	Partition / topic on-disk size
+T4	Message count in a time window
+M1	Read messages
+M2	Fetch single message
+M3	Search messages by regex
+M4	Search messages by JSONPath filter
+M5	Produce message(s)
+M6	Bulk produce from upload
+M7	Send tombstone for a key
+G1	List consumer groups
+G2	Describe consumer group
+G3	Groups consuming a topic
+T5	Create topic
+T6	Bulk create topics
+T7	Delete topic
+T8	Bulk delete topics
+T9	Alter topic configuration
+T10	Add partitions
+T11	Delete records
+T12	Purge topic
+G4	Reset consumer group offsets
+G5	Delete consumer group
+G6	Remove members from consumer group
+G7	Clone consumer group offsets
+M8	Replay / copy message range
+C5	Alter broker dynamic configuration
+C6	KRaft quorum status
+C7	In-progress partition reassignments
+C8	Broker disk usage per log directory
+C9	Partition reassignment & leader election
+C10	Throughput sample
+C11	Export topic / cluster definitions
+C12	Import / apply topic definitions
+S1	Manage SCRAM credentials
+S2	Manage client quotas

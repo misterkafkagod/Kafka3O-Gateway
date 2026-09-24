@@ -1,0 +1,138 @@
+{"Time":"2026-09-24T10:00:00Z","Action":"start","Package":"github.com/misterkafkagod/kafka3o/test/acceptance"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Output":"ACCEPTANCE-META run-id=mfk3x9q2 broker-version=3.9.1\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C1_Describecluster"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C1_Describecluster","Output":"=== RUN   TestAcceptance_C1_Describecluster\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C1_Describecluster","Elapsed":0.12}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C2_Describebrokerconfiguration"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C2_Describebrokerconfiguration","Output":"=== RUN   TestAcceptance_C2_Describebrokerconfiguration\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C2_Describebrokerconfiguration","Elapsed":0.19}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C3_Gatewayhealthconnectivity"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C3_Gatewayhealthconnectivity","Output":"=== RUN   TestAcceptance_C3_Gatewayhealthconnectivity\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C3_Gatewayhealthconnectivity","Elapsed":0.26}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C4_Clusterhealthsummary"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C4_Clusterhealthsummary","Output":"=== RUN   TestAcceptance_C4_Clusterhealthsummary\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C4_Clusterhealthsummary","Elapsed":0.33}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T1_Listtopics"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T1_Listtopics","Output":"=== RUN   TestAcceptance_T1_Listtopics\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T1_Listtopics","Elapsed":0.40}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T2_Describetopic"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T2_Describetopic","Output":"=== RUN   TestAcceptance_T2_Describetopic\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T2_Describetopic","Elapsed":0.47}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T3_Partitiontopicondisksize"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T3_Partitiontopicondisksize","Output":"=== RUN   TestAcceptance_T3_Partitiontopicondisksize\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T3_Partitiontopicondisksize","Elapsed":0.54}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T4_Messagecountinatimewindow"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T4_Messagecountinatimewindow","Output":"=== RUN   TestAcceptance_T4_Messagecountinatimewindow\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T4_Messagecountinatimewindow","Elapsed":0.61}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M1_Readmessages"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M1_Readmessages","Output":"=== RUN   TestAcceptance_M1_Readmessages\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M1_Readmessages","Elapsed":0.68}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M2_Fetchsinglemessage"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M2_Fetchsinglemessage","Output":"=== RUN   TestAcceptance_M2_Fetchsinglemessage\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M2_Fetchsinglemessage","Elapsed":0.75}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M3_Searchmessagesbyregex"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M3_Searchmessagesbyregex","Output":"=== RUN   TestAcceptance_M3_Searchmessagesbyregex\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M3_Searchmessagesbyregex","Elapsed":0.82}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M4_SearchmessagesbyJSONPathfilter"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M4_SearchmessagesbyJSONPathfilter","Output":"=== RUN   TestAcceptance_M4_SearchmessagesbyJSONPathfilter\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M4_SearchmessagesbyJSONPathfilter","Elapsed":0.89}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M5_Producemessages"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M5_Producemessages","Output":"=== RUN   TestAcceptance_M5_Producemessages\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M5_Producemessages","Elapsed":0.06}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M6_Bulkproducefromupload"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M6_Bulkproducefromupload","Output":"=== RUN   TestAcceptance_M6_Bulkproducefromupload\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M6_Bulkproducefromupload","Elapsed":0.13}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M7_Sendtombstoneforakey"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M7_Sendtombstoneforakey","Output":"=== RUN   TestAcceptance_M7_Sendtombstoneforakey\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M7_Sendtombstoneforakey","Elapsed":0.20}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G1_Listconsumergroups"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G1_Listconsumergroups","Output":"=== RUN   TestAcceptance_G1_Listconsumergroups\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G1_Listconsumergroups","Elapsed":0.27}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G2_Describeconsumergroup"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G2_Describeconsumergroup","Output":"=== RUN   TestAcceptance_G2_Describeconsumergroup\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G2_Describeconsumergroup","Elapsed":0.34}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G3_Groupsconsumingatopic"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G3_Groupsconsumingatopic","Output":"=== RUN   TestAcceptance_G3_Groupsconsumingatopic\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G3_Groupsconsumingatopic","Elapsed":0.41}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T5_Createtopic"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T5_Createtopic","Output":"=== RUN   TestAcceptance_T5_Createtopic\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T5_Createtopic","Elapsed":0.48}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T6_Bulkcreatetopics"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T6_Bulkcreatetopics","Output":"=== RUN   TestAcceptance_T6_Bulkcreatetopics\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T6_Bulkcreatetopics","Elapsed":0.55}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T7_Deletetopic"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T7_Deletetopic","Output":"=== RUN   TestAcceptance_T7_Deletetopic\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T7_Deletetopic","Elapsed":0.62}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T8_Bulkdeletetopics"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T8_Bulkdeletetopics","Output":"=== RUN   TestAcceptance_T8_Bulkdeletetopics\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T8_Bulkdeletetopics","Elapsed":0.69}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T9_Altertopicconfiguration"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T9_Altertopicconfiguration","Output":"=== RUN   TestAcceptance_T9_Altertopicconfiguration\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T9_Altertopicconfiguration","Elapsed":0.76}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T10_Addpartitions"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T10_Addpartitions","Output":"=== RUN   TestAcceptance_T10_Addpartitions\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T10_Addpartitions","Elapsed":0.83}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T11_Deleterecords"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T11_Deleterecords","Output":"=== RUN   TestAcceptance_T11_Deleterecords\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T11_Deleterecords","Elapsed":0.90}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T12_Purgetopic"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T12_Purgetopic","Output":"=== RUN   TestAcceptance_T12_Purgetopic\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_T12_Purgetopic","Elapsed":0.07}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G4_Resetconsumergroupoffsets"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G4_Resetconsumergroupoffsets","Output":"=== RUN   TestAcceptance_G4_Resetconsumergroupoffsets\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G4_Resetconsumergroupoffsets","Elapsed":0.14}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G5_Deleteconsumergroup"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G5_Deleteconsumergroup","Output":"=== RUN   TestAcceptance_G5_Deleteconsumergroup\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G5_Deleteconsumergroup","Elapsed":0.21}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G6_Removemembersfromconsumergroup"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G6_Removemembersfromconsumergroup","Output":"=== RUN   TestAcceptance_G6_Removemembersfromconsumergroup\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G6_Removemembersfromconsumergroup","Elapsed":0.28}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G7_Cloneconsumergroupoffsets"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G7_Cloneconsumergroupoffsets","Output":"=== RUN   TestAcceptance_G7_Cloneconsumergroupoffsets\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_G7_Cloneconsumergroupoffsets","Elapsed":0.35}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M8_Replaycopymessagerange"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M8_Replaycopymessagerange","Output":"=== RUN   TestAcceptance_M8_Replaycopymessagerange\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_M8_Replaycopymessagerange","Elapsed":0.42}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C5_Alterbrokerdynamicconfiguration"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C5_Alterbrokerdynamicconfiguration","Output":"=== RUN   TestAcceptance_C5_Alterbrokerdynamicconfiguration\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C5_Alterbrokerdynamicconfiguration","Elapsed":0.49}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C6_KRaftquorumstatus"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C6_KRaftquorumstatus","Output":"=== RUN   TestAcceptance_C6_KRaftquorumstatus\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C6_KRaftquorumstatus","Elapsed":0.56}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C7_Inprogresspartitionreassignments"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C7_Inprogresspartitionreassignments","Output":"=== RUN   TestAcceptance_C7_Inprogresspartitionreassignments\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C7_Inprogresspartitionreassignments","Elapsed":0.63}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C8_Brokerdiskusageperlogdirectory"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C8_Brokerdiskusageperlogdirectory","Output":"=== RUN   TestAcceptance_C8_Brokerdiskusageperlogdirectory\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C8_Brokerdiskusageperlogdirectory","Elapsed":0.70}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C9_Partitionreassignmentleaderelection"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C9_Partitionreassignmentleaderelection","Output":"=== RUN   TestAcceptance_C9_Partitionreassignmentleaderelection\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C9_Partitionreassignmentleaderelection","Elapsed":0.77}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C10_Throughputsample"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C10_Throughputsample","Output":"=== RUN   TestAcceptance_C10_Throughputsample\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C10_Throughputsample","Elapsed":0.84}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C11_Exporttopicclusterdefinitions"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C11_Exporttopicclusterdefinitions","Output":"=== RUN   TestAcceptance_C11_Exporttopicclusterdefinitions\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C11_Exporttopicclusterdefinitions","Elapsed":0.91}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C12_Importapplytopicdefinitions"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C12_Importapplytopicdefinitions","Output":"=== RUN   TestAcceptance_C12_Importapplytopicdefinitions\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C12_Importapplytopicdefinitions","Elapsed":0.08}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_S1_ManageSCRAMcredentials"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_S1_ManageSCRAMcredentials","Output":"=== RUN   TestAcceptance_S1_ManageSCRAMcredentials\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_S1_ManageSCRAMcredentials","Elapsed":0.15}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_S2_Manageclientquotas"}
+{"Time":"2026-09-24T10:00:00Z","Action":"output","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_S2_Manageclientquotas","Output":"=== RUN   TestAcceptance_S2_Manageclientquotas\n"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_S2_Manageclientquotas","Elapsed":0.22}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C3_Ready"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_C3_Ready","Elapsed":0.25}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_F2_ReadOnlyModeBlocksWrites"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Test":"TestAcceptance_F2_ReadOnlyModeBlocksWrites","Elapsed":0.11}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/test/acceptance","Elapsed":12.5}
+{"Time":"2026-09-24T10:00:00Z","Action":"run","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract"}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract/Admin/Admin_DescribeCluster_ReturnsSeededBrokers","Elapsed":0.02}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract/Admin/Admin_SCRAM_DescribeMissingIsNotFound","Elapsed":0.02}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract/Consumer/Consumer_AssignThenPoll","Elapsed":0.02}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract/Admin","Elapsed":0.04}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract/Consumer","Elapsed":0.02}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Test":"TestFranz_PortContract","Elapsed":0.07}
+{"Time":"2026-09-24T10:00:00Z","Action":"pass","Package":"github.com/misterkafkagod/kafka3o/internal/kafka/franz","Elapsed":0.9}

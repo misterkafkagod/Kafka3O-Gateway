@@ -143,8 +143,8 @@ openapi-check: openapi ## CI: fail if the committed docs/api/openapi.json is sta
 acceptance: ## run the acceptance + integration suites against KAFKA_BOOTSTRAP (Phase 16)
 	$(GO) test -json -tags acceptance,integration ./test/... ./internal/kafka/franz/... > acceptance.json
 
-report: ## render docs/acceptance/<version>-<date>.md from acceptance.json (Phase 16)
-	$(GO) run ./tools/acceptance-report < acceptance.json
+report: ## render docs/acceptance/<version>-<date>.md from acceptance.json; fails unless all 41 commands passed
+	$(GO) run ./tools/acceptance-report -version $(VERSION) < acceptance.json
 
 # ---------------------------------------------------------------- CI
 

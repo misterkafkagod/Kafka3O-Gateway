@@ -1,7 +1,10 @@
 package command
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -106,5 +109,24 @@ func TestLookup(t *testing.T) {
 	}
 	if _, ok := Lookup("T99"); ok {
 		t.Error("Lookup(T99) found a descriptor")
+	}
+}
+
+// TestTable_MatchesAcceptanceReportCatalog keeps tools/acceptance-report's
+// embedded catalog (the tool is stdlib-only and cannot import this package)
+// identical to Table: same ids, same names, same order.
+func TestTable_MatchesAcceptanceReportCatalog(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile(filepath.Join("..", "..", "tools", "acceptance-report", "catalog.tsv"))
+	if err != nil {
+		t.Fatalf("read catalog.tsv: %v", err)
+	}
+	var want []string
+	for _, d := range Table() {
+		want = append(want, d.ID+"\t"+d.Name)
+	}
+	got := strings.Split(strings.TrimSpace(strings.ReplaceAll(string(b), "\r\n", "\n")), "\n")
+	if !slices.Equal(got, want) {
+		t.Errorf("tools/acceptance-report/catalog.tsv differs from command.Table\n got: %q\nwant: %q", got, want)
 	}
 }
