@@ -930,7 +930,7 @@
 ---
 
 ## Phase 15: Kubernetes packaging (render-only verification)
-- **Phase Status:** Not Started
+- **Phase Status:** Verified
 - **Goal:** A Helm chart renders a valid, schema-checked deployment with exec probes, NetworkPolicy, PDB, HPA, and the grace-period rule enforced.
 - **Manual Test Plan:**
   1. `helm lint deploy/helm/kafka3o-gateway` → 0 errors.
