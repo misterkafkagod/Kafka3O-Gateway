@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kafka3o-gateway.fullname" . }}
+  labels:
+    {{- include "kafka3o-gateway.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- include "kafka3o-gateway.config" . | nindent 4 }}

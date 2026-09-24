@@ -1,0 +1,121 @@
+# Default values for kafka3o-gateway (TECH-SPEC §5.4). Every value is
+# documented in README.md.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/misterkafkagod/kafka3o-gateway
+  # Defaults to the chart appVersion.
+  tag: ""
+  # When set, the image is pulled by digest (sha256:...) and the tag is ignored.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # Defaults to the release's full name.
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Must be >= ceil(bounds.maxTimeMs / 1000) + 10; values.schema.json enforces it.
+terminationGracePeriodSeconds: 30
+preStopSleepSeconds: 5
+
+service:
+  type: ClusterIP
+  port: 8080
+
+kafka:
+  bootstrap: []           # ["broker-1:9092", "broker-2:9092"]
+  requestTimeout: 30s
+  tls:
+    enabled: false
+    # Secret holding ca.crt (and tls.crt / tls.key for mutual TLS), mounted at /etc/kafka3o/tls.
+    secretName: ""
+    mutual: false
+  sasl:
+    mechanism: ""         # "", PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER
+    username: ""
+    password: ""
+
+bounds:
+  # Scan max_time ceiling in milliseconds (bounds.scan.max_time.ceiling).
+  maxTimeMs: 10000
+
+policy:
+  readOnlyMode: false
+  dataPlaneLock: false
+  disabledOperations: []
+
+cors:
+  origins: []
+
+trustedProxies: []
+
+otlp:
+  endpoint: ""            # e.g. otel-collector.observability:4317
+  protocol: grpc
+
+audit:
+  sink: stdout            # stdout | kafka
+  topic: ""
+
+logLevel: info
+
+auth:
+  enabled: true
+  # List of { id, tier, sha256 } — generate with `kafka3o-gateway keygen`.
+  apiKeys: []
+  # Raw reader-tier key the exec probes present (KGW_PROBE_API_KEY).
+  probeApiKey: ""
+  # Use an existing Secret instead of rendering one. It must hold the keys
+  # KGW_API_KEYS, KGW_PROBE_API_KEY, and (with SASL) KGW_KAFKA_SASL_USERNAME /
+  # KGW_KAFKA_SASL_PASSWORD.
+  existingSecret: ""
+
+# Extra configuration merged over the rendered config.yaml, using the
+# gateway's own key names (see configs/config.example.yaml), e.g.
+#   extraConfig: { bounds: { read: { limit: { ceiling: 2000 } } } }
+extraConfig: {}
+
+networkPolicy:
+  enabled: true
+  brokers:
+    cidrs: []             # e.g. ["10.20.0.0/16"]
+    ports: [9092]
+  otlp:
+    cidrs: []
+    ports: [4317]
+  # Namespaces allowed to call the gateway.
+  ingressNamespaceSelector:
+    matchLabels: {}
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+tests:
+  image: curlimages/curl:8.16.0

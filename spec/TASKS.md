@@ -941,12 +941,12 @@
 - **Step 10 verification:** concrete ✓ · self-contained ✓ · automated coverage: `helm lint` + `kubeconform` CI steps — note for Step 11: `kubeconform` is approved in TASKS (Step 9 decision) but not yet listed in TECH §4.2/§4.10
 
 ### Task 15.1: Helm chart
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §5.0 Y3, §5.1 (`deploy/helm/kafka3o-gateway`), §5.4 (every object row), §6.1 B3 (exec probes), §6.3 C12 (grace-period rule, DNS egress), §1.1 (resources)
 - **Subtasks:**
-  - [ ] 15.1.1 `Chart.yaml`, `values.yaml` (replicas 2, resources 100m/128Mi → 1 CPU/512Mi, bounds, switches, CORS, OTLP endpoint, audit, trusted proxies, image digest), `values.schema.json` with `terminationGracePeriodSeconds ≥ ceil(maxTimeMs/1000)+10` — TECH §5.4, C12
-  - [ ] 15.1.2 Templates: `deployment.yaml` (securityContext, exec probes, preStop, env from Secret), `service.yaml`, `serviceaccount.yaml` (no token automount), `configmap.yaml` (`/etc/kafka3o/config.yaml`), `secret.yaml`, `networkpolicy.yaml` (egress brokers + OTLP + DNS; ingress namespace selector), `pdb.yaml` (`minAvailable: 1`), `hpa.yaml` (optional) — TECH §5.4
-  - [ ] 15.1.3 `templates/tests/` connection test; chart `README.md` — TECH §5.1
+  - [x] 15.1.1 `Chart.yaml`, `values.yaml` (replicas 2, resources 100m/128Mi → 1 CPU/512Mi, bounds, switches, CORS, OTLP endpoint, audit, trusted proxies, image digest), `values.schema.json` with `terminationGracePeriodSeconds ≥ ceil(maxTimeMs/1000)+10` — TECH §5.4, C12
+  - [x] 15.1.2 Templates: `deployment.yaml` (securityContext, exec probes, preStop, env from Secret), `service.yaml`, `serviceaccount.yaml` (no token automount), `configmap.yaml` (`/etc/kafka3o/config.yaml`), `secret.yaml`, `networkpolicy.yaml` (egress brokers + OTLP + DNS; ingress namespace selector), `pdb.yaml` (`minAvailable: 1`), `hpa.yaml` (optional) — TECH §5.4
+  - [x] 15.1.3 `templates/tests/` connection test; chart `README.md` — TECH §5.1
 - **Tests (Definition of Done):**
   - `helm lint deploy/helm/kafka3o-gateway` exit 0 (CI step) — TECH §5.4
   - `helm template … | kubeconform -strict` PASS for all eight kinds (CI step) — TECH §5.4

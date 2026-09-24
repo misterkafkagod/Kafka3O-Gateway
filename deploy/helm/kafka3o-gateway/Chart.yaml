@@ -1,0 +1,10 @@
+apiVersion: v2
+name: kafka3o-gateway
+description: Kafka Application Gateway — a governed HTTP API over one Kafka cluster.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/misterkafkagod/Kafka3O-Gateway
+sources:
+  - https://github.com/misterkafkagod/Kafka3O-Gateway
+keywords: [kafka, gateway, api]

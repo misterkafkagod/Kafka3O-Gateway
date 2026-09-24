@@ -1,0 +1,43 @@
+{{/*
+`helm test <release>`: calls /v1/health/ready through the Service with the
+probe key. The gateway image has no shell or HTTP client, so this uses a
+small curl image instead.
+*/}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "kafka3o-gateway.fullname" . }}-test-connection
+  labels:
+    {{- include "kafka3o-gateway.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image }}
+      args:
+        - --fail
+        - --silent
+        - --show-error
+        - --header
+        - "X-Api-Key: $(KGW_PROBE_API_KEY)"
+        - "http://{{ include "kafka3o-gateway.fullname" . }}:{{ .Values.service.port }}/v1/health/ready"
+      env:
+        - name: KGW_PROBE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "kafka3o-gateway.secretName" . }}
+              key: KGW_PROBE_API_KEY
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]

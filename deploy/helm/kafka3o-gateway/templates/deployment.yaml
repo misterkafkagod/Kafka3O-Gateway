@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kafka3o-gateway.fullname" . }}
+  labels:
+    {{- include "kafka3o-gateway.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kafka3o-gateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Configuration is read once at start-up; a changed value rolls the pods.
+        checksum/config: {{ include "kafka3o-gateway.config" . | sha256sum }}
+        {{- if not .Values.auth.existingSecret }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "kafka3o-gateway.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "kafka3o-gateway.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gateway
+          image: {{ include "kafka3o-gateway.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve", "--config", "/etc/kafka3o/config.yaml"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: KGW_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kafka3o-gateway.secretName" . }}
+                  key: KGW_API_KEYS
+            - name: KGW_PROBE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kafka3o-gateway.secretName" . }}
+                  key: KGW_PROBE_API_KEY
+            {{- if .Values.kafka.sasl.mechanism }}
+            - name: KGW_KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kafka3o-gateway.secretName" . }}
+                  key: KGW_KAFKA_SASL_USERNAME
+            - name: KGW_KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kafka3o-gateway.secretName" . }}
+                  key: KGW_KAFKA_SASL_PASSWORD
+            {{- end }}
+          livenessProbe:
+            exec:
+              command: ["/kafka3o-gateway", "probe", "--live"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 6
+          readinessProbe:
+            exec:
+              command: ["/kafka3o-gateway", "probe", "--ready"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 6
+          lifecycle:
+            # Native sleep action (Kubernetes >= 1.30): the distroless image has no shell or sleep binary.
+            preStop:
+              sleep:
+                seconds: {{ .Values.preStopSleepSeconds }}
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kafka3o/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.kafka.tls.enabled }}
+            - name: kafka-tls
+              mountPath: /etc/kafka3o/tls
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "kafka3o-gateway.fullname" . }}
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.kafka.tls.enabled }}
+        - name: kafka-tls
+          secret:
+            secretName: {{ required "kafka.tls.secretName is required when kafka.tls.enabled" .Values.kafka.tls.secretName }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
