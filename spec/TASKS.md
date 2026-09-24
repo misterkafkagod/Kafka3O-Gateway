@@ -965,7 +965,7 @@
 ---
 
 ## Phase 16: Acceptance report and release evidence
-- **Phase Status:** Not Started
+- **Phase Status:** Awaiting Manual Verification
 - **Goal:** One command runs all 41 acceptance tests plus the franz contract suite against a cluster and produces the release checklist document.
 - **Manual Test Plan:**
   1. `go test -json -tags acceptance,integration ./test/... ./internal/kafka/franz/... | go run ./tools/acceptance-report` → `docs/acceptance/<version>-<date>.md` with 41 rows, every row `PASS`, broker version and run id filled.
