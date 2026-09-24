@@ -994,10 +994,10 @@
   - Level 2: `go test -tags integration ./internal/kafka/franz` passes every `porttest` case against the acceptance cluster — TECH L1
 
 ### Task 16.3: Acceptance workflow
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.10 (manual dispatch), §5.1 (`acceptance.yml`)
 - **Subtasks:**
-  - [ ] 16.3.1 `.github/workflows/acceptance.yml`: `workflow_dispatch`, secrets `KAFKA_BOOTSTRAP`, `KAFKA_SASL_*`, `KGW_ACC_OPERATOR_KEY`, `KGW_ACC_READER_KEY`; runs `-tags acceptance,integration`; commits `docs/acceptance/*.md` — TECH §4.10, §5.1
+  - [x] 16.3.1 `.github/workflows/acceptance.yml`: `workflow_dispatch`, secrets `KAFKA_BOOTSTRAP`, `KAFKA_SASL_*`, `KGW_ACC_OPERATOR_KEY`, `KGW_ACC_READER_KEY`; runs `-tags acceptance,integration`; commits `docs/acceptance/*.md` — TECH §4.10, §5.1
 - **Tests (Definition of Done):**
   - `acceptance.yml` dispatched against the acceptance cluster: green, and a new `docs/acceptance/<version>-<date>.md` with 41 `PASS` rows is committed by the workflow — TECH §4.8, §4.10
 

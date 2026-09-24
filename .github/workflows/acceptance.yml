@@ -1,0 +1,95 @@
+# Level 2 acceptance (TECH-SPEC §4.8, §4.10): human-triggered per release,
+# never on PRs. Runs all 41 acceptance tests plus the franz contract suite
+# against a dedicated, non-production cluster, renders the release checklist
+# with tools/acceptance-report, and commits it — only when every command
+# passed, so a failed run never lands on the branch as release evidence. The
+# report and raw test output are always uploaded as artifacts.
+#
+# Repository secrets: KAFKA_BOOTSTRAP, KGW_ACC_OPERATOR_KEY, KGW_ACC_READER_KEY;
+# optional KAFKA_SASL_MECHANISM, KAFKA_SASL_USERNAME, KAFKA_SASL_PASSWORD, and
+# KAFKA_TLS_CA_PEM (enables TLS to the brokers with that CA).
+name: Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      broker_version:
+        description: Kafka version of the acceptance cluster, shown in the report (e.g. 3.9.1)
+        required: true
+      gateway_version:
+        description: Gateway version for the report file name; empty uses `git describe`
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # commit docs/acceptance/<version>-<date>.md
+
+concurrency:
+  group: acceptance
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Broker TLS CA
+        env:
+          CA_PEM: ${{ secrets.KAFKA_TLS_CA_PEM }}
+        run: |
+          if [ -n "$CA_PEM" ]; then
+            printf '%s\n' "$CA_PEM" > "$RUNNER_TEMP/kafka-ca.pem"
+            echo "KAFKA_TLS_ENABLED=true" >> "$GITHUB_ENV"
+            echo "KAFKA_TLS_CA_FILE=$RUNNER_TEMP/kafka-ca.pem" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run acceptance and franz contract suites
+        env:
+          KAFKA_BOOTSTRAP: ${{ secrets.KAFKA_BOOTSTRAP }}
+          KAFKA_SASL_MECHANISM: ${{ secrets.KAFKA_SASL_MECHANISM }}
+          KAFKA_SASL_USERNAME: ${{ secrets.KAFKA_SASL_USERNAME }}
+          KAFKA_SASL_PASSWORD: ${{ secrets.KAFKA_SASL_PASSWORD }}
+          KGW_ACC_OPERATOR_KEY: ${{ secrets.KGW_ACC_OPERATOR_KEY }}
+          KGW_ACC_READER_KEY: ${{ secrets.KGW_ACC_READER_KEY }}
+          KAFKA_BROKER_VERSION: ${{ inputs.broker_version }}
+        # The report tool, not this step, decides pass/fail: it needs the
+        # whole stream even when some tests fail.
+        run: go test -json -count=1 -timeout 45m -tags acceptance,integration ./test/... ./internal/kafka/franz/... > acceptance.json || true
+
+      - name: Render report
+        id: report
+        env:
+          GATEWAY_VERSION: ${{ inputs.gateway_version }}
+        run: |
+          version="${GATEWAY_VERSION:-$(git describe --tags --always)}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          go run ./tools/acceptance-report -version "$version" < acceptance.json
+
+      - name: Upload report and raw output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-${{ github.run_number }}
+          path: |
+            acceptance.json
+            docs/acceptance/*.md
+          if-no-files-found: warn
+
+      - name: Commit the report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/acceptance/
+          git commit -m "Acceptance report ${{ steps.report.outputs.version }} (run ${{ github.run_id }})"
+          git push
