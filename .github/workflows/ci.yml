@@ -68,6 +68,66 @@ jobs:
           path: benchstat.txt
           if-no-files-found: error
 
+  chart:
+    name: helm lint, kubeconform, schema negative case
+    runs-on: ubuntu-latest
+    env:
+      CHART: deploy/helm/kafka3o-gateway
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.22.0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install kubeconform
+        run: go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+
+      - name: helm lint
+        run: helm lint --strict "$CHART"
+
+      - name: helm template | kubeconform -strict
+        run: |
+          helm template kgw "$CHART" --set bounds.maxTimeMs=10000 > rendered.yaml
+          kubeconform -strict -summary rendered.yaml
+          for kind in Deployment Service ServiceAccount ConfigMap Secret NetworkPolicy PodDisruptionBudget HorizontalPodAutoscaler; do
+            grep -q "^kind: $kind$" rendered.yaml || { echo "missing $kind"; exit 1; }
+          done
+
+      - name: Rendered output assertions
+        run: |
+          helm template kgw "$CHART" --set bounds.maxTimeMs=10000 > rendered.yaml
+          check() { grep -Eq -- "$1" rendered.yaml || { echo "missing: $1"; exit 1; }; }
+          check '"/kafka3o-gateway", "probe", "--live"'
+          check '"/kafka3o-gateway", "probe", "--ready"'
+          grep -A3 'name: KGW_PROBE_API_KEY' rendered.yaml | grep -q secretKeyRef || { echo "KGW_PROBE_API_KEY not from Secret"; exit 1; }
+          check 'runAsNonRoot: true'
+          check 'readOnlyRootFilesystem: true'
+          check 'allowPrivilegeEscalation: false'
+          check 'drop: \[ALL\]'
+          check 'type: RuntimeDefault'
+          check 'automountServiceAccountToken: false'
+          check 'terminationGracePeriodSeconds: 30'
+          check 'minAvailable: 1'
+          check 'port: 53'
+
+      - name: Schema rejects a grace period shorter than maxTime + 10s
+        run: |
+          if helm template kgw "$CHART" --set bounds.maxTimeMs=60000 --set terminationGracePeriodSeconds=30 > /dev/null 2> err.txt; then
+            echo "expected values.schema.json to reject maxTimeMs=60000 with terminationGracePeriodSeconds=30"; exit 1
+          fi
+          cat err.txt
+          grep -q 'want 70' err.txt
+          helm template kgw "$CHART" --set bounds.maxTimeMs=60000 --set terminationGracePeriodSeconds=70 > /dev/null
+
   image:
     name: image build, non-root check, scan gate
     runs-on: ubuntu-latest

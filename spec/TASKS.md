@@ -955,10 +955,10 @@
   - 15.1.3: review-checklist item — chart `README.md` documents every value (accepted at Step 10)
 
 ### Task 15.2: Chart checks in CI
-- **Status:** Not Started
+- **Status:** Done
 - **Source:** TECH §4.10
 - **Subtasks:**
-  - [ ] 15.2.1 `ci.yml` steps: `helm lint`, `helm template | kubeconform -strict`, schema negative case — TECH §4.10
+  - [x] 15.2.1 `ci.yml` steps: `helm lint`, `helm template | kubeconform -strict`, schema negative case — TECH §4.10
 - **Tests (Definition of Done):**
   - The three named steps exist in `ci.yml` and are green on a clean PR; the negative-schema step is asserted to fail on the bad values — TECH §4.10
 
