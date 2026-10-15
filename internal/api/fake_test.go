@@ -26,7 +26,10 @@ func (f *fakeCluster) DescribeCluster(context.Context) (ClusterInfo, error) {
 // get runs a GET request against a server backed by c and decodes the JSON body into out.
 func get(t *testing.T, c Cluster, path string, out any) *http.Response {
 	t.Helper()
-	srv := NewServer(c, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	srv, err := NewServer(c, slog.New(slog.NewTextHandler(io.Discard, nil)), "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	res := rec.Result()

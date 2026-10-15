@@ -39,9 +39,14 @@ func run(log *slog.Logger) error {
 	}
 	defer cluster.Close()
 
+	apiServer, err := api.NewServer(cluster, log, cfg.UIDir)
+	if err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.Listen,
-		Handler:           api.NewServer(cluster, log).Handler(),
+		Handler:           apiServer.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
