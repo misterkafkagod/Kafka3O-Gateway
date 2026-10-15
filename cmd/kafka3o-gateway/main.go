@@ -11,7 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/api"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 )
 
 func main() {
@@ -31,9 +33,15 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	cluster, err := kafka.New(cfg.Brokers)
+	if err != nil {
+		return err
+	}
+	defer cluster.Close()
+
 	srv := &http.Server{
 		Addr:              cfg.Listen,
-		Handler:           http.NewServeMux(),
+		Handler:           api.NewServer(cluster, log).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
