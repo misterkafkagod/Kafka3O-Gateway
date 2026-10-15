@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,12 +16,31 @@ type fakeCluster struct {
 	pingErr     error
 	info        ClusterInfo
 	describeErr error
+	topics      []TopicPartitions
+	configs     map[string][]ConfigEntry
+	topicsErr   error
 }
 
 func (f *fakeCluster) Ping(context.Context) error { return f.pingErr }
 
 func (f *fakeCluster) DescribeCluster(context.Context) (ClusterInfo, error) {
 	return f.info, f.describeErr
+}
+
+func (f *fakeCluster) ListTopics(context.Context) ([]TopicPartitions, error) {
+	return f.topics, f.topicsErr
+}
+
+func (f *fakeCluster) DescribeTopic(_ context.Context, name string) (TopicPartitions, []ConfigEntry, error) {
+	if f.topicsErr != nil {
+		return TopicPartitions{}, nil, f.topicsErr
+	}
+	for _, t := range f.topics {
+		if t.Name == name {
+			return t, f.configs[name], nil
+		}
+	}
+	return TopicPartitions{}, nil, fmt.Errorf("%w: %s", ErrTopicNotFound, name)
 }
 
 // get runs a GET request against a server backed by c and decodes the JSON body into out.

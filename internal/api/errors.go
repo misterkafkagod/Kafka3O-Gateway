@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -9,6 +10,7 @@ import (
 const (
 	CodeClusterUnreachable = "cluster_unreachable"
 	CodeNotFound           = "not_found"
+	CodeTopicNotFound      = "topic_not_found"
 )
 
 type errorBody struct {
@@ -20,8 +22,11 @@ type errorBody struct {
 
 // writeError is the single place where failures become HTTP responses.
 func writeError(w http.ResponseWriter, err error) {
-	// Any error from the cluster that is not a known condition means Kafka
-	// could not answer; later tasks add the specific mappings.
+	if errors.Is(err, ErrTopicNotFound) {
+		writeErrorCode(w, http.StatusNotFound, CodeTopicNotFound, err.Error())
+		return
+	}
+	// Any other error from the cluster means Kafka could not answer.
 	writeErrorCode(w, http.StatusServiceUnavailable, CodeClusterUnreachable, err.Error())
 }
 

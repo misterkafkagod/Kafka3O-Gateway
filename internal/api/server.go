@@ -43,6 +43,8 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/cluster", s.describeCluster)
+	mux.HandleFunc("GET /api/topics", s.listTopics)
+	mux.HandleFunc("GET /api/topics/{name}", s.describeTopic)
 	mux.HandleFunc("GET /api/", apiNotFound)
 	if s.uiDir != "" {
 		mux.Handle("GET /", staticHandler(s.uiDir))
