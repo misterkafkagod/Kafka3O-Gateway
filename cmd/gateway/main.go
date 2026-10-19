@@ -37,7 +37,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Listen,
-		Handler:           mux,
+		Handler:           httpapi.WithCORS(mux, cfg.HTTP.CORS.AllowedOrigins),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
