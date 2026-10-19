@@ -1,0 +1,57 @@
+# Local multi-cluster dev stack: two single-node Kafka clusters, one gateway each.
+# Gateways are configured through KAFKA3O_* environment variables (no bind mounts),
+# so the stack also runs against a remote Docker daemon.
+#   docker compose -f deploy/compose.dev.yaml up -d --build
+name: kafka3o-dev
+
+x-kafka-env: &kafka-env
+  KAFKA_NODE_ID: "1"
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+
+x-gateway-env: &gateway-env
+  KAFKA3O_HTTP__CORS__ALLOWEDORIGINS: http://localhost:5173
+
+services:
+  kafka-dev:
+    image: apache/kafka:4.3.1
+    environment:
+      <<: *kafka-env
+      CLUSTER_ID: nDF93h0CSDizRRs5DIdLeQ
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-dev:9092
+
+  kafka-prod:
+    image: apache/kafka:4.3.1
+    environment:
+      <<: *kafka-env
+      CLUSTER_ID: 2T0OZmnUTUWX6Hoz9ygeQg
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-prod:9092
+
+  gateway-dev:
+    build: ..
+    image: kafka3o-gateway:dev
+    environment:
+      <<: *gateway-env
+      KAFKA3O_KAFKA__BROKERS: kafka-dev:9092
+    ports:
+      - "8081:8080"
+    depends_on:
+      - kafka-dev
+
+  gateway-prod:
+    image: kafka3o-gateway:dev
+    environment:
+      <<: *gateway-env
+      KAFKA3O_KAFKA__BROKERS: kafka-prod:9092
+    ports:
+      - "8082:8080"
+    depends_on:
+      - kafka-prod
+      - gateway-dev
