@@ -13,9 +13,12 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"github.com/twmb/franz-go/pkg/kadm"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/cluster"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 )
 
 // main is the composition root: it loads config, wires dependencies and serves HTTP.
@@ -31,9 +34,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	kafkaClient, err := kafka.NewClient(cfg.Kafka)
+	if err != nil {
+		logger.Error("invalid kafka client configuration", "error", err)
+		os.Exit(1)
+	}
+	defer kafkaClient.Close()
+	admin := kadm.NewClient(kafkaClient)
+
+	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(admin), cfg.Kafka.Timeout)
+
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
 	httpapi.RegisterLive(api)
+	httpapi.RegisterGetCluster(api, getCluster)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Listen,
