@@ -1,0 +1,12 @@
+# Kafka3O Gateway configuration. Every key can be overridden with a
+# KAFKA3O_* environment variable, using "__" between nested keys,
+# e.g. KAFKA3O_KAFKA__BROKERS=broker1:9092,broker2:9092
+http:
+  listen: ":8080"
+  cors:
+    # Origins of the Kafka3O UI allowed to call this gateway (exact match).
+    allowedOrigins: ["http://localhost:5173"]
+kafka:
+  brokers: ["localhost:9092"]
+  # Timeout applied to every Kafka call.
+  timeout: 5s
