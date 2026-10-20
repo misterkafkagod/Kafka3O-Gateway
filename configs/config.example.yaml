@@ -8,5 +8,6 @@ http:
     allowedOrigins: ["http://localhost:5173"]
 kafka:
   brokers: ["localhost:9092"]
-  # Timeout applied to every Kafka call.
-  timeout: 5s
+  # Timeout applied to every Kafka call. Keep it below the UI's 5 s gateway
+  # timeout, so a down Kafka shows as "Cluster unreachable", not "Gateway unreachable".
+  timeout: 3s

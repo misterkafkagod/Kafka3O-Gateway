@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -14,10 +15,11 @@ import (
 
 type fakeGetCluster struct {
 	cluster cluster.Cluster
+	err     error
 }
 
 func (f fakeGetCluster) Execute(context.Context) (cluster.Cluster, error) {
-	return f.cluster, nil
+	return f.cluster, f.err
 }
 
 func TestRegisterGetCluster_ReturnsClusterJSON(t *testing.T) {
@@ -52,5 +54,29 @@ func TestRegisterGetCluster_ReturnsClusterJSON(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("body mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestRegisterGetCluster_Returns503ClusterUnreachableOnError(t *testing.T) {
+	_, api := humatest.New(t)
+	RegisterGetCluster(api, fakeGetCluster{err: errors.New("dial tcp: connection refused")})
+
+	resp := api.Get("/api/v1/cluster")
+
+	if resp.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", resp.Code)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(resp.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["code"] != "cluster_unreachable" {
+		t.Errorf("code = %v, want cluster_unreachable", got["code"])
+	}
+	if got["detail"] != "Kafka is unreachable: dial tcp: connection refused" {
+		t.Errorf("detail = %v", got["detail"])
+	}
+	if got["title"] != "Cluster unreachable" {
+		t.Errorf("title = %v", got["title"])
 	}
 }

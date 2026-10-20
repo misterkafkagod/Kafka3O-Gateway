@@ -25,7 +25,7 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 	}
 	want := Config{
 		HTTP:  HTTPConfig{Listen: ":8080"},
-		Kafka: KafkaConfig{Brokers: []string{"localhost:9092"}, Timeout: 5 * time.Second},
+		Kafka: KafkaConfig{Brokers: []string{"localhost:9092"}, Timeout: 3 * time.Second},
 	}
 	if diff := cmp.Diff(want, cfg); diff != "" {
 		t.Errorf("config mismatch (-want +got):\n%s", diff)

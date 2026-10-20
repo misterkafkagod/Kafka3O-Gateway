@@ -28,7 +28,7 @@ func LoadConfig(path string) (Config, error) {
 
 	cfg := Config{
 		HTTP:  HTTPConfig{Listen: ":8080"},
-		Kafka: KafkaConfig{Timeout: 5 * time.Second},
+		Kafka: KafkaConfig{Timeout: 3 * time.Second}, // below the UI's 5 s gateway timeout
 	}
 	err := k.UnmarshalWithConf("", &cfg, koanf.UnmarshalConf{
 		Tag: "koanf",
