@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"cmp"
 	"context"
 	"slices"
 	"time"
@@ -30,6 +29,6 @@ func (g getCluster) Execute(ctx context.Context) (Cluster, error) {
 		return Cluster{}, err
 	}
 	c.Brokers = slices.Clone(c.Brokers)
-	slices.SortFunc(c.Brokers, func(a, b Broker) int { return cmp.Compare(a.ID, b.ID) })
+	slices.SortFunc(c.Brokers, CompareBrokersByID)
 	return c, nil
 }

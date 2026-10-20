@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -12,8 +11,6 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
-
-const envPrefix = "KAFKA3O_"
 
 // LoadConfig reads the YAML file at path (skipped when path is empty), applies
 // KAFKA3O_* environment overrides ("__" separates nested keys) and validates the result.
@@ -24,12 +21,7 @@ func LoadConfig(path string) (Config, error) {
 			return Config{}, fmt.Errorf("load config file %q: %w", path, err)
 		}
 	}
-	envProvider := env.Provider(".", env.Opt{
-		Prefix: envPrefix,
-		TransformFunc: func(key, value string) (string, any) {
-			return strings.ToLower(strings.ReplaceAll(strings.TrimPrefix(key, envPrefix), "__", ".")), value
-		},
-	})
+	envProvider := env.Provider(".", env.Opt{Prefix: envPrefix, TransformFunc: EnvKey})
 	if err := k.Load(envProvider, nil); err != nil {
 		return Config{}, fmt.Errorf("load environment overrides: %w", err)
 	}
