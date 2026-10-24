@@ -19,6 +19,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
 // main is the composition root: it loads config, wires dependencies and serves HTTP.
@@ -43,11 +44,13 @@ func main() {
 	admin := kadm.NewClient(kafkaClient)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(admin), cfg.Kafka.Timeout)
+	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(admin), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
 	httpapi.RegisterLive(api)
 	httpapi.RegisterGetCluster(api, getCluster)
+	httpapi.RegisterListTopics(api, listTopics)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Listen,
