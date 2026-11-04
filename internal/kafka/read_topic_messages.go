@@ -100,5 +100,6 @@ func (r readTopicMessages) Execute(ctx context.Context, topic string, position t
 		topic,
 		map[int32]int64{position.Partition: offset},
 		map[int32]int64{position.Partition: end.Offset},
+		topicMessagesFetchLimit,
 	)
 }

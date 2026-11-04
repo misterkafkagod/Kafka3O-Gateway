@@ -9,12 +9,15 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
+const topicMessagesFetchLimit = 50
+
 func readTopicMessagesFromOffsets(
 	ctx context.Context,
 	brokers []string,
 	topic string,
 	offsets map[int32]int64,
 	endOffsets map[int32]int64,
+	maxMessagesPerPartition int,
 ) ([]topics.TopicMessage, error) {
 	consumerOffsets := make(map[int32]kgo.Offset, len(offsets))
 	for partition, offset := range offsets {
@@ -32,6 +35,7 @@ func readTopicMessagesFromOffsets(
 	defer reader.Close()
 
 	done := make(map[int32]bool, len(endOffsets))
+	messagesRead := make(map[int32]int, len(endOffsets))
 	messages := make([]topics.TopicMessage, 0, len(offsets)*50)
 	for len(done) < len(endOffsets) {
 		fetches := reader.PollFetches(ctx)
@@ -52,11 +56,19 @@ func readTopicMessagesFromOffsets(
 				return
 			}
 			for _, record := range partition.Records {
+				if messagesRead[partition.Partition] >= maxMessagesPerPartition {
+					done[partition.Partition] = true
+					continue
+				}
 				if record.Offset >= end {
 					done[partition.Partition] = true
 					continue
 				}
 				messages = append(messages, topicMessageFromRecord(record))
+				messagesRead[partition.Partition]++
+				if messagesRead[partition.Partition] >= maxMessagesPerPartition {
+					done[partition.Partition] = true
+				}
 				if record.Offset >= end-1 {
 					done[partition.Partition] = true
 				}

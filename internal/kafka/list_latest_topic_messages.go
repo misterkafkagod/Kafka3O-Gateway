@@ -65,5 +65,5 @@ func (l listLatestTopicMessages) Execute(ctx context.Context, topic string) ([]t
 	if len(offsets) == 0 {
 		return []topics.TopicMessage{}, nil
 	}
-	return readTopicMessagesFromOffsets(ctx, l.brokers, topic, offsets, endOffsets)
+	return readTopicMessagesFromOffsets(ctx, l.brokers, topic, offsets, endOffsets, topicMessagesFetchLimit)
 }
