@@ -44,7 +44,7 @@ func main() {
 	admin := kadm.NewClient(kafkaClient)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
-	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(admin), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
+	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	readTopicMessages := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)

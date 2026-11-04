@@ -38,7 +38,7 @@ func TestListTopics_CountsMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(admin), kafka.NewCountTopicMessages(admin), 30*time.Second)
+	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(client), kafka.NewCountTopicMessages(admin), 30*time.Second)
 	got, err := listTopics.Execute(ctx)
 	if err != nil {
 		t.Fatal(err)
