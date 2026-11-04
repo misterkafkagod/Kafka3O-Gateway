@@ -24,17 +24,26 @@ func TestTopicMessageFromRecord_MapsBytesAndMetadata(t *testing.T) {
 
 	got := topicMessageFromRecord(record)
 	want := topics.TopicMessage{
-		Partition: 2,
-		Offset:    19,
-		Timestamp: record.Timestamp,
-		Key:       []byte("order-19"),
-		Value:     []byte(`{"status":"created"}`),
+		Partition:   2,
+		Offset:      19,
+		OffsetExact: "19",
+		Timestamp:   record.Timestamp,
+		Key:         []byte("order-19"),
+		Value:       []byte(`{"status":"created"}`),
 		Headers: []topics.TopicMessageHeader{
 			{Key: "content-type", Value: []byte("application/json")},
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("message mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestTopicMessageFromRecord_PreservesOffsetsBeyondJavaScriptPrecision(t *testing.T) {
+	record := &kgo.Record{Offset: 9007199254740993}
+	got := topicMessageFromRecord(record)
+	if got.Offset != record.Offset || got.OffsetExact != "9007199254740993" {
+		t.Errorf("offset = %d, exact = %q", got.Offset, got.OffsetExact)
 	}
 }
 

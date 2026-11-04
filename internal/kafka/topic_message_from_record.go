@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bytes"
+	"strconv"
 
 	"github.com/twmb/franz-go/pkg/kgo"
 
@@ -17,11 +18,12 @@ func topicMessageFromRecord(record *kgo.Record) topics.TopicMessage {
 		})
 	}
 	return topics.TopicMessage{
-		Partition: record.Partition,
-		Offset:    record.Offset,
-		Timestamp: record.Timestamp,
-		Key:       bytes.Clone(record.Key),
-		Value:     bytes.Clone(record.Value),
-		Headers:   headers,
+		Partition:   record.Partition,
+		Offset:      record.Offset,
+		OffsetExact: strconv.FormatInt(record.Offset, 10),
+		Timestamp:   record.Timestamp,
+		Key:         bytes.Clone(record.Key),
+		Value:       bytes.Clone(record.Value),
+		Headers:     headers,
 	}
 }

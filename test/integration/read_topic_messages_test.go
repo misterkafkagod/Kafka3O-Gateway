@@ -48,8 +48,8 @@ func TestReadTopicMessages_FromOffsetAndTimestamp(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantByOffset := []topics.TopicMessage{
-		{Partition: 0, Offset: 1, Timestamp: base.Add(time.Second), Key: []byte("second"), Value: []byte("second"), Headers: []topics.TopicMessageHeader{}},
-		{Partition: 0, Offset: 2, Timestamp: base.Add(2 * time.Second), Key: []byte("third"), Value: []byte("third"), Headers: []topics.TopicMessageHeader{}},
+		{Partition: 0, Offset: 1, OffsetExact: "1", Timestamp: base.Add(time.Second), Key: []byte("second"), Value: []byte("second"), Headers: []topics.TopicMessageHeader{}},
+		{Partition: 0, Offset: 2, OffsetExact: "2", Timestamp: base.Add(2 * time.Second), Key: []byte("third"), Value: []byte("third"), Headers: []topics.TopicMessageHeader{}},
 	}
 	if diff := cmp.Diff(wantByOffset, gotByOffset); diff != "" {
 		t.Errorf("offset read mismatch (-want +got):\n%s", diff)

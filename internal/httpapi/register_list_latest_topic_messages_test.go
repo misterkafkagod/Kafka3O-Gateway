@@ -88,6 +88,28 @@ func TestRegisterListLatestTopicMessages_ReturnsEmptyArray(t *testing.T) {
 	}
 }
 
+func TestRegisterListLatestTopicMessages_PreservesExactOffsetInJSON(t *testing.T) {
+	_, api := humatest.New(t)
+	action := &fakeListLatestTopicMessages{messages: []topics.TopicMessage{{
+		Partition: 0, Offset: 9007199254740993, OffsetExact: "9007199254740993",
+	}}}
+	RegisterListLatestTopicMessages(api, action, &fakeReadTopicMessages{})
+
+	resp := api.Get("/api/v1/topics/orders/messages")
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", resp.Code, resp.Body.String())
+	}
+	var body []struct {
+		OffsetExact string `json:"offsetExact"`
+	}
+	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body) != 1 || body[0].OffsetExact != "9007199254740993" {
+		t.Errorf("body = %#v, want exact offset string", body)
+	}
+}
+
 func TestRegisterListLatestTopicMessages_Returns404ForMissingTopic(t *testing.T) {
 	_, api := humatest.New(t)
 	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{err: topics.ErrTopicNotFound}, &fakeReadTopicMessages{})
