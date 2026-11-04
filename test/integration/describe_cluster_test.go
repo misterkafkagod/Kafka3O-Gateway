@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/twmb/franz-go/pkg/kadm"
-
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 )
@@ -23,7 +21,7 @@ func TestDescribeCluster_ReturnsClusterIDAndOneBroker(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	got, err := kafka.NewDescribeCluster(kadm.NewClient(client)).Execute(ctx)
+	got, err := kafka.NewDescribeCluster(client).Execute(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
