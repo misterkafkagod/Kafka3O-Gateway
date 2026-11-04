@@ -4,9 +4,9 @@ func calculateConsumerPartitionLag(snapshot ConsumerPartitionSnapshot) ConsumerG
 	result := ConsumerGroupPartition{
 		Topic:           snapshot.Topic,
 		Partition:       snapshot.Partition,
-		CommittedOffset: snapshot.CommittedOffset,
-		StartOffset:     snapshot.StartOffset,
-		EndOffset:       snapshot.EndOffset,
+		CommittedOffset: consumerOffsetString(snapshot.CommittedOffset),
+		StartOffset:     consumerOffsetString(snapshot.StartOffset),
+		EndOffset:       consumerOffsetString(snapshot.EndOffset),
 	}
 	if snapshot.Error != "" {
 		result.Status = "unavailable"
@@ -40,7 +40,7 @@ func calculateConsumerPartitionLag(snapshot ConsumerPartitionSnapshot) ConsumerG
 		return result
 	}
 	lag := end - committed
-	result.Lag = &lag
+	result.Lag = consumerOffsetString(&lag)
 	result.Status = "ok"
 	return result
 }

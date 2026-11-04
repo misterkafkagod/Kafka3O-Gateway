@@ -92,14 +92,14 @@ func TestFetchConsumerGroups_CombinesProtocolsSubscriptionsAndOffsets(t *testing
 		t.Fatalf("groups = %#v", got)
 	}
 	if got[0].Protocol != "classic" || len(got[0].Partitions) != 2 ||
-		got[0].Partitions[0].Status != "ok" || *got[0].Partitions[0].Lag != 5 ||
+		got[0].Partitions[0].Status != "ok" || *got[0].Partitions[0].Lag != "5" ||
 		got[0].Partitions[1].Status != "no_commit" {
 		t.Errorf("inactive group = %#v", got[0])
 	}
 	if got[1].Protocol != "consumer" || len(got[1].Members) != 1 || len(got[1].Topics) != 2 ||
 		got[1].Topics[0] != "alerts" || len(got[1].Partitions) != 3 ||
 		got[1].Partitions[0].Status != "no_commit" || got[1].Partitions[1].Status != "ok" ||
-		*got[1].Partitions[1].Lag != 2 || got[1].Partitions[2].Status != "no_commit" {
+		*got[1].Partitions[1].Lag != "2" || got[1].Partitions[2].Status != "no_commit" {
 		t.Errorf("modern group = %#v", got[1])
 	}
 	if len(admin.startRequests) != 1 || len(admin.startRequests[0]) != 2 || len(admin.endRequests) != 1 {

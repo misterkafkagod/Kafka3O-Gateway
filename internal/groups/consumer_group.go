@@ -8,14 +8,14 @@ type ConsumerGroupMember struct {
 }
 
 type ConsumerGroupPartition struct {
-	Topic           string `json:"topic"`
-	Partition       int32  `json:"partition"`
-	CommittedOffset *int64 `json:"committedOffset,string"`
-	StartOffset     *int64 `json:"startOffset,string"`
-	EndOffset       *int64 `json:"endOffset,string"`
-	Lag             *int64 `json:"lag,string"`
-	Status          string `json:"status"`
-	Error           string `json:"error,omitempty"`
+	Topic           string  `json:"topic"`
+	Partition       int32   `json:"partition"`
+	CommittedOffset *string `json:"committedOffset"`
+	StartOffset     *string `json:"startOffset"`
+	EndOffset       *string `json:"endOffset"`
+	Lag             *string `json:"lag"`
+	Status          string  `json:"status"`
+	Error           string  `json:"error,omitempty"`
 }
 
 type ConsumerGroup struct {

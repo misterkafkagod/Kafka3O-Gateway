@@ -79,7 +79,7 @@ func TestConsumerGroups_ClassicAndModernLag(t *testing.T) {
 		}
 		committed, missing := group.Partitions[0], group.Partitions[1]
 		if committed.Partition != 0 || committed.Status != "ok" || committed.CommittedOffset == nil ||
-			*committed.CommittedOffset != 1 || committed.Lag == nil || *committed.Lag != 2 {
+			*committed.CommittedOffset != "1" || committed.Lag == nil || *committed.Lag != "2" {
 			t.Errorf("%s committed partition = %#v", group.ID, committed)
 		}
 		if missing.Partition != 1 || missing.Status != "no_commit" || missing.Lag != nil {

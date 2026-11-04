@@ -17,6 +17,7 @@ import (
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/cluster"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
@@ -49,6 +50,7 @@ func main() {
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	readTopicMessages := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	searchTopicMessages := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
+	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
@@ -58,6 +60,7 @@ func main() {
 	httpapi.RegisterGetTopicDetail(api, getTopicDetail)
 	httpapi.RegisterListLatestTopicMessages(api, listLatestTopicMessages, readTopicMessages)
 	httpapi.RegisterSearchTopicMessages(api, searchTopicMessages)
+	httpapi.RegisterListConsumerGroups(api, listConsumerGroups)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Listen,

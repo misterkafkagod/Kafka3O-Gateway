@@ -12,10 +12,10 @@ func TestCalculateConsumerPartitionLag(t *testing.T) {
 		name     string
 		snapshot ConsumerPartitionSnapshot
 		status   string
-		lag      *int64
+		lag      *string
 		error    bool
 	}{
-		{name: "valid", snapshot: ConsumerPartitionSnapshot{StartOffset: &start, EndOffset: &end, CommittedOffset: &commit}, status: "ok", lag: new(int64(8))},
+		{name: "valid", snapshot: ConsumerPartitionSnapshot{StartOffset: &start, EndOffset: &end, CommittedOffset: &commit}, status: "ok", lag: new("8")},
 		{name: "no commit", snapshot: ConsumerPartitionSnapshot{StartOffset: &start, EndOffset: &end}, status: "no_commit"},
 		{name: "sentinel commit", snapshot: ConsumerPartitionSnapshot{StartOffset: &start, EndOffset: &end, CommittedOffset: new(int64(-1))}, status: "no_commit"},
 		{name: "before retention", snapshot: ConsumerPartitionSnapshot{StartOffset: &start, EndOffset: &end, CommittedOffset: new(int64(3))}, status: "out_of_range"},
