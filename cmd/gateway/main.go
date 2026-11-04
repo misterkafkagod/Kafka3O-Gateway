@@ -46,6 +46,7 @@ func main() {
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(admin), cfg.Kafka.Timeout)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(admin), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
+	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
@@ -53,6 +54,7 @@ func main() {
 	httpapi.RegisterGetCluster(api, getCluster)
 	httpapi.RegisterListTopics(api, listTopics)
 	httpapi.RegisterGetTopicDetail(api, getTopicDetail)
+	httpapi.RegisterListLatestTopicMessages(api, listLatestTopicMessages)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Listen,
