@@ -13,6 +13,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
+	github.com/twmb/franz-go/pkg/kmsg v1.15.0
 )
 
 require (
@@ -62,7 +63,6 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
-	github.com/twmb/franz-go/pkg/kmsg v1.15.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
