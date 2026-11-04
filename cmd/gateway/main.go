@@ -48,6 +48,7 @@ func main() {
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	readTopicMessages := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
+	searchTopicMessages := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
@@ -56,6 +57,7 @@ func main() {
 	httpapi.RegisterListTopics(api, listTopics)
 	httpapi.RegisterGetTopicDetail(api, getTopicDetail)
 	httpapi.RegisterListLatestTopicMessages(api, listLatestTopicMessages, readTopicMessages)
+	httpapi.RegisterSearchTopicMessages(api, searchTopicMessages)
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Listen,
