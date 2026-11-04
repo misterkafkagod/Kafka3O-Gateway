@@ -20,8 +20,27 @@ type fakeListLatestTopicMessages struct {
 	topic    string
 }
 
+type fakeReadTopicMessages struct {
+	messages []topics.TopicMessage
+	err      error
+	topic    string
+	position topics.TopicMessagePosition
+}
+
 func (f *fakeListLatestTopicMessages) Execute(_ context.Context, topic string) ([]topics.TopicMessage, error) {
 	f.topic = topic
+	return f.messages, f.err
+}
+
+func (f *fakeReadTopicMessages) Execute(_ context.Context, topic string, position topics.TopicMessagePosition) ([]topics.TopicMessage, error) {
+	f.topic = topic
+	f.position = position
+	if position.Partition < 0 ||
+		(position.Offset == nil) == (position.Timestamp == nil) ||
+		(position.Offset != nil && *position.Offset < 0) ||
+		(position.Timestamp != nil && *position.Timestamp < 0) {
+		return nil, topics.ErrInvalidTopicMessagePosition
+	}
 	return f.messages, f.err
 }
 
@@ -36,7 +55,7 @@ func TestRegisterListLatestTopicMessages_ReturnsMessages(t *testing.T) {
 		Headers:   []topics.TopicMessageHeader{{Key: "source", Value: []byte("api")}},
 	}}
 	action := &fakeListLatestTopicMessages{messages: want}
-	RegisterListLatestTopicMessages(api, action)
+	RegisterListLatestTopicMessages(api, action, &fakeReadTopicMessages{})
 
 	resp := api.Get("/api/v1/topics/orders/messages")
 
@@ -57,7 +76,7 @@ func TestRegisterListLatestTopicMessages_ReturnsMessages(t *testing.T) {
 
 func TestRegisterListLatestTopicMessages_ReturnsEmptyArray(t *testing.T) {
 	_, api := humatest.New(t)
-	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{})
+	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{}, &fakeReadTopicMessages{})
 
 	resp := api.Get("/api/v1/topics/orders/messages")
 
@@ -71,7 +90,7 @@ func TestRegisterListLatestTopicMessages_ReturnsEmptyArray(t *testing.T) {
 
 func TestRegisterListLatestTopicMessages_Returns404ForMissingTopic(t *testing.T) {
 	_, api := humatest.New(t)
-	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{err: topics.ErrTopicNotFound})
+	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{err: topics.ErrTopicNotFound}, &fakeReadTopicMessages{})
 
 	resp := api.Get("/api/v1/topics/missing/messages")
 
@@ -89,7 +108,7 @@ func TestRegisterListLatestTopicMessages_Returns404ForMissingTopic(t *testing.T)
 
 func TestRegisterListLatestTopicMessages_Returns503OnKafkaError(t *testing.T) {
 	_, api := humatest.New(t)
-	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{err: errors.New("connection refused")})
+	RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{err: errors.New("connection refused")}, &fakeReadTopicMessages{})
 
 	resp := api.Get("/api/v1/topics/orders/messages")
 
@@ -102,5 +121,74 @@ func TestRegisterListLatestTopicMessages_Returns503OnKafkaError(t *testing.T) {
 	}
 	if got["code"] != "cluster_unreachable" {
 		t.Errorf("code = %v, want cluster_unreachable", got["code"])
+	}
+}
+
+func TestRegisterListLatestTopicMessages_ReadsFromOffsetOrTimestamp(t *testing.T) {
+	tests := []struct {
+		name         string
+		query        string
+		wantPosition topics.TopicMessagePosition
+	}{
+		{name: "offset", query: "partition=2&offset=12", wantPosition: topics.TopicMessagePosition{Partition: 2, Offset: new(int64)}},
+		{name: "timestamp", query: "partition=1&timestamp=1700000000123", wantPosition: topics.TopicMessagePosition{Partition: 1, Timestamp: new(int64)}},
+	}
+	*tests[0].wantPosition.Offset = 12
+	*tests[1].wantPosition.Timestamp = 1700000000123
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, api := humatest.New(t)
+			read := &fakeReadTopicMessages{messages: []topics.TopicMessage{{Partition: tt.wantPosition.Partition, Offset: 12}}}
+			latest := &fakeListLatestTopicMessages{}
+			RegisterListLatestTopicMessages(api, latest, read)
+
+			resp := api.Get("/api/v1/topics/orders/messages?" + tt.query)
+
+			if resp.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200: %s", resp.Code, resp.Body.String())
+			}
+			if read.topic != "orders" {
+				t.Errorf("requested topic = %q, want orders", read.topic)
+			}
+			if diff := cmp.Diff(tt.wantPosition, read.position); diff != "" {
+				t.Errorf("position mismatch (-want +got):\n%s", diff)
+			}
+			if latest.topic != "" {
+				t.Error("latest action was called for a positioned read")
+			}
+		})
+	}
+}
+
+func TestRegisterListLatestTopicMessages_Returns400ForInvalidPosition(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+	}{
+		{name: "partition missing", query: "offset=0"},
+		{name: "both positions", query: "partition=0&offset=0&timestamp=1"},
+		{name: "negative partition", query: "partition=-1&offset=0"},
+		{name: "negative offset", query: "partition=0&offset=-1"},
+		{name: "invalid number", query: "partition=0&offset=nope"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, api := humatest.New(t)
+			RegisterListLatestTopicMessages(api, &fakeListLatestTopicMessages{}, &fakeReadTopicMessages{})
+
+			resp := api.Get("/api/v1/topics/orders/messages?" + tt.query)
+
+			if resp.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", resp.Code, resp.Body.String())
+			}
+			var got map[string]any
+			if err := json.Unmarshal(resp.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			if got["code"] != "invalid_position" {
+				t.Errorf("code = %v, want invalid_position", got["code"])
+			}
+		})
 	}
 }
