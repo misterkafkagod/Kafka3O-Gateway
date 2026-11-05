@@ -71,6 +71,18 @@ func TestLoadConfig_EnvOverridesYAML(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_ReadsTLSPaths(t *testing.T) {
+	path := writeYAML(t, "kafka:\n  brokers: [\"a:9092\"]\nhttp:\n  tls:\n    certificateFile: cert.pem\n    keyFile: key.pem\n")
+	t.Setenv("KAFKA3O_HTTP__TLS__KEYFILE", "override.pem")
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.HTTP.TLS.CertificateFile != "cert.pem" || cfg.HTTP.TLS.KeyFile != "override.pem" {
+		t.Errorf("TLS config = %#v", cfg.HTTP.TLS)
+	}
+}
+
 func TestLoadConfig_EmptyBrokersIsAnError(t *testing.T) {
 	if _, err := LoadConfig(writeYAML(t, "http:\n  listen: \":8080\"\n")); err == nil {
 		t.Fatal("expected an error for empty kafka.brokers")

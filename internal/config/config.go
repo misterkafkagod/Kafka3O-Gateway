@@ -12,6 +12,12 @@ type Config struct {
 type HTTPConfig struct {
 	Listen string     `koanf:"listen"`
 	CORS   CORSConfig `koanf:"cors"`
+	TLS    TLSConfig  `koanf:"tls"`
+}
+
+type TLSConfig struct {
+	CertificateFile string `koanf:"certificatefile"`
+	KeyFile         string `koanf:"keyfile"`
 }
 
 type CORSConfig struct {
