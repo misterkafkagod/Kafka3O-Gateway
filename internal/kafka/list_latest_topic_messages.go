@@ -6,17 +6,18 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
 type listLatestTopicMessages struct {
-	admin   *kadm.Client
-	brokers []string
+	admin  *kadm.Client
+	client *kgo.Client
 }
 
-func NewListLatestTopicMessages(admin *kadm.Client, brokers []string) topics.FetchTopicMessages {
-	return listLatestTopicMessages{admin: admin, brokers: brokers}
+func NewListLatestTopicMessages(admin *kadm.Client, client *kgo.Client) topics.FetchTopicMessages {
+	return listLatestTopicMessages{admin: admin, client: client}
 }
 
 func (l listLatestTopicMessages) Execute(ctx context.Context, topic string) ([]topics.TopicMessage, error) {
@@ -71,5 +72,5 @@ func (l listLatestTopicMessages) Execute(ctx context.Context, topic string) ([]t
 	if len(offsets) == 0 {
 		return []topics.TopicMessage{}, nil
 	}
-	return readTopicMessagesFromOffsets(ctx, l.brokers, topic, detail, offsets, endOffsets, topicMessagesFetchLimit)
+	return readTopicMessagesFromOffsets(ctx, l.client.Opts(), topic, detail, offsets, endOffsets, topicMessagesFetchLimit)
 }

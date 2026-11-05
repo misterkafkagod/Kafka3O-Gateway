@@ -25,6 +25,19 @@ type CORSConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers []string      `koanf:"brokers"`
-	Timeout time.Duration `koanf:"timeout"`
+	Brokers []string        `koanf:"brokers"`
+	Timeout time.Duration   `koanf:"timeout"`
+	TLS     KafkaTLSConfig  `koanf:"tls"`
+	SASL    KafkaSASLConfig `koanf:"sasl"`
+}
+
+type KafkaTLSConfig struct {
+	Enabled bool   `koanf:"enabled"`
+	CAFile  string `koanf:"cafile"`
+}
+
+type KafkaSASLConfig struct {
+	Mechanism string `koanf:"mechanism"`
+	Username  string `koanf:"username"`
+	Password  string `koanf:"-"`
 }

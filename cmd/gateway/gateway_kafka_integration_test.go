@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -26,13 +27,33 @@ import (
 )
 
 func TestGateway_AuthenticatedKafkaWriteLifecycle(t *testing.T) {
-	brokers := integration.StartKafka(t)
-	cfg := config.KafkaConfig{Brokers: brokers, Timeout: 30 * time.Second}
+	var cfg config.KafkaConfig
+	secureBroker, secure := os.LookupEnv("KAFKA3O_TEST_SECURE_BROKER")
+	if secure {
+		if err := integration.ValidateExternalTestBroker(secureBroker, os.Getenv("KAFKA3O_TEST_DISPOSABLE")); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("KAFKA3O_KAFKA__BROKERS", secureBroker)
+		loaded, err := config.LoadConfig("")
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg = loaded.Kafka
+		if !cfg.TLS.Enabled || strings.ToUpper(cfg.SASL.Mechanism) != "SCRAM-SHA-512" {
+			t.Fatal("secured gateway test requires TLS and SCRAM-SHA-512")
+		}
+	} else {
+		cfg.Brokers = integration.StartKafka(t)
+	}
+	cfg.Timeout = 30 * time.Second
 	client, err := kafka.NewClient(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
+	if secure {
+		integration.VerifyExternalTestBroker(t, client, secureBroker, os.Getenv("KAFKA3O_TEST_DISPOSABLE"))
+	}
 	producer, err := kafka.NewProducer(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -47,8 +68,8 @@ func TestGateway_AuthenticatedKafkaWriteLifecycle(t *testing.T) {
 	httpapi.RegisterListTopics(api, topics.NewListTopics(kafka.NewListTopicMetadata(client), kafka.NewCountTopicMessages(admin), cfg.Timeout))
 	httpapi.RegisterGetTopicDetail(api, topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Timeout))
 	httpapi.RegisterListLatestTopicMessages(api,
-		topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, brokers), cfg.Timeout),
-		topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, brokers), cfg.Timeout))
+		topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, client), cfg.Timeout),
+		topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, client), cfg.Timeout))
 	httpapi.RegisterCreateTopic(api, topics.NewCreateTopic(kafka.NewCreateKafkaTopic(writeAdmin), cfg.Timeout))
 	httpapi.RegisterProduceTopicMessage(api, topics.NewProduceTopicMessage(kafka.NewSendTopicMessage(producer), cfg.Timeout))
 	httpapi.RegisterDeleteTopic(api, topics.NewDeleteTopic(kafka.NewDeleteKafkaTopic(writeAdmin), cfg.Timeout))

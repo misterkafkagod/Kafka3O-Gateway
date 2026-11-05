@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -25,6 +27,11 @@ func LoadConfig(path string) (Config, error) {
 	if err := k.Load(envProvider, nil); err != nil {
 		return Config{}, fmt.Errorf("load environment overrides: %w", err)
 	}
+	for key := range k.All() {
+		if strings.EqualFold(key, "kafka.sasl.password") {
+			return Config{}, errors.New("set the Kafka SASL password only with KAFKA3O_KAFKA_SASL_PASSWORD")
+		}
+	}
 
 	cfg := Config{
 		HTTP:  HTTPConfig{Listen: ":8080"},
@@ -46,6 +53,10 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if len(cfg.Kafka.Brokers) == 0 {
 		return Config{}, errors.New("kafka.brokers must list at least one broker")
+	}
+	cfg.Kafka.SASL.Password = os.Getenv("KAFKA3O_KAFKA_SASL_PASSWORD")
+	if err := ValidateKafkaSecurity(cfg.Kafka); err != nil {
+		return Config{}, err
 	}
 	return cfg, nil
 }

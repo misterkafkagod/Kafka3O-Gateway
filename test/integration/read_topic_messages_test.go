@@ -41,7 +41,7 @@ func TestReadTopicMessages_FromOffsetAndTimestamp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	action := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, brokers), 30*time.Second)
+	action := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, client), 30*time.Second)
 	offset := int64(1)
 	gotByOffset, err := action.Execute(ctx, "orders", topics.TopicMessagePosition{Partition: 0, Offset: &offset})
 	if err != nil {

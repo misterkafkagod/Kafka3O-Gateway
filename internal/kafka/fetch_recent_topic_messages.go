@@ -6,17 +6,18 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
 type fetchRecentTopicMessages struct {
-	admin   *kadm.Client
-	brokers []string
+	admin  *kadm.Client
+	client *kgo.Client
 }
 
-func NewFetchRecentTopicMessages(admin *kadm.Client, brokers []string) topics.FetchRecentTopicMessages {
-	return fetchRecentTopicMessages{admin: admin, brokers: brokers}
+func NewFetchRecentTopicMessages(admin *kadm.Client, client *kgo.Client) topics.FetchRecentTopicMessages {
+	return fetchRecentTopicMessages{admin: admin, client: client}
 }
 
 func (f fetchRecentTopicMessages) Execute(ctx context.Context, topic string) (topics.TopicMessageWindow, error) {
@@ -67,7 +68,7 @@ func (f fetchRecentTopicMessages) Execute(ctx context.Context, topic string) (to
 	if len(selectedStarts) == 0 {
 		return topics.TopicMessageWindow{Messages: []topics.TopicMessage{}, Truncated: truncated}, nil
 	}
-	messages, err := readTopicMessagesFromOffsets(ctx, f.brokers, topic, detail, selectedStarts, selectedEnds, topics.TopicMessageSearchLimit)
+	messages, err := readTopicMessagesFromOffsets(ctx, f.client.Opts(), topic, detail, selectedStarts, selectedEnds, topics.TopicMessageSearchLimit)
 	if err != nil {
 		return topics.TopicMessageWindow{}, err
 	}

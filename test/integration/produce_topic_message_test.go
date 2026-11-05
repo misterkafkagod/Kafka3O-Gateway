@@ -47,7 +47,7 @@ func TestProduceTopicMessage_ReadsBackBytesAndPosition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	messages, err := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, brokers), 30*time.Second).
+	messages, err := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, client), 30*time.Second).
 		Execute(ctx, "orders", topics.TopicMessagePosition{Partition: position.Partition, Offset: &offset})
 	if err != nil {
 		t.Fatal(err)

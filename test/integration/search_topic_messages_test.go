@@ -40,7 +40,7 @@ func TestSearchTopicMessages_ScansAtMost500OffsetsAcrossPartitions(t *testing.T)
 		t.Fatal(err)
 	}
 
-	action := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, brokers), 30*time.Second)
+	action := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, client), 30*time.Second)
 	got, err := action.Execute(ctx, "search-orders", "match")
 	if err != nil {
 		t.Fatal(err)

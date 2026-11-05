@@ -40,7 +40,7 @@ func TestListLatestTopicMessages_ReturnsNewestAcrossPartitions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	action := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, brokers), 30*time.Second)
+	action := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, client), 30*time.Second)
 	got, err := action.Execute(ctx, "orders")
 	if err != nil {
 		t.Fatal(err)
@@ -70,9 +70,9 @@ func TestTopicMessageReads_EmptyPartitionsAndTransactionMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	latest := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, brokers), 5*time.Second)
-	positioned := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, brokers), 5*time.Second)
-	search := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, brokers), 5*time.Second)
+	latest := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, client), 5*time.Second)
+	positioned := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, client), 5*time.Second)
+	search := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, client), 5*time.Second)
 	got, err := latest.Execute(ctx, "message-boundaries")
 	if err != nil {
 		t.Fatalf("read empty topic: %v", err)

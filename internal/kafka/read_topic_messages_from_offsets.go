@@ -19,7 +19,7 @@ const topicMessagesProgressWait = 500 * time.Millisecond
 
 func readTopicMessagesFromOffsets(
 	ctx context.Context,
-	brokers []string,
+	clientOptions []kgo.Opt,
 	topic string,
 	detail kadm.TopicDetail,
 	offsets map[int32]int64,
@@ -40,12 +40,12 @@ func readTopicMessagesFromOffsets(
 		return state.messages, nil
 	}
 
-	opts := []kgo.Opt{
-		kgo.SeedBrokers(brokers...),
+	opts := append([]kgo.Opt(nil), clientOptions...)
+	opts = append(opts,
 		kgo.ConsumePartitions(map[string]map[int32]kgo.Offset{topic: consumerOffsets}),
 		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
 		kgo.KeepControlRecords(),
-	}
+	)
 	if detail.ID == (kadm.TopicID{}) {
 		opts = append(opts, kgo.MaxVersions(kversion.V2_8_0()))
 	}

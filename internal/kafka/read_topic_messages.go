@@ -6,17 +6,18 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
 type readTopicMessages struct {
-	admin   *kadm.Client
-	brokers []string
+	admin  *kadm.Client
+	client *kgo.Client
 }
 
-func NewReadTopicMessages(admin *kadm.Client, brokers []string) topics.FetchTopicMessagesFromPosition {
-	return readTopicMessages{admin: admin, brokers: brokers}
+func NewReadTopicMessages(admin *kadm.Client, client *kgo.Client) topics.FetchTopicMessagesFromPosition {
+	return readTopicMessages{admin: admin, client: client}
 }
 
 func (r readTopicMessages) Execute(ctx context.Context, topic string, position topics.TopicMessagePosition) ([]topics.TopicMessage, error) {
@@ -99,7 +100,7 @@ func (r readTopicMessages) Execute(ctx context.Context, topic string, position t
 	}
 	return readTopicMessagesFromOffsets(
 		ctx,
-		r.brokers,
+		r.client.Opts(),
 		topic,
 		detail,
 		map[int32]int64{position.Partition: offset},

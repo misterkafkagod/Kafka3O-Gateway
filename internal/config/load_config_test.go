@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +82,52 @@ func TestLoadConfig_ReadsTLSPaths(t *testing.T) {
 	if cfg.HTTP.TLS.CertificateFile != "cert.pem" || cfg.HTTP.TLS.KeyFile != "override.pem" {
 		t.Errorf("TLS config = %#v", cfg.HTTP.TLS)
 	}
+}
+
+func TestLoadConfig_ReadsKafkaSecurity(t *testing.T) {
+	const password = "synthetic-test-password"
+	t.Setenv("KAFKA3O_KAFKA_SASL_PASSWORD", password)
+	t.Setenv("KAFKA3O_KAFKA__TLS__CAFILE", "override-ca.pem")
+	path := writeYAML(t, `
+kafka:
+  brokers: ["a:9092"]
+  tls:
+    enabled: true
+    caFile: ca.pem
+  sasl:
+    mechanism: SCRAM-SHA-512
+    username: test-user
+`)
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Kafka.TLS.Enabled || cfg.Kafka.TLS.CAFile != "override-ca.pem" ||
+		cfg.Kafka.SASL.Mechanism != "SCRAM-SHA-512" || cfg.Kafka.SASL.Username != "test-user" ||
+		cfg.Kafka.SASL.Password != password {
+		t.Fatal("Kafka security settings were not loaded")
+	}
+}
+
+func TestLoadConfig_RejectsKafkaPasswordInConfig(t *testing.T) {
+	for _, key := range []string{"password", "PASSWORD"} {
+		t.Run(key, func(t *testing.T) {
+			t.Setenv("KAFKA3O_KAFKA_SASL_PASSWORD", "")
+			path := writeYAML(t, "kafka:\n  brokers: [\"a:9092\"]\n  sasl:\n    "+key+": synthetic-test-password\n")
+			if _, err := LoadConfig(path); err == nil || !strings.Contains(err.Error(), "KAFKA3O_KAFKA_SASL_PASSWORD") {
+				t.Fatal("expected an explicit environment-only password error")
+			} else if strings.Contains(err.Error(), "synthetic-test-password") {
+				t.Fatal("configuration error exposed a password")
+			}
+		})
+	}
+	t.Run("nested environment override", func(t *testing.T) {
+		t.Setenv("KAFKA3O_KAFKA__SASL__PASSWORD", "synthetic-test-password")
+		path := writeYAML(t, "kafka:\n  brokers: [\"a:9092\"]\n")
+		if _, err := LoadConfig(path); err == nil || !strings.Contains(err.Error(), "KAFKA3O_KAFKA_SASL_PASSWORD") {
+			t.Fatal("expected an explicit environment-only password error")
+		}
+	})
 }
 
 func TestLoadConfig_EmptyBrokersIsAnError(t *testing.T) {
