@@ -11,7 +11,7 @@ func NewInvalidTopic() *Problem {
 		ErrorModel: huma.ErrorModel{
 			Status: http.StatusBadRequest,
 			Title:  "Invalid topic",
-			Detail: "provide a valid Kafka topic name, a positive partition count, and a positive replication factor",
+			Detail: "provide a valid Kafka topic name and valid operation parameters",
 		},
 		Code: "invalid_topic",
 	}

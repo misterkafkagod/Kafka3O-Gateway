@@ -67,6 +67,7 @@ func main() {
 	searchTopicMessages := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	produceTopicMessage := topics.NewProduceTopicMessage(kafka.NewSendTopicMessage(producer), cfg.Kafka.Timeout)
 	createTopic := topics.NewCreateTopic(kafka.NewCreateKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
+	deleteTopic := topics.NewDeleteTopic(kafka.NewDeleteKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
@@ -79,6 +80,7 @@ func main() {
 	httpapi.RegisterSearchTopicMessages(api, searchTopicMessages)
 	httpapi.RegisterProduceTopicMessage(api, produceTopicMessage)
 	httpapi.RegisterCreateTopic(api, createTopic)
+	httpapi.RegisterDeleteTopic(api, deleteTopic)
 	httpapi.RegisterListConsumerGroups(api, listConsumerGroups)
 
 	server := newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
