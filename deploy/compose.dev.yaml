@@ -1,6 +1,8 @@
 # Local multi-cluster dev stack: two single-node Kafka clusters, one gateway each.
-# Gateways are configured through KAFKA3O_* environment variables (no bind mounts),
-# so the stack also runs against a remote Docker daemon.
+# Set KAFKA3O_TLS_CERT_FILE and KAFKA3O_TLS_KEY_FILE to certificate/key paths on
+# the Docker host. The private key must be readable by the nonroot gateway user.
+# Set KAFKA3O_DEV_TOKEN and KAFKA3O_PROD_TOKEN to separate strong random tokens.
+# For a remote Docker daemon, the TLS file paths must exist on that remote host.
 #   docker compose -f deploy/compose.dev.yaml up -d --build
 name: kafka3o-dev
 
@@ -18,6 +20,12 @@ x-kafka-env: &kafka-env
 
 x-gateway-env: &gateway-env
   KAFKA3O_HTTP__CORS__ALLOWEDORIGINS: http://localhost:5173
+  KAFKA3O_HTTP__TLS__CERTIFICATEFILE: /run/kafka3o/certificate.pem
+  KAFKA3O_HTTP__TLS__KEYFILE: /run/kafka3o/private-key.pem
+
+x-gateway-tls-volumes: &gateway-tls-volumes
+  - "${KAFKA3O_TLS_CERT_FILE:?Set KAFKA3O_TLS_CERT_FILE}:/run/kafka3o/certificate.pem:ro"
+  - "${KAFKA3O_TLS_KEY_FILE:?Set KAFKA3O_TLS_KEY_FILE}:/run/kafka3o/private-key.pem:ro"
 
 services:
   kafka-dev:
@@ -40,6 +48,8 @@ services:
     environment:
       <<: *gateway-env
       KAFKA3O_KAFKA__BROKERS: kafka-dev:9092
+      KAFKA3O_GATEWAY_TOKEN: ${KAFKA3O_DEV_TOKEN:?Set KAFKA3O_DEV_TOKEN}
+    volumes: *gateway-tls-volumes
     ports:
       - "8081:8080"
     depends_on:
@@ -50,6 +60,8 @@ services:
     environment:
       <<: *gateway-env
       KAFKA3O_KAFKA__BROKERS: kafka-prod:9092
+      KAFKA3O_GATEWAY_TOKEN: ${KAFKA3O_PROD_TOKEN:?Set KAFKA3O_PROD_TOKEN}
+    volumes: *gateway-tls-volumes
     ports:
       - "8082:8080"
     depends_on:

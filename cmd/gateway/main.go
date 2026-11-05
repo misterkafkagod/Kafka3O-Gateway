@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"log/slog"
@@ -36,6 +37,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	token := os.Getenv("KAFKA3O_GATEWAY_TOKEN")
+	certificate, err := config.LoadGatewaySecurity(cfg.HTTP.TLS, token, tls.LoadX509KeyPair)
+	if err != nil {
+		logger.Error("invalid gateway security configuration", "error", err)
+		os.Exit(1)
+	}
+
 	kafkaClient, err := kafka.NewClient(cfg.Kafka)
 	if err != nil {
 		logger.Error("invalid kafka client configuration", "error", err)
@@ -62,18 +70,14 @@ func main() {
 	httpapi.RegisterSearchTopicMessages(api, searchTopicMessages)
 	httpapi.RegisterListConsumerGroups(api, listConsumerGroups)
 
-	server := &http.Server{
-		Addr:              cfg.HTTP.Listen,
-		Handler:           httpapi.WithCORS(mux, cfg.HTTP.CORS.AllowedOrigins),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
+	server := newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
-		logger.Info("gateway listening", "addr", cfg.HTTP.Listen)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Info("gateway listening with TLS", "addr", cfg.HTTP.Listen)
+		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server failed", "error", err)
 			stop()
 		}
