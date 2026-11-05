@@ -19,6 +19,35 @@ the external fixture cannot control the broker's lifecycle.
 The compaction regression waits up to 90 seconds for Kafka's log cleaner and
 requires the broker to support compacted topics.
 
+## Secured Kubernetes broker over SSH
+
+`kubernetes/run-secure-kafka-tests.ps1` creates an isolated namespace and a
+fresh secured broker for each test, runs the security-mode and authenticated
+gateway lifecycle checks, and removes its resources. From PowerShell on Windows
+in the gateway repository:
+
+```powershell
+.\test\integration\kubernetes\run-secure-kafka-tests.ps1 -SshHost "user@test-host"
+```
+
+The test host needs `kubectl`, `ss`, and `timeout`, and the local machine needs
+Go and OpenSSH. Local and remote loopback ports 19092, 19095 and 19096 must be
+unused. The pod binds all Kafka listeners to its own loopback interface and
+generates a synthetic password and short-lived private key in an in-memory
+volume; the runner transfers the password over SSH into its process environment
+without printing it. Cluster and host administrators can still inspect the
+test process and pod, so never use real credentials. The password, key,
+configuration and data disappear when the pod is deleted.
+
+The tests cover TLS with PLAIN, SCRAM-SHA-256 and SCRAM-SHA-512, TLS alone,
+and SASL alone, plus bad credentials, an untrusted certificate, writes and
+message reads. The SASL-only listener exists solely to test the promised
+compatibility; PLAIN without TLS exposes credentials and must not be used on
+an untrusted network. If the runner is interrupted, inspect its labelled
+`kafka3o-sec-*` namespace and owned forwards before manually cleaning them up.
+As with the plaintext fixture, the broker identity checks do not prove that a
+broker is disposable.
+
 ## Kubernetes broker over SSH
 
 The example pod in `kubernetes/kafka-pod.yaml` uses `emptyDir`, no Kubernetes

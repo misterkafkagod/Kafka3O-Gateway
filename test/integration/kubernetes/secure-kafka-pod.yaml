@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka3o-secure
+  labels:
+    app.kubernetes.io/name: kafka3o-secure-integration
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 30
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: kafka
+      image: apache/kafka:4.3.1
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 250m
+          memory: 768Mi
+          ephemeral-storage: 512Mi
+        limits:
+          cpu: "2"
+          memory: 1536Mi
+          ephemeral-storage: 3Gi
+      readinessProbe:
+        exec:
+          command: ["/bin/bash", "-c", "test -f /run/kafka3o/ready"]
+        periodSeconds: 3
+        failureThreshold: 40
+      command: ["/bin/bash", "-c"]
+      args:
+        - |
+          set -euo pipefail
+          umask 077
+          export KAFKA_HEAP_OPTS="-Xms256m -Xmx768m"
+          password="$(openssl rand -hex 24)"
+          store_password="$(openssl rand -hex 24)"
+          printf '%s' "$password" > /run/kafka3o/password
+          if ! keytool -genkeypair -alias broker -keyalg RSA -keysize 2048 -sigalg SHA256withRSA \
+              -validity 2 -dname "CN=localhost" -ext "SAN=ip:127.0.0.1,dns:localhost" \
+              -ext "bc=ca:true" -keystore /run/kafka3o/server.p12 -storetype PKCS12 \
+              -storepass "$store_password" -keypass "$store_password" -noprompt \
+              > /run/kafka3o/keytool.log 2>&1; then
+            echo "Failed to generate the disposable TLS keypair; details withheld." >&2
+            exit 1
+          fi
+          if ! keytool -exportcert -rfc -alias broker -keystore /run/kafka3o/server.p12 \
+              -storepass "$store_password" > /run/kafka3o/server.crt 2>/run/kafka3o/keytool.log; then
+            echo "Failed to export the disposable public certificate." >&2
+            exit 1
+          fi
+          cat > /run/kafka3o/server.properties <<EOF
+          process.roles=broker,controller
+          node.id=1
+          controller.quorum.voters=1@localhost:9093
+          listeners=SASL_SSL://127.0.0.1:9092,SSL://127.0.0.1:9095,SASL_PLAINTEXT://127.0.0.1:9096,BROKER://127.0.0.1:9094,CONTROLLER://127.0.0.1:9093
+          advertised.listeners=SASL_SSL://127.0.0.1:19092,SSL://127.0.0.1:19095,SASL_PLAINTEXT://127.0.0.1:19096,BROKER://localhost:9094
+          listener.security.protocol.map=SASL_SSL:SASL_SSL,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,BROKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+          inter.broker.listener.name=BROKER
+          controller.listener.names=CONTROLLER
+          log.dirs=/var/lib/kafka/data
+          offsets.topic.replication.factor=1
+          transaction.state.log.replication.factor=1
+          transaction.state.log.min.isr=1
+          group.initial.rebalance.delay.ms=0
+          ssl.keystore.type=PKCS12
+          ssl.keystore.location=/run/kafka3o/server.p12
+          ssl.keystore.password=$store_password
+          ssl.key.password=$store_password
+          ssl.client.auth=none
+          sasl.enabled.mechanisms=PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
+          listener.name.sasl_ssl.scram-sha-256.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required;
+          listener.name.sasl_ssl.scram-sha-512.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required;
+          listener.name.sasl_ssl.plain.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required user_kafka3otest="$password";
+          listener.name.sasl_plaintext.scram-sha-256.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required;
+          listener.name.sasl_plaintext.scram-sha-512.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required;
+          listener.name.sasl_plaintext.plain.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required user_kafka3otest="$password";
+          EOF
+          if ! /opt/kafka/bin/kafka-storage.sh format -t 4L6g3nShT-eMCtK--X86sw -c /run/kafka3o/server.properties \
+              --add-scram "SCRAM-SHA-256=[name=kafka3otest,password=$password]" \
+              --add-scram "SCRAM-SHA-512=[name=kafka3otest,password=$password]" \
+              > /run/kafka3o/format.log 2>&1; then
+            echo "Failed to format disposable Kafka storage; details withheld." >&2
+            exit 1
+          fi
+          /opt/kafka/bin/kafka-server-start.sh /run/kafka3o/server.properties > /run/kafka3o/broker.log 2>&1 &
+          broker_pid=$!
+          for attempt in $(seq 1 90); do
+            if ! kill -0 "$broker_pid" 2>/dev/null; then
+              echo "Disposable broker exited during startup; details withheld." >&2
+              wait "$broker_pid"
+              exit 1
+            fi
+            if (echo > /dev/tcp/127.0.0.1/9092) 2>/dev/null && \
+                (echo > /dev/tcp/127.0.0.1/9095) 2>/dev/null && \
+                (echo > /dev/tcp/127.0.0.1/9096) 2>/dev/null; then
+              touch /run/kafka3o/ready
+              echo "Disposable secured Kafka listeners are ready."
+              wait "$broker_pid"
+              exit $?
+            fi
+            sleep 2
+          done
+          echo "Timed out waiting for disposable Kafka listeners." >&2
+          exit 1
+      volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
+        - name: volatile-security
+          mountPath: /run/kafka3o
+  volumes:
+    - name: kafka-data
+      emptyDir:
+        sizeLimit: 2Gi
+    - name: volatile-security
+      emptyDir:
+        medium: Memory
+        sizeLimit: 32Mi
