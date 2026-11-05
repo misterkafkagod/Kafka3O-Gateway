@@ -1,4 +1,4 @@
-# Kafka3O Gateway configuration. Every key can be overridden with a
+# Kafka3O Gateway configuration. These keys can be overridden with a
 # KAFKA3O_* environment variable, using "__" between nested keys,
 # e.g. KAFKA3O_KAFKA__BROKERS=broker1:9092,broker2:9092
 http:
@@ -15,5 +15,16 @@ kafka:
   # Timeout applied to every Kafka call. Keep it below the UI's 5 s gateway
   # timeout, so a down Kafka shows as "Cluster unreachable", not "Gateway unreachable".
   timeout: 3s
+  tls:
+    enabled: false
+    # Optional CA bundle; if omitted, the system's trusted roots are used.
+    # When provided, only this bundle is trusted. Broker hostnames must match.
+    caFile: ""
+  sasl:
+    # Leave blank for no SASL, or use PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+    mechanism: ""
+    username: ""
 # Set KAFKA3O_GATEWAY_TOKEN in the environment to a securely generated bearer
 # token of at least 32 characters. Do not put the token in this file.
+# For SASL, set KAFKA3O_KAFKA_SASL_PASSWORD in the environment; never put the
+# password in YAML. SASL PLAIN requires TLS to protect credentials in transit.
