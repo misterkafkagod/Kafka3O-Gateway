@@ -57,6 +57,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer producer.Close()
+	writeAdmin := kadm.NewClient(producer)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
@@ -65,6 +66,7 @@ func main() {
 	readTopicMessages := topics.NewReadTopicMessages(kafka.NewReadTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	searchTopicMessages := topics.NewSearchTopicMessages(kafka.NewFetchRecentTopicMessages(admin, cfg.Kafka.Brokers), cfg.Kafka.Timeout)
 	produceTopicMessage := topics.NewProduceTopicMessage(kafka.NewSendTopicMessage(producer), cfg.Kafka.Timeout)
+	createTopic := topics.NewCreateTopic(kafka.NewCreateKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
@@ -76,6 +78,7 @@ func main() {
 	httpapi.RegisterListLatestTopicMessages(api, listLatestTopicMessages, readTopicMessages)
 	httpapi.RegisterSearchTopicMessages(api, searchTopicMessages)
 	httpapi.RegisterProduceTopicMessage(api, produceTopicMessage)
+	httpapi.RegisterCreateTopic(api, createTopic)
 	httpapi.RegisterListConsumerGroups(api, listConsumerGroups)
 
 	server := newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
