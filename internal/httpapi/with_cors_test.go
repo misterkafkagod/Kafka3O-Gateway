@@ -45,11 +45,11 @@ func TestWithCORS_AllowedPreflightReturns204(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", rec.Code)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Methods"); got != "GET" {
-		t.Errorf("Access-Control-Allow-Methods = %q, want GET", got)
+	if got := rec.Header().Get("Access-Control-Allow-Methods"); got != "GET, POST, DELETE" {
+		t.Errorf("Access-Control-Allow-Methods = %q, want GET, POST, DELETE", got)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Headers"); got != "Accept, Content-Type" {
-		t.Errorf("Access-Control-Allow-Headers = %q, want Accept, Content-Type", got)
+	if got := rec.Header().Get("Access-Control-Allow-Headers"); got != "Accept, Content-Type, Authorization" {
+		t.Errorf("Access-Control-Allow-Headers = %q, want Accept, Content-Type, Authorization", got)
 	}
 }
 
