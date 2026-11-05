@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -21,6 +22,9 @@ const (
 // StartKafkaWithContainer starts Kafka and returns its bootstrap address and container.
 func StartKafkaWithContainer(t *testing.T) ([]string, testcontainers.Container) {
 	t.Helper()
+	if _, configured := os.LookupEnv("KAFKA3O_TEST_BROKER"); configured {
+		t.Fatal("this test controls the Kafka container and requires Docker; external broker mode is unsupported")
+	}
 	ctx := context.Background()
 
 	ctr, err := testcontainers.Run(ctx, kafkaImage,

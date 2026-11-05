@@ -2,11 +2,17 @@
 
 package integration
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
-// StartKafka runs a single-node Kafka container and returns its bootstrap address.
+// StartKafka returns a fresh single-node broker for an integration test.
 func StartKafka(t *testing.T) []string {
 	t.Helper()
+	if address, configured := os.LookupEnv("KAFKA3O_TEST_BROKER"); configured {
+		return UseExternalTestBroker(t, address, os.Getenv("KAFKA3O_TEST_DISPOSABLE"))
+	}
 	brokers, _ := StartKafkaWithContainer(t)
 	return brokers
 }

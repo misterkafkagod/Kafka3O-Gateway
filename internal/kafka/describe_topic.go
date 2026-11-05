@@ -36,17 +36,17 @@ func (d describeTopic) Execute(ctx context.Context, name string) (topics.TopicDe
 
 	starts, err := d.admin.ListStartOffsets(ctx, name)
 	if err != nil {
-		return topics.TopicDetail{}, fmt.Errorf("list start offsets: %w", err)
+		return topics.TopicDetail{}, fmt.Errorf("list start offsets: %w", topicOffsetError(ctx, d.admin, name, err))
 	}
 	if err := starts.Error(); err != nil {
-		return topics.TopicDetail{}, fmt.Errorf("list start offsets: %w", err)
+		return topics.TopicDetail{}, fmt.Errorf("list start offsets: %w", topicOffsetError(ctx, d.admin, name, err))
 	}
 	ends, err := d.admin.ListEndOffsets(ctx, name)
 	if err != nil {
-		return topics.TopicDetail{}, fmt.Errorf("list end offsets: %w", err)
+		return topics.TopicDetail{}, fmt.Errorf("list end offsets: %w", topicOffsetError(ctx, d.admin, name, err))
 	}
 	if err := ends.Error(); err != nil {
-		return topics.TopicDetail{}, fmt.Errorf("list end offsets: %w", err)
+		return topics.TopicDetail{}, fmt.Errorf("list end offsets: %w", topicOffsetError(ctx, d.admin, name, err))
 	}
 
 	result := topics.TopicDetail{

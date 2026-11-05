@@ -34,17 +34,17 @@ func (f fetchRecentTopicMessages) Execute(ctx context.Context, topic string) (to
 
 	startOffsets, err := f.admin.ListStartOffsets(ctx, topic)
 	if err != nil {
-		return topics.TopicMessageWindow{}, fmt.Errorf("list start offsets: %w", err)
+		return topics.TopicMessageWindow{}, fmt.Errorf("list start offsets: %w", topicOffsetError(ctx, f.admin, topic, err))
 	}
 	if err := startOffsets.Error(); err != nil {
-		return topics.TopicMessageWindow{}, fmt.Errorf("list start offsets: %w", err)
+		return topics.TopicMessageWindow{}, fmt.Errorf("list start offsets: %w", topicOffsetError(ctx, f.admin, topic, err))
 	}
 	endOffsets, err := f.admin.ListEndOffsets(ctx, topic)
 	if err != nil {
-		return topics.TopicMessageWindow{}, fmt.Errorf("list end offsets: %w", err)
+		return topics.TopicMessageWindow{}, fmt.Errorf("list end offsets: %w", topicOffsetError(ctx, f.admin, topic, err))
 	}
 	if err := endOffsets.Error(); err != nil {
-		return topics.TopicMessageWindow{}, fmt.Errorf("list end offsets: %w", err)
+		return topics.TopicMessageWindow{}, fmt.Errorf("list end offsets: %w", topicOffsetError(ctx, f.admin, topic, err))
 	}
 	starts := make(map[int32]int64, len(detail.Partitions))
 	ends := make(map[int32]int64, len(detail.Partitions))
@@ -67,7 +67,7 @@ func (f fetchRecentTopicMessages) Execute(ctx context.Context, topic string) (to
 	if len(selectedStarts) == 0 {
 		return topics.TopicMessageWindow{Messages: []topics.TopicMessage{}, Truncated: truncated}, nil
 	}
-	messages, err := readTopicMessagesFromOffsets(ctx, f.brokers, topic, selectedStarts, selectedEnds, topics.TopicMessageSearchLimit)
+	messages, err := readTopicMessagesFromOffsets(ctx, f.brokers, topic, detail, selectedStarts, selectedEnds, topics.TopicMessageSearchLimit)
 	if err != nil {
 		return topics.TopicMessageWindow{}, err
 	}

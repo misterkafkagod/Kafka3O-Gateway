@@ -2,84 +2,82 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kversion"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
 const topicMessagesFetchLimit = 50
 
+const topicMessagesProgressWait = 500 * time.Millisecond
+
 func readTopicMessagesFromOffsets(
 	ctx context.Context,
 	brokers []string,
 	topic string,
+	detail kadm.TopicDetail,
 	offsets map[int32]int64,
 	endOffsets map[int32]int64,
 	maxMessagesPerPartition int,
 ) ([]topics.TopicMessage, error) {
+	state, err := newTopicMessageReadState(topic, offsets, endOffsets, maxMessagesPerPartition)
+	if err != nil {
+		return nil, err
+	}
 	consumerOffsets := make(map[int32]kgo.Offset, len(offsets))
 	for partition, offset := range offsets {
-		consumerOffsets[partition] = kgo.NewOffset().At(offset)
+		if !state.done[partition] {
+			consumerOffsets[partition] = kgo.NewOffset().At(offset)
+		}
+	}
+	if len(consumerOffsets) == 0 {
+		return state.messages, nil
 	}
 
-	reader, err := kgo.NewClient(
+	opts := []kgo.Opt{
 		kgo.SeedBrokers(brokers...),
 		kgo.ConsumePartitions(map[string]map[int32]kgo.Offset{topic: consumerOffsets}),
 		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
-	)
+		kgo.KeepControlRecords(),
+	}
+	if detail.ID == (kadm.TopicID{}) {
+		opts = append(opts, kgo.MaxVersions(kversion.V2_8_0()))
+	}
+	reader, err := kgo.NewClient(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create topic reader: %w", err)
 	}
 	defer reader.Close()
 
-	done := make(map[int32]bool, len(endOffsets))
-	messagesRead := make(map[int32]int, len(endOffsets))
-	messages := make([]topics.TopicMessage, 0, len(offsets)*50)
-	for len(done) < len(endOffsets) {
-		fetches := reader.PollFetches(ctx)
+	for len(state.done) < len(endOffsets) {
+		pollCtx, cancel := context.WithTimeout(ctx, topicMessagesProgressWait)
+		fetches := reader.PollFetches(pollCtx)
+		cancel()
 		if err := fetches.Err(); err != nil {
-			return nil, fmt.Errorf("fetch topic messages: %w", err)
+			if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
+				// PollFetches drops empty fetches; inspect remaining partitions directly.
+				if err := finishTopicMessageRead(ctx, reader, detail, state); err != nil {
+					return nil, err
+				}
+				return state.messages, nil
+			}
+			return nil, fmt.Errorf("fetch topic messages: %w", topicOffsetError(ctx, kadm.NewClient(reader), topic, err))
 		}
 		var partitionErr error
 		fetches.EachPartition(func(partition kgo.FetchTopicPartition) {
-			if partition.Topic != topic {
-				return
-			}
-			end, ok := endOffsets[partition.Partition]
-			if !ok {
-				return
-			}
-			if partition.Err != nil {
-				partitionErr = fmt.Errorf("fetch partition %d: %w", partition.Partition, partition.Err)
-				return
-			}
-			for _, record := range partition.Records {
-				if messagesRead[partition.Partition] >= maxMessagesPerPartition {
-					done[partition.Partition] = true
-					continue
-				}
-				if record.Offset >= end {
-					done[partition.Partition] = true
-					continue
-				}
-				messages = append(messages, topicMessageFromRecord(record))
-				messagesRead[partition.Partition]++
-				if messagesRead[partition.Partition] >= maxMessagesPerPartition {
-					done[partition.Partition] = true
-				}
-				if record.Offset >= end-1 {
-					done[partition.Partition] = true
-				}
-			}
-			if len(partition.Records) == 0 && partition.HighWatermark >= end {
-				done[partition.Partition] = true
+			if partitionErr == nil {
+				partitionErr = state.accept(partition)
 			}
 		})
 		if partitionErr != nil {
 			return nil, partitionErr
 		}
 	}
-	return messages, nil
+	return state.messages, nil
 }

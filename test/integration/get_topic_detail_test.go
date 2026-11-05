@@ -10,14 +10,13 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 
-	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
 func TestGetTopicDetail_ReturnsPartitionsOffsetsAndConfig(t *testing.T) {
 	brokers := StartKafka(t)
-	client, err := kafka.NewClient(config.KafkaConfig{Brokers: brokers})
+	client, err := kgo.NewClient(kgo.SeedBrokers(brokers...), kgo.RecordPartitioner(kgo.ManualPartitioner()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,8 +30,8 @@ func TestGetTopicDetail_ReturnsPartitionsOffsetsAndConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	records := []*kgo.Record{
-		{Topic: "orders", Partition: 0, Value: []byte("partition-zero")},
-		{Topic: "orders", Partition: 1, Value: []byte("partition-one")},
+		{Topic: "orders", Partition: 0, Key: []byte("key-zero"), Value: []byte("partition-zero")},
+		{Topic: "orders", Partition: 1, Key: []byte("key-one"), Value: []byte("partition-one")},
 	}
 	if err := client.ProduceSync(ctx, records...).FirstErr(); err != nil {
 		t.Fatal(err)
