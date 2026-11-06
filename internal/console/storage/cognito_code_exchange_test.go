@@ -148,6 +148,12 @@ func newCognitoCodeFixture(t *testing.T, mode string, auth cognito.ClientAuthent
 			if mode == "missing refresh" {
 				delete(payload, "refresh_token")
 			}
+			if mode == "invalid refresh" {
+				payload["refresh_token"] = fixtureRefresh + "\n"
+			}
+			if mode == "oversized refresh" {
+				payload["refresh_token"] = strings.Repeat("x", cognito.MaxRefreshTokenBytes+1)
+			}
 			w.Header().Set("Content-Type", "application/json")
 			if mode == "exact limit" {
 				data, err := json.Marshal(payload)
@@ -331,6 +337,8 @@ func TestCognitoCodeExchangeRejectsInvalidTokensAndUnknownOutcomes(t *testing.T)
 		{"expired", cognito.ErrInvalidIDToken},
 		{"forged", cognito.ErrInvalidIDToken},
 		{"missing refresh", cognito.ErrCodeExchangeUnknown},
+		{"invalid refresh", cognito.ErrCodeExchangeUnknown},
+		{"oversized refresh", cognito.ErrCodeExchangeUnknown},
 		{"outage", cognito.ErrCodeExchangeUnknown},
 		{"disconnect", cognito.ErrCodeExchangeUnknown},
 		{"redirect", cognito.ErrCodeExchangeUnknown},

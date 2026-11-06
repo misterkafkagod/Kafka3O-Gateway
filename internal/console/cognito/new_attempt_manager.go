@@ -3,6 +3,7 @@ package cognito
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha256"
 	"io"
 	"time"
 )
@@ -31,5 +32,8 @@ func NewAttemptManager(store AttemptStore, random io.Reader, now func() time.Tim
 	if err != nil {
 		return nil, ErrInvalidAttemptConfig
 	}
-	return &AttemptManager{store: store, random: random, now: now, aead: aead, providerBinding: binding}, nil
+	return &AttemptManager{
+		store: store, random: random, now: now, aead: aead,
+		keyFingerprint: sha256.Sum256(key), providerBinding: binding,
+	}, nil
 }

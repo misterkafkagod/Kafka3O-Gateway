@@ -73,6 +73,7 @@ type AttemptManager struct {
 	store           AttemptStore
 	random          io.Reader
 	aead            cipher.AEAD
+	keyFingerprint  [32]byte
 	providerBinding [32]byte
 	now             func() time.Time
 	mu              sync.Mutex

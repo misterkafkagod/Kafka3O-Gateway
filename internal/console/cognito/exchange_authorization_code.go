@@ -36,7 +36,7 @@ func (e *CodeExchanger) ExchangeAuthorizationCode(ctx context.Context, attempt C
 			exchangeErr = ErrCodeExchangeUnknown
 		} else {
 			rawID, ok := token.Extra("id_token").(string)
-			if !ok || token.RefreshToken == "" || len(token.RefreshToken) > 8192 {
+			if !ok || !validRefreshToken(token.RefreshToken) {
 				exchangeErr = ErrCodeExchangeUnknown
 			} else {
 				identity, exchangeErr = e.verifier.VerifyIDToken(ctx, rawID, proof.nonceHash)

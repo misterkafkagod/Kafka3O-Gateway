@@ -139,6 +139,16 @@ client modes, forged tokens, TLS, redirects and interrupted requests. No
 application session, encrypted refresh-token storage, browser route or live
 Cognito integration is provided by this primitive.
 
+The standalone refresh-token protector uses AES-256-GCM with fresh random
+nonces and a separate externally supplied 32-byte key. It refuses to use the
+authorization-attempt encryption key. Authenticated data binds ciphertext to
+the exact provider/callback, session ID, identity ID and token generation;
+tampering or substitution fails closed. Changing the key or provider/callback
+invalidates protected tokens. The caller must use cryptographically secure
+randomness and protect both deployment keys outside SQLite. This primitive
+does not persist refresh tokens, prevent database rollback, serialize refresh
+or provide sessions; those require transactional storage and audit.
+
 `cmd/console serve` composes local login, session inspection, password
 replacement, logout, administrator account listing, creation, state changes,
 password reset, and session listing and revocation into a TLS-only server.
