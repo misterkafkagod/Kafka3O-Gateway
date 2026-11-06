@@ -77,10 +77,10 @@ Strict session cookie, a separate script-readable Secure CSRF cookie, and an
 exact HTTPS Origin and session-bound CSRF-header check.
 
 `cmd/console serve` composes local login, session inspection, password
-replacement, logout, administrator account creation, state changes and
-password reset into a TLS-only server. It refuses to start without an enabled
-local global administrator and exposes no Kafka routes or other
-account-management routes.
+replacement, logout, administrator account listing, creation, state changes
+and password reset into a TLS-only server. It refuses to start without an
+enabled local global administrator and exposes no Kafka or grant-management
+routes.
 Configure it with:
 
 - `KAFKA3O_CONSOLE_DB_PATH`: the absolute path to the bootstrapped database.
@@ -112,6 +112,26 @@ will not disable the last enabled local global ADMIN. Re-enabling an account
 also revokes any remaining old sessions. Setting the existing state records an
 audited success without revoking sessions or incrementing the credential
 version.
+
+The loopback server mounts `GET /api/admin/local-accounts` for a current local
+global ADMIN session without a pending password change. It rechecks the
+session and grant in the same transaction as the listing and its audit event.
+The response contains an `operationId`, an `accounts` array with each local
+account's ID, normalized username, enabled state and mandatory-password-change
+flag, and a `nextCursor`. It never contains password hashes, credential
+versions or role grants. The read-only route does not require the CSRF header;
+responses are marked `Cache-Control: no-store`.
+
+The optional `limit` is 1–100 and defaults to 50. Accounts are sorted by
+username; pass the nonempty `nextCursor` as `after` to obtain the following
+page. An empty cursor ends pagination, and an empty page contains `[]`.
+Pagination is not a snapshot: accounts added between requests may change
+subsequent results. Unknown cursors receive `invalid_account_cursor`; malformed,
+duplicate or unknown query fields receive `invalid_request` before a listing
+operation is started. Service-level pagination rejections, successful
+listings and authorization denials are audited without submitted cursors or
+usernames. If the audit insert or commit fails, no account data is returned
+and the server reports `account_list_audit_unavailable`.
 
 The loopback server mounts `PUT /api/admin/local-accounts/{accountID}/enabled`
 with JSON `{ "enabled": false }` or `{ "enabled": true }`. It derives the actor

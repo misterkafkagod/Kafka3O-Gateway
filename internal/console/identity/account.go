@@ -96,6 +96,36 @@ type LocalAccountStateResult struct {
 	OperationID string
 }
 
+const (
+	DefaultLocalAccountPageSize = 50
+	MaxLocalAccountPageSize     = 100
+)
+
+type LocalAccountSummary struct {
+	ID                 string
+	Username           string
+	Enabled            bool
+	MustChangePassword bool
+}
+
+type LocalAccountListRequest struct {
+	Actor       LocalAdminActor
+	AfterID     string
+	Limit       int
+	OperationID string
+	OccurredAt  time.Time
+}
+
+type LocalAccountListResult struct {
+	OperationID string
+	Accounts    []LocalAccountSummary
+	NextCursor  string
+}
+
+type LocalAccountListStore interface {
+	ListLocalAccounts(ctx context.Context, request LocalAccountListRequest) (LocalAccountListResult, error)
+}
+
 type LocalPasswordResetAttempt struct {
 	Actor       LocalAdminActor
 	TargetID    string
@@ -187,6 +217,9 @@ var (
 	ErrAccountAdminConfig      = errors.New("account administration dependencies are required")
 	ErrAccountStateUnknown     = errors.New("local account state change outcome is unknown")
 	ErrAccountStateAudit       = errors.New("local account state change could not be audited")
+	ErrInvalidAccountList      = errors.New("invalid local account listing request")
+	ErrInvalidAccountCursor    = errors.New("local account listing cursor is invalid")
+	ErrAccountListAudit        = errors.New("local account listing could not be audited")
 	ErrPasswordResetThrottled  = errors.New("password reset temporarily throttled")
 	ErrInvalidPasswordReset    = errors.New("password reset attempt is unavailable or already used")
 	ErrPasswordResetExpired    = errors.New("password reset attempt has expired")

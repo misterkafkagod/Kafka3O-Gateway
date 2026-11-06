@@ -18,7 +18,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
 )
 
-func accountStateTestHandler(t *testing.T, f accountAdministrationFixture, setEnabled identity.SetLocalAccountEnabled) http.Handler {
+func accountStateTestHandler(t *testing.T, f accountAdministrationFixture, setEnabled identity.SetLocalAccountEnabled, listOverride ...identity.ListLocalAccounts) http.Handler {
 	t.Helper()
 	authenticator, err := identity.NewAuthenticateLocal(f.db, rand.Reader, time.Now)
 	if err != nil {
@@ -40,7 +40,14 @@ func accountStateTestHandler(t *testing.T, f accountAdministrationFixture, setEn
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := httpapi.NewSessionAPI(login, change, create, reset, setEnabled, f.manager, "https://console.example",
+	list, err := identity.NewListLocalAccounts(f.db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listOverride) != 0 {
+		list = listOverride[0]
+	}
+	handler, err := httpapi.NewSessionAPI(login, change, create, reset, setEnabled, list, f.manager, "https://console.example",
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)

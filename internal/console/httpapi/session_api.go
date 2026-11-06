@@ -26,6 +26,7 @@ type SessionAPI struct {
 	create       identity.CreateLocalAccount
 	reset        identity.ResetLocalPassword
 	setEnabled   identity.SetLocalAccountEnabled
+	list         identity.ListLocalAccounts
 	sessions     Sessions
 	csrf         *session.CSRFVerifier
 	expectedHost string
@@ -35,7 +36,7 @@ type SessionAPI struct {
 
 var (
 	ErrInvalidAPIConfig = errors.New("invalid Console session API configuration")
-	errInvalidRequest   = errors.New("invalid JSON request")
+	errInvalidRequest   = errors.New("invalid request")
 	errRequestTooLarge  = errors.New("request body is too large")
 )
 
@@ -67,7 +68,7 @@ type setLocalAccountEnabledBody struct {
 	Enabled requiredBoolean `json:"enabled"`
 }
 
-type createdLocalAccount struct {
+type localAccountResponse struct {
 	ID                 string `json:"id"`
 	Username           string `json:"username"`
 	Enabled            bool   `json:"enabled"`

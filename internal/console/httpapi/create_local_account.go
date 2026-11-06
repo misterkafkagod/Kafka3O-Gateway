@@ -71,10 +71,10 @@ func (a *SessionAPI) createLocalAccount(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	a.writeJSON(w, http.StatusCreated, "application/json", struct {
-		OperationID string              `json:"operationId"`
-		Account     createdLocalAccount `json:"account"`
+		OperationID string               `json:"operationId"`
+		Account     localAccountResponse `json:"account"`
 	}{
 		OperationID: result.OperationID,
-		Account:     createdLocalAccount{ID: account.ID, Username: account.Username, Enabled: account.Enabled, MustChangePassword: account.MustChangePassword},
+		Account:     localAccountResponse{ID: account.ID, Username: account.Username, Enabled: account.Enabled, MustChangePassword: account.MustChangePassword},
 	})
 }

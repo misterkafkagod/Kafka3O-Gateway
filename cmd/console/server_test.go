@@ -430,6 +430,39 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden || !bytes.Contains(data, []byte(`"code":"global_admin_required"`)) {
 		t.Fatalf("role-free user account creation status=%d", resp.StatusCode)
 	}
+	resp, data = request(http.MethodGet, "/api/admin/local-accounts", "", "", userCookies, "")
+	if resp.StatusCode != http.StatusForbidden || !bytes.Contains(data, []byte(`"code":"global_admin_required"`)) ||
+		bytes.Contains(data, []byte(`"accounts":`)) {
+		t.Fatalf("role-free user account listing status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodGet, "/api/admin/local-accounts?limit=1", "", "", adminCookies, "")
+	var firstPage struct {
+		OperationID string `json:"operationId"`
+		Accounts    []struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+		} `json:"accounts"`
+		NextCursor string `json:"nextCursor"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &firstPage) != nil || firstPage.OperationID == "" ||
+		len(firstPage.Accounts) != 1 || firstPage.Accounts[0].ID != login.AccountID ||
+		firstPage.Accounts[0].Username != "admin" || firstPage.NextCursor != login.AccountID {
+		t.Fatalf("administrator first account page status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodGet, "/api/admin/local-accounts?limit=1&after="+firstPage.NextCursor, "", "", adminCookies, "")
+	var secondPage struct {
+		OperationID string `json:"operationId"`
+		Accounts    []struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+		} `json:"accounts"`
+		NextCursor string `json:"nextCursor"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &secondPage) != nil || secondPage.OperationID == "" ||
+		len(secondPage.Accounts) != 1 || secondPage.Accounts[0].ID != created.Account.ID ||
+		secondPage.Accounts[0].Username != "example-user" || secondPage.NextCursor != "" {
+		t.Fatalf("administrator second account page status=%d", resp.StatusCode)
+	}
 	adminStatePath := "/api/admin/local-accounts/" + login.AccountID + "/enabled"
 	resp, data = request(http.MethodPut, adminStatePath, `{"enabled":false}`, origin, adminCookies, adminCSRF)
 	if resp.StatusCode != http.StatusConflict || !bytes.Contains(data, []byte(`"code":"last_local_global_admin"`)) {
@@ -547,6 +580,12 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 		creationEvents[1].OperationID != created.OperationID || creationEvents[1].ResourceID != created.Account.ID ||
 		creationEvents[2].Outcome != storage.AuditDenied {
 		t.Fatalf("account creation audit count=%d err=%v", len(creationEvents), err)
+	}
+	listEvents, err := db.ListAuditEvents(context.Background(), storage.AuditFilter{Global: true, Action: "console.local_account.list", Limit: 10})
+	if err != nil || len(listEvents) != 3 || listEvents[0].Outcome != storage.AuditDenied ||
+		listEvents[1].OperationID != firstPage.OperationID || listEvents[2].OperationID != secondPage.OperationID ||
+		listEvents[1].Outcome != storage.AuditSucceeded || listEvents[2].Outcome != storage.AuditSucceeded {
+		t.Fatalf("account listing audit count=%d err=%v", len(listEvents), err)
 	}
 	disableEvents, err := db.ListAuditEvents(context.Background(), storage.AuditFilter{Global: true, Action: "console.local_account.disable", Limit: 10})
 	if err != nil || len(disableEvents) != 6 || disableEvents[5].OperationID != disabled.OperationID ||
