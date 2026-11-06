@@ -178,7 +178,7 @@ func TestLocalAccountCreationHTTPErrorSemanticsAndServerDerivedActor(t *testing.
 			principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 			create := &capturedCreation{result: identity.LocalAccountCreationResult{OperationID: "operation-123"}, err: tt.err}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, create, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{},
-				resetTestSessions{principal: principal}, "https://console.example", logger)
+				unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -229,7 +229,7 @@ func TestLocalAccountCreationHTTPRejectsInvalidSuccessResults(t *testing.T) {
 			principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 			create := &capturedCreation{result: tt.result}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, create, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{},
-				resetTestSessions{principal: principal}, "https://console.example", logger)
+				unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -252,7 +252,7 @@ func TestLocalAccountCreationHTTPRejectsInvalidSuccessResults(t *testing.T) {
 
 func TestSessionAPIRequiresAccountCreationService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, nil, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, failedSessions{}, "https://console.example", logger)
+	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, nil, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, failedSessions{}, "https://console.example", logger)
 	if !errors.Is(err, consoleapi.ErrInvalidAPIConfig) {
 		t.Fatalf("missing account creation service was accepted: %v", err)
 	}

@@ -47,7 +47,15 @@ func accountStateTestHandler(t *testing.T, f accountAdministrationFixture, setEn
 	if len(listOverride) != 0 {
 		list = listOverride[0]
 	}
-	handler, err := httpapi.NewSessionAPI(login, change, create, reset, setEnabled, list, f.manager, "https://console.example",
+	listSessions, err := identity.NewListAdminSessions(f.db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revokeAdmin, err := identity.NewRevokeAdminSession(f.db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := httpapi.NewSessionAPI(login, change, create, reset, setEnabled, list, listSessions, revokeAdmin, f.manager, "https://console.example",
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)

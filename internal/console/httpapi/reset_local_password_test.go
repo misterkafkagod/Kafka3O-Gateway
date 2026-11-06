@@ -179,7 +179,7 @@ func TestPasswordResetHTTPErrorSemanticsAndServerDerivedActor(t *testing.T) {
 			}
 			reset := &capturedReset{err: tt.err}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset, unusedAccountState{}, unusedAccountList{},
-				resetTestSessions{principal: principal}, "https://console.example", logger)
+				unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -222,7 +222,7 @@ func TestPasswordResetHTTPRejectsSuccessWithoutOperationID(t *testing.T) {
 	principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 	reset := &capturedReset{emptyID: true}
 	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset, unusedAccountState{}, unusedAccountList{},
-		resetTestSessions{principal: principal}, "https://console.example", logger)
+		unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestPasswordResetHTTPRejectsSuccessWithoutOperationID(t *testing.T) {
 
 func TestSessionAPIRequiresPasswordResetService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, nil, unusedAccountState{}, unusedAccountList{}, failedSessions{}, "https://console.example", logger)
+	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, nil, unusedAccountState{}, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, failedSessions{}, "https://console.example", logger)
 	if !errors.Is(err, consoleapi.ErrInvalidAPIConfig) {
 		t.Fatalf("missing reset service was accepted: %v", err)
 	}

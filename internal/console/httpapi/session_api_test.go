@@ -82,10 +82,18 @@ func newTestConsole(t *testing.T) testConsole {
 	if err != nil {
 		t.Fatal(err)
 	}
+	listSessions, err := identity.NewListAdminSessions(db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revokeAdmin, err := identity.NewRevokeAdminSession(db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewUnstartedServer(nil)
 	origin := "https://" + server.Listener.Addr().String()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, list, manager, origin, logger)
+	handler, err := consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, list, listSessions, revokeAdmin, manager, origin, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,10 +366,22 @@ func (unusedAccountList) Execute(context.Context, identity.LocalAdminActor, stri
 	return identity.LocalAccountListResult{}, errors.New("unexpected")
 }
 
+type unusedAdminSessionList struct{}
+
+func (unusedAdminSessionList) Execute(context.Context, identity.LocalAdminActor, string, int) (identity.AdminSessionListResult, error) {
+	return identity.AdminSessionListResult{}, errors.New("unexpected")
+}
+
+type unusedAdminSessionRevocation struct{}
+
+func (unusedAdminSessionRevocation) Execute(context.Context, identity.LocalAdminActor, string) (identity.AdminSessionRevocationResult, error) {
+	return identity.AdminSessionRevocationResult{}, errors.New("unexpected")
+}
+
 func TestSessionAPIReportsFailuresWithoutLoggingSecrets(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
-	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +413,7 @@ func (l *throttledLogin) Execute(_ context.Context, _, _ string, client netip.Ad
 func TestLoginThrottleUsesDirectPeerRatherThanForwardedHeaders(t *testing.T) {
 	login := &throttledLogin{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}

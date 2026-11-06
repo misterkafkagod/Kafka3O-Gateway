@@ -27,6 +27,8 @@ type SessionAPI struct {
 	reset        identity.ResetLocalPassword
 	setEnabled   identity.SetLocalAccountEnabled
 	list         identity.ListLocalAccounts
+	listSessions identity.ListAdminSessions
+	revokeAdmin  identity.RevokeAdminSession
 	sessions     Sessions
 	csrf         *session.CSRFVerifier
 	expectedHost string
@@ -73,6 +75,16 @@ type localAccountResponse struct {
 	Username           string `json:"username"`
 	Enabled            bool   `json:"enabled"`
 	MustChangePassword bool   `json:"mustChangePassword"`
+}
+
+type adminSessionResponse struct {
+	ID                string `json:"id"`
+	AccountID         string `json:"accountId"`
+	Username          string `json:"username"`
+	CreatedAt         string `json:"createdAt"`
+	IdleExpiresAt     string `json:"idleExpiresAt"`
+	AbsoluteExpiresAt string `json:"absoluteExpiresAt"`
+	IsCurrent         bool   `json:"isCurrent"`
 }
 
 type sessionResponse struct {

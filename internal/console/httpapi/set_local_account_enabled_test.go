@@ -230,7 +230,7 @@ func TestAccountStateHTTPErrorSemanticsAndServerDerivedActor(t *testing.T) {
 			principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 			setEnabled := &capturedAccountState{result: identity.LocalAccountStateResult{OperationID: "operation-123"}, err: tt.err}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-				setEnabled, unusedAccountList{}, resetTestSessions{principal: principal}, "https://console.example", logger)
+				setEnabled, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -278,7 +278,7 @@ func TestAccountStateHTTPSelfDisableClearsCookiesOnUnknownOutcome(t *testing.T) 
 			principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 			setEnabled := &capturedAccountState{result: tt.result, err: tt.err}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-				setEnabled, unusedAccountList{}, resetTestSessions{principal: principal}, "https://console.example", slog.New(slog.NewTextHandler(io.Discard, nil)))
+				setEnabled, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", slog.New(slog.NewTextHandler(io.Discard, nil)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -309,7 +309,7 @@ func TestAccountStateHTTPSelfDisableClearsCookiesOnUnknownOutcome(t *testing.T) 
 func TestSessionAPIRequiresAccountStateService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-		nil, unusedAccountList{}, failedSessions{}, "https://console.example", logger)
+		nil, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, failedSessions{}, "https://console.example", logger)
 	if !errors.Is(err, consoleapi.ErrInvalidAPIConfig) {
 		t.Fatalf("missing account state service was accepted: %v", err)
 	}

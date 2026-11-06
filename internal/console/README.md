@@ -77,10 +77,10 @@ Strict session cookie, a separate script-readable Secure CSRF cookie, and an
 exact HTTPS Origin and session-bound CSRF-header check.
 
 `cmd/console serve` composes local login, session inspection, password
-replacement, logout, administrator account listing, creation, state changes
-and password reset into a TLS-only server. It refuses to start without an
-enabled local global administrator and exposes no Kafka or grant-management
-routes.
+replacement, logout, administrator account listing, creation, state changes,
+password reset, and session listing and revocation into a TLS-only server.
+It refuses to start without an enabled local global administrator and
+exposes no Kafka or grant-management routes.
 Configure it with:
 
 - `KAFKA3O_CONSOLE_DB_PATH`: the absolute path to the bootstrapped database.
@@ -114,8 +114,7 @@ An administrator may revoke their own session without disabling the account
 or other sessions. Audit failure blocks the revocation, and an uncertain
 commit requires investigation by operation ID rather than an automatic
 retry. Invalid or unknown submitted IDs, session tokens, CSRF values and
-usernames are not recorded in the revocation audit. This service is not
-yet exposed through the HTTPS API or an administration UI.
+usernames are not recorded in the revocation audit.
 
 The accompanying local session-listing foundation requires the same current
 unrestricted local global ADMIN and transactionally rechecks that authority.
@@ -128,7 +127,27 @@ order, default to 50 entries, and are capped at 100. A well-formed cursor need
 not still exist, since sessions may expire or be revoked between pages; the
 listing is not a snapshot. Listing decisions are audited without usernames,
 session IDs, submitted cursors or credentials, and audit or commit failure
-returns no session data. The listing service is not yet exposed by HTTPS.
+returns no session data.
+
+The loopback server mounts `GET /api/admin/sessions` for a current,
+unrestricted local global ADMIN. The `no-store` response contains an
+`operationId`, a `sessions` array, and a `nextCursor`. Each item has `id`,
+`accountId`, `username`, `createdAt`, `idleExpiresAt`, `absoluteExpiresAt`
+and `isCurrent`; it contains no credential material. `limit` defaults to 50
+and is capped at 100; use a nonempty `nextCursor` as `after` for the next
+page. Malformed, duplicate or unknown query fields are rejected before the
+listing service is called. The read-only route does not require CSRF.
+
+`POST /api/admin/sessions/{sessionID}/revoke` derives its actor from the
+authenticated session and requires the exact HTTPS Origin and session-bound
+`X-Kafka3O-CSRF` header. It accepts no query parameters or request body.
+A confirmed response includes an `operationId` and `signInRequired`; a
+confirmed or uncertain self-revocation clears both session cookies. Invalid
+and unavailable targets, authorization denials, audit failures, and unknown
+outcomes are reported separately. An unknown or lost response must be
+investigated using the operation ID when available, not automatically
+retried. These routes do not provide an administration UI or protect Kafka
+routes, and the loopback server is not deployed.
 
 The account-state service atomically updates the account state and
 credential version, revokes its sessions, and records the change. It rechecks

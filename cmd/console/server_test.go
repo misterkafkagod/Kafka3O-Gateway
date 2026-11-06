@@ -343,6 +343,53 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 			csrf = cookie.Value
 		}
 	}
+	resp, _ = request(http.MethodPost, "/api/session/local", `{"username":"admin","password":"replacement passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("second administrator login status=%d", resp.StatusCode)
+	}
+	otherCookies := resp.Cookies()
+	resp, data = request(http.MethodGet, "/api/admin/sessions?limit=2", "", "", cookies, "")
+	var sessionPage struct {
+		OperationID string `json:"operationId"`
+		Sessions    []struct {
+			ID        string `json:"id"`
+			IsCurrent bool   `json:"isCurrent"`
+		} `json:"sessions"`
+	}
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Cache-Control") != "no-store" ||
+		json.Unmarshal(data, &sessionPage) != nil || sessionPage.OperationID == "" || len(sessionPage.Sessions) != 2 {
+		t.Fatalf("administrator session listing status=%d", resp.StatusCode)
+	}
+	var otherSessionID string
+	currentCount := 0
+	for _, item := range sessionPage.Sessions {
+		if item.IsCurrent {
+			currentCount++
+		} else {
+			otherSessionID = item.ID
+		}
+	}
+	if currentCount != 1 || otherSessionID == "" {
+		t.Fatal("administrator session listing did not identify both sessions")
+	}
+	for _, cookie := range append(cookies, otherCookies...) {
+		if cookie.Value != "" && bytes.Contains(data, []byte(cookie.Value)) {
+			t.Fatal("administrator session listing exposed a cookie credential")
+		}
+	}
+	resp, data = request(http.MethodPost, "/api/admin/sessions/"+otherSessionID+"/revoke", "", origin, cookies, csrf)
+	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"operationId":`)) ||
+		!bytes.Contains(data, []byte(`"signInRequired":false`)) {
+		t.Fatalf("administrator session revocation status=%d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodGet, "/api/session", "", "", otherCookies, "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("revoked administrator session status=%d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodGet, "/api/session", "", "", cookies, "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("revocation changed the actor session: %d", resp.StatusCode)
+	}
 	resetPath := "/api/admin/local-accounts/" + login.AccountID + "/password-reset"
 	resetBody := `{"temporaryPassword":"reset temporary passphrase"}`
 	resp, _ = request(http.MethodPost, resetPath, resetBody, origin, cookies, "")

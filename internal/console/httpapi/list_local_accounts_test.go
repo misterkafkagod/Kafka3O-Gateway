@@ -146,7 +146,7 @@ func TestAccountListingHTTPRejectsMalformedQueriesBeforeStore(t *testing.T) {
 	list := &capturedAccountList{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-		unusedAccountState{}, list, resetTestSessions{principal: session.Principal{AccountID: "admin", SessionID: "session"}},
+		unusedAccountState{}, list, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: session.Principal{AccountID: "admin", SessionID: "session"}},
 		"https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
@@ -201,7 +201,7 @@ func TestAccountListingHTTPErrorSemanticsAndServerDerivedActor(t *testing.T) {
 				OperationID: "operation-123", Accounts: []identity.LocalAccountSummary{{ID: "user", Username: "sensitive-user"}},
 			}, err: tt.err}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-				unusedAccountState{}, list, resetTestSessions{principal: principal}, "https://console.example", logger)
+				unusedAccountState{}, list, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -256,7 +256,7 @@ func TestAccountListingHTTPRejectsInvalidSuccessResults(t *testing.T) {
 			logger := slog.New(slog.NewTextHandler(&logs, nil))
 			list := &capturedAccountList{result: tt.result}
 			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-				unusedAccountState{}, list, resetTestSessions{principal: session.Principal{AccountID: "admin", SessionID: "session"}},
+				unusedAccountState{}, list, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, resetTestSessions{principal: session.Principal{AccountID: "admin", SessionID: "session"}},
 				"https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
@@ -276,7 +276,7 @@ func TestAccountListingHTTPRejectsInvalidSuccessResults(t *testing.T) {
 func TestSessionAPIRequiresAccountListService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{},
-		unusedAccountState{}, nil, failedSessions{}, "https://console.example", logger)
+		unusedAccountState{}, nil, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, failedSessions{}, "https://console.example", logger)
 	if !errors.Is(err, consoleapi.ErrInvalidAPIConfig) {
 		t.Fatalf("missing account list service was accepted: %v", err)
 	}

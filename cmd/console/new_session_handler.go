@@ -45,5 +45,13 @@ func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger)
 	if err != nil {
 		return nil, err
 	}
-	return consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, list, manager, origin, logger)
+	listSessions, err := identity.NewListAdminSessions(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	revokeAdmin, err := identity.NewRevokeAdminSession(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	return consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, list, listSessions, revokeAdmin, manager, origin, logger)
 }
