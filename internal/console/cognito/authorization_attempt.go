@@ -22,6 +22,15 @@ type AuthorizationStart struct {
 	CodeChallenge  string `json:"-"`
 	BrowserBinding string `json:"-"`
 	ExpiresAt      time.Time
+	proof          *authorizationStartProof
+}
+
+type authorizationStartProof struct {
+	manager     *AttemptManager
+	operationID string
+	valueHashes [4][32]byte
+	createdAt   time.Time
+	expiresAt   time.Time
 }
 
 type ConsumedAuthorization struct {

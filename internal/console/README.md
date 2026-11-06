@@ -125,6 +125,19 @@ audit failure returns no verifier. If creation or consumption has an unknown
 commit outcome, investigate the operation ID and do not automatically retry.
 These attempt primitives do not expose a browser callback.
 
+The standalone browser-authorization helpers build an `openid`
+authorization-code URL with state, nonce and PKCE S256 only from the same
+in-process attempt manager and verified provider/callback used by the code
+exchanger. They reject altered, foreign, expired or backwards-clock starts.
+The browser binding is placed only in a host-only Secure HttpOnly
+SameSite=Lax cookie with at most a five-minute Max-Age and the attempt's
+absolute expiry; the server enforces the exact deadline. A matching
+deletion cookie is available. The PKCE verifier, browser binding,
+client secret and provider tokens are not placed in the authorization URL.
+The application session cookie remains SameSite=Strict. These helpers do
+not expose an SSO route or prevent replacement of an existing session; that
+protection must be completed before browser integration.
+
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each
 exchange once before dispatch and rechecks the attempt and verified-token

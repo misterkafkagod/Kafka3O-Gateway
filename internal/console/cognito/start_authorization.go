@@ -29,9 +29,14 @@ func (m *AttemptManager) StartAuthorization(ctx context.Context) (AuthorizationS
 	}); err != nil {
 		return result, err
 	}
+	challenge := base64.RawURLEncoding.EncodeToString(verifierHash[:])
 	return AuthorizationStart{
 		OperationID: secrets.operationID, State: secrets.state, Nonce: secrets.nonce,
-		CodeChallenge:  base64.RawURLEncoding.EncodeToString(verifierHash[:]),
-		BrowserBinding: secrets.binding, ExpiresAt: expires,
+		CodeChallenge: challenge, BrowserBinding: secrets.binding, ExpiresAt: expires,
+		proof: &authorizationStartProof{
+			manager: m, operationID: secrets.operationID,
+			valueHashes: [4][32]byte{stateHash, nonceHash, sha256.Sum256([]byte(challenge)), bindingHash},
+			createdAt:   now, expiresAt: expires,
+		},
 	}, nil
 }
