@@ -100,9 +100,17 @@ a new sign-in. If a password-change response is lost, its outcome may be
 unknown: do not automatically retry; sign in afresh and investigate audit
 records. Never log the raw session or CSRF token.
 
-Before deploying a secured Console, every future protected route must apply
-session and authorization checks and deny unknown purposes. Account disable
-and administrator reset must atomically revoke sessions, protect the last
-enabled local global ADMIN, and apply throttling to recovery. A deployed
-bootstrap channel, browser integration, Gateway enforcement, administrator
-recovery, audit retention, and end-to-end redaction remain unverified.
+The account-disable foundation atomically updates the account state and
+credential version, revokes its sessions, and records the change. It rechecks
+the current local session and global ADMIN grant in the same transaction and
+will not disable the last enabled local global ADMIN. Re-enabling an account
+also revokes any remaining old sessions. This operation is not mounted in the
+HTTP server. Future handlers must derive its actor from an authenticated,
+CSRF-checked session, never from client-supplied identity or session IDs.
+
+Before deploying a secured Console, every protected route must apply session
+and authorization checks and deny unknown purposes. Administrator password
+reset and recovery still require throttling and atomic session revocation;
+grant management must also protect the last enabled local global ADMIN. A
+deployed bootstrap channel, browser integration, Gateway enforcement, audit
+retention, and end-to-end redaction remain unverified.

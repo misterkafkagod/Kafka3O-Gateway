@@ -73,6 +73,25 @@ type LocalPasswordStore interface {
 	UpdateLocalPassword(ctx context.Context, update LocalPasswordUpdate) error
 }
 
+type LocalAdminActor struct {
+	AccountID string
+	SessionID string
+}
+
+type LocalAccountStateChange struct {
+	Actor             LocalAdminActor
+	TargetID          string
+	Enabled           bool
+	OperationID       string
+	EventID           string
+	RevocationEventID string
+	OccurredAt        time.Time
+}
+
+type LocalAccountStateStore interface {
+	SetLocalAccountEnabled(ctx context.Context, change LocalAccountStateChange) error
+}
+
 var (
 	ErrInvalidUsername         = errors.New("invalid local username")
 	ErrInvalidBootstrapConfig  = errors.New("a strong bootstrap secret and dependencies are required")
@@ -86,4 +105,9 @@ var (
 	ErrAuthenticationConfig    = errors.New("local authentication dependencies are required")
 	ErrInvalidClientAddress    = errors.New("a valid client address is required")
 	ErrPasswordUnchanged       = errors.New("the replacement password must differ from the current password")
+	ErrInvalidAdminSession     = errors.New("administrator session is unavailable or expired")
+	ErrGlobalAdminRequired     = errors.New("global administrator access is required")
+	ErrAdminPasswordChange     = errors.New("administrator must change the temporary password")
+	ErrLastLocalGlobalAdmin    = errors.New("the last enabled local global administrator cannot be disabled")
+	ErrAccountAdminConfig      = errors.New("account administration dependencies are required")
 )
