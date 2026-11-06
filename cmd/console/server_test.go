@@ -74,6 +74,9 @@ func serverCertificate(t *testing.T, address string, notBefore, notAfter time.Ti
 	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "ca.pem"), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER}), 0600); err != nil {
+		t.Fatal(err)
+	}
 	roots := x509.NewCertPool()
 	roots.AddCert(ca)
 	return certPath, keyPath, roots

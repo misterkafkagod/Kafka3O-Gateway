@@ -201,9 +201,43 @@ without an operation ID: investigate the target and audit before any retry.
 Send temporary passwords only over verified TLS and never put them in logs,
 URLs, command histories, or files.
 
+## Isolated UI preview integration
+
+The UI repository contains an opt-in cross-repository test for its built
+authentication-only preview. It compiles a Go test fixture, bootstraps a
+separate temporary SQLite database, and serves the built UI and this Console
+session API from one ephemeral numeric loopback HTTPS origin. The test
+generates a synthetic CA and supplies it only to the Node HTTPS client;
+certificate-chain and hostname verification remain enabled. The fixture
+rejects reuse of bootstrap and is shut down and removed after the test.
+No live Console, Kafka data, or system/browser trust store is modified.
+
+With Go and the UI's declared Node version available, run from the UI
+repository in PowerShell:
+
+```powershell
+$env:VITE_KAFKA3O_CONSOLE_AUTH_PREVIEW = "true"
+$env:VITE_KAFKA3O_MANUAL_PROXY = "true"
+npm run build
+$env:KAFKA3O_PREVIEW_INTEGRATION = "1"
+npm test -- src\console\previewIntegration.test.ts
+Remove-Item Env:\VITE_KAFKA3O_CONSOLE_AUTH_PREVIEW, Env:\VITE_KAFKA3O_MANUAL_PROXY, Env:\KAFKA3O_PREVIEW_INTEGRATION
+npm run build
+```
+
+By default the Gateway checkout is expected beside the UI checkout; set
+`KAFKA3O_GATEWAY_DIR` to its absolute path if it is elsewhere. The opt-in
+test checks the built bundle's denied and successful sign-in, mandatory
+password replacement, new session and logout, cookie attributes, and absence
+of legacy Gateway requests. It also checks that an untrusted CA and a wrong
+hostname fail. The DOM and cookie behavior are simulated by jsdom, with
+Node's verified HTTPS transport; this is not a native-browser TLS or cookie
+test and does not deploy the preview. The normal UI and Go test suites do not
+need the sibling checkout or run this fixture unless explicitly enabled.
+
 Before deploying a secured Console, every protected route must apply session
 and authorization checks and deny unknown purposes. Administrator recovery
 when no enabled local global ADMIN remains is not implemented; grant
 management must also protect the last enabled local global ADMIN. A
-deployed bootstrap channel, browser integration, Gateway enforcement, audit
-retention, and end-to-end redaction remain unverified.
+deployed bootstrap channel, native-browser integration, Gateway enforcement,
+audit retention, and end-to-end redaction remain unverified.
