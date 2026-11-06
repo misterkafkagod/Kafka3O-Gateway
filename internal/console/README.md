@@ -90,6 +90,24 @@ and key failures are reported without returning tokens or provider responses.
 This verifier uses synthetic TLS fixtures only; no Cognito login route,
 refresh, real User Pool or secured deployment is implemented by it.
 
+The standalone Cognito authorization-attempt service creates independent
+random state, nonce, PKCE verifier and browser binding. Only state, nonce and
+browser-binding digests and an AES-256-GCM-encrypted verifier are stored;
+authenticated encryption binds the ciphertext to those digests. Supply a
+cryptographically random 32-byte encryption key from a deployment-managed
+secret outside SQLite. Replacing it invalidates pending attempts. Never log
+the attempt values, callback parameters, verifier or encryption key.
+
+At most 1,000 pending attempts are retained, each expiring five minutes after
+the request began. Expiry is rechecked after obtaining the database
+transaction, and expired attempts are removed when a new one is started.
+Consumption requires the matching browser binding and atomically removes the
+attempt with a redacted audit event before returning the verifier. Malformed,
+expired, wrong-browser and replayed callbacks are denied and audited; an
+audit failure returns no verifier. If creation or consumption has an unknown
+commit outcome, investigate the operation ID and do not automatically retry.
+These primitives do not yet expose a browser callback or exchange a code.
+
 `cmd/console serve` composes local login, session inspection, password
 replacement, logout, administrator account listing, creation, state changes,
 password reset, and session listing and revocation into a TLS-only server.

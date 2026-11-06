@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 6 {
+	if version > 7 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -153,6 +153,25 @@ CREATE INDEX local_account_creation_attempts_time ON local_account_creation_atte
 PRAGMA user_version = 6;`
 		if _, err := tx.ExecContext(ctx, accountCreationAttempts); err != nil {
 			return fmt.Errorf("apply local account creation attempt schema: %w", err)
+		}
+		version = 6
+	}
+	if version == 6 {
+		const cognitoAttempts = `
+CREATE TABLE cognito_authorization_attempts (
+    operation_id TEXT PRIMARY KEY NOT NULL,
+    state_hash BLOB NOT NULL UNIQUE CHECK (length(state_hash) = 32),
+    binding_hash BLOB NOT NULL CHECK (length(binding_hash) = 32),
+    nonce_hash BLOB NOT NULL CHECK (length(nonce_hash) = 32),
+    encrypted_pkce BLOB NOT NULL CHECK (length(encrypted_pkce) = 71),
+    created_at_ns INTEGER NOT NULL,
+    expires_at_ns INTEGER NOT NULL,
+    CHECK (created_at_ns < expires_at_ns)
+);
+CREATE INDEX cognito_authorization_attempts_expiry ON cognito_authorization_attempts(expires_at_ns);
+PRAGMA user_version = 7;`
+		if _, err := tx.ExecContext(ctx, cognitoAttempts); err != nil {
+			return fmt.Errorf("apply Cognito authorization attempt schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
