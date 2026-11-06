@@ -15,7 +15,11 @@ out-of-band bootstrap secret. Generate at least 32 random bytes with a
 cryptographically secure source and provide their unpadded base64url encoding;
 the length check cannot establish randomness. Bootstrap atomically consumes
 its state and stores the enabled identity, global ADMIN grant, and audit event.
-The temporary password is marked for mandatory replacement.
+The temporary password is marked for mandatory replacement. Bootstrap attempts
+are recorded without credentials or submitted usernames and limited globally
+to 10 attempts per 15-minute window, including successful attempts. The window
+and anonymous denial audit survive restarts; an unavailable audit store blocks
+bootstrap. Each bootstrap service admits at most four concurrent password hashes.
 
 Local authentication uses generic failures for unknown, invalid, disabled, or
 incorrect credentials and checks a dummy hash for unknown users. A durable
@@ -55,7 +59,7 @@ must restrict bootstrap accounts to password replacement/logout/session
 information and deny unknown access purposes. Account disable and
 administrator reset must atomically revoke sessions, protect the last enabled
 local global ADMIN, and apply throttling to recovery. Bootstrap access also
-needs a restricted, rate-limited administrative channel and auditable failed
-attempts. The standalone handlers are not a complete authentication or
-authorization boundary. Runtime composition, deployment, administrator
+needs a restricted administrative channel. The standalone handlers are not a
+complete authentication or authorization boundary. Runtime composition,
+deployment, administrator
 recovery, audit retention, and end-to-end redaction remain unverified.

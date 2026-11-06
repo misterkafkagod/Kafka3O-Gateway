@@ -12,7 +12,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 )
 
-func (d *Database) CreateInitialAdmin(ctx context.Context, account identity.LocalAccount, eventID string, occurredAt time.Time) (result error) {
+func (d *Database) CreateInitialAdmin(ctx context.Context, account identity.LocalAccount, eventID, operationID string, occurredAt time.Time) (result error) {
 	name, err := identity.NormalizeLocalUsername(account.Username)
 	if err != nil || name != account.Username {
 		return identity.ErrInvalidUsername
@@ -23,8 +23,11 @@ func (d *Database) CreateInitialAdmin(ctx context.Context, account identity.Loca
 	if err := identity.ValidateLocalPasswordHash(account.PasswordHash); err != nil {
 		return err
 	}
+	if strings.TrimSpace(operationID) == "" || eventID == operationID {
+		return ErrInvalidAuditEvent
+	}
 	event := AuditEvent{
-		EventID: eventID, OccurredAt: occurredAt, ActorID: account.ID, Source: AuditSourceLocal,
+		EventID: eventID, OperationID: operationID, OccurredAt: occurredAt, ActorID: account.ID, Source: AuditSourceLocal,
 		Action: "console.bootstrap", Decision: "allowed", Outcome: AuditSucceeded,
 	}
 	if err := validateAuditEvent(event); err != nil {

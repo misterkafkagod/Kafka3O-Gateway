@@ -56,7 +56,10 @@ func TestBootstrapPersistsAccountGrantAndAuditExactlyOnce(t *testing.T) {
 		t.Fatalf("initial grants = %+v, %v", grants, err)
 	}
 	events, err := db.ListAuditEvents(ctx, AuditFilter{Global: true, Limit: 10})
-	if err != nil || len(events) != 1 || events[0].Action != "console.bootstrap" || events[0].ActorID != account.ID {
+	if err != nil || len(events) != 3 || events[0].Outcome != AuditAttempted ||
+		events[1].Action != "console.bootstrap" || events[1].ActorID != account.ID ||
+		events[1].OperationID != events[0].EventID || events[2].Outcome != AuditDenied ||
+		events[2].ActorID != "anonymous" {
 		t.Fatalf("bootstrap audit = %+v, %v", events, err)
 	}
 	if _, err := db.FindLocalAccount(ctx, "other"); !errors.Is(err, identity.ErrAccountNotFound) {
@@ -80,13 +83,13 @@ func TestCreateInitialAdminRollsBackWhenAuditFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true}
-	if err := db.CreateInitialAdmin(ctx, account, "duplicate", now); err == nil {
+	if err := db.CreateInitialAdmin(ctx, account, "duplicate", "attempt", now); err == nil {
 		t.Fatal("administrator was created when audit insertion failed")
 	}
 	if _, err := db.FindLocalAccount(ctx, "admin"); !errors.Is(err, identity.ErrAccountNotFound) {
 		t.Fatalf("failed transaction left an account: %v", err)
 	}
-	if err := db.CreateInitialAdmin(ctx, account, "new-event", now); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "new-event", "attempt", now); err != nil {
 		t.Fatalf("bootstrap state was not rolled back: %v", err)
 	}
 }

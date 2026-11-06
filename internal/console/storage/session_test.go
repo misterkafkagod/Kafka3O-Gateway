@@ -121,7 +121,7 @@ func TestSessionIdleExpiryAndLogout(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true, CredentialVersion: 1}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", at); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", at); err != nil {
 		t.Fatal(err)
 	}
 	manager, err := session.NewManager(db, rand.Reader, now, 5*time.Minute, time.Hour)
@@ -236,7 +236,7 @@ func TestSessionChangesFailClosedWhenAuditUnavailable(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true, CredentialVersion: 1}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	manager, err := session.NewManager(db, rand.Reader, time.Now, time.Minute, time.Hour)
@@ -291,7 +291,7 @@ func TestPasswordChangeAndRevocationRollBackTogether(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: oldHash, Enabled: true, MustChangePassword: true, CredentialVersion: 1}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	manager, err := session.NewManager(db, rand.Reader, time.Now, time.Minute, time.Hour)
@@ -336,7 +336,7 @@ func TestDisabledAccountCannotUseOrCreateSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true, CredentialVersion: 1}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	manager, err := session.NewManager(db, rand.Reader, time.Now, time.Minute, time.Hour)

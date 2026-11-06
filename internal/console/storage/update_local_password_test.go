@@ -88,7 +88,7 @@ func TestPasswordChangeRollsBackWhenAuditFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: oldHash, Enabled: true, MustChangePassword: true}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	_, err = db.db.ExecContext(ctx, `CREATE TRIGGER reject_password_audit BEFORE INSERT ON audit_events
@@ -125,7 +125,7 @@ func TestPasswordChangeRejectsStaleCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: oldHash, Enabled: true, MustChangePassword: true}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	first := identity.LocalPasswordUpdate{

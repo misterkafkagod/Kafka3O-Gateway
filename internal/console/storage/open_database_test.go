@@ -12,6 +12,7 @@ import (
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/authorization"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
 )
 
 func TestOpenDatabaseCreatesDurableDatabaseWithRequiredSettings(t *testing.T) {
@@ -31,7 +32,7 @@ func TestOpenDatabaseCreatesDurableDatabaseWithRequiredSettings(t *testing.T) {
 			t.Fatalf("%s: %v", query, err)
 		}
 	}
-	if journal != "wal" || sync != 2 || foreignKeys != 1 || version != 3 {
+	if journal != "wal" || sync != 2 || foreignKeys != 1 || version != 4 {
 		t.Fatalf("journal=%q synchronous=%d foreignKeys=%d version=%d", journal, sync, foreignKeys, version)
 	}
 	info, err := os.Stat(path)
@@ -112,7 +113,7 @@ func TestOpenDatabaseMigratesVersionOneWithoutLosingAudit(t *testing.T) {
 	}
 	for _, statement := range []string{
 		"DROP TABLE console_sessions", "DROP TABLE role_grants", "DROP TABLE local_accounts", "DROP TABLE identities",
-		"DROP TABLE bootstrap_state", "DROP TABLE local_auth_attempts", "PRAGMA user_version = 1",
+		"DROP TABLE bootstrap_state", "DROP TABLE bootstrap_attempts", "DROP TABLE local_auth_attempts", "PRAGMA user_version = 1",
 	} {
 		if _, err := db.db.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -131,7 +132,7 @@ func TestOpenDatabaseMigratesVersionOneWithoutLosingAudit(t *testing.T) {
 		t.Fatalf("events after migration = %+v, %v", events, err)
 	}
 	var version int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 3 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 4 {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 }
@@ -143,16 +144,18 @@ func TestOpenDatabaseMigratesVersionTwoWithoutLosingAccounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	hash, err := identity.HashLocalPassword(rand.Reader, "initial passphrase")
 	if err != nil {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{
-		"DROP TABLE console_sessions", "ALTER TABLE local_accounts DROP COLUMN credential_version", "PRAGMA user_version = 2",
+		"DROP TABLE console_sessions", "DROP TABLE bootstrap_attempts",
+		"ALTER TABLE local_accounts DROP COLUMN credential_version", "PRAGMA user_version = 2",
 	} {
 		if _, err := db.db.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -173,5 +176,58 @@ func TestOpenDatabaseMigratesVersionTwoWithoutLosingAccounts(t *testing.T) {
 	grants, err := db.ListAccountGrants(ctx, account.ID)
 	if err != nil || len(grants) != 1 || grants[0].Role != authorization.RoleAdmin {
 		t.Fatalf("grant was not preserved during migration: err=%v", err)
+	}
+}
+
+func TestOpenDatabaseMigratesVersionThreeWithoutLosingSessions(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "console.sqlite")
+	db, err := OpenDatabase(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, err := identity.HashLocalPassword(rand.Reader, "initial passphrase")
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := identity.LocalAccount{
+		ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true, CredentialVersion: 1,
+	}
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := session.NewManager(db, rand.Reader, time.Now, session.DefaultIdleLifetime, session.DefaultAbsoluteLifetime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	credentials, err := manager.IssueLocal(ctx, account)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{"DROP TABLE bootstrap_attempts", "PRAGMA user_version = 3"} {
+		if _, err := db.db.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = OpenDatabase(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	manager, err = session.NewManager(db, rand.Reader, time.Now, session.DefaultIdleLifetime, session.DefaultAbsoluteLifetime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	principal, err := manager.Resolve(ctx, credentials.Token)
+	if err != nil || principal.AccountID != account.ID {
+		t.Fatalf("session was not preserved during migration: %v", err)
+	}
+	if err := db.ReserveBootstrapAttempt(ctx, identity.BootstrapAttempt{
+		EventID: "post-migration", OccurredAt: time.Now(),
+	}); !errors.Is(err, identity.ErrAlreadyBootstrapped) {
+		t.Fatalf("bootstrap state was not preserved during migration: %v", err)
 	}
 }

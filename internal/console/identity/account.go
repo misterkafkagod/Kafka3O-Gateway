@@ -16,7 +16,21 @@ type LocalAccount struct {
 }
 
 type InitialAdminStore interface {
-	CreateInitialAdmin(ctx context.Context, account LocalAccount, eventID string, occurredAt time.Time) error
+	ReserveBootstrapAttempt(ctx context.Context, attempt BootstrapAttempt) error
+	FailBootstrapAttempt(ctx context.Context, failure BootstrapFailure) error
+	CreateInitialAdmin(ctx context.Context, account LocalAccount, eventID, operationID string, occurredAt time.Time) error
+}
+
+type BootstrapAttempt struct {
+	EventID    string
+	OccurredAt time.Time
+}
+
+type BootstrapFailure struct {
+	EventID     string
+	OperationID string
+	OccurredAt  time.Time
+	Denied      bool
 }
 
 type FindLocalAccount interface {
@@ -63,6 +77,7 @@ var (
 	ErrInvalidUsername         = errors.New("invalid local username")
 	ErrInvalidBootstrapConfig  = errors.New("a strong bootstrap secret and dependencies are required")
 	ErrInvalidBootstrapSecret  = errors.New("bootstrap authentication failed")
+	ErrBootstrapThrottled      = errors.New("bootstrap temporarily throttled")
 	ErrAlreadyBootstrapped     = errors.New("local administrator has already been bootstrapped")
 	ErrAccountNotFound         = errors.New("local account not found")
 	ErrInvalidLocalAccount     = errors.New("invalid local account")

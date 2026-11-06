@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 3 {
+	if version > 4 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -105,6 +105,18 @@ CREATE INDEX console_sessions_identity ON console_sessions(identity_id);
 PRAGMA user_version = 3;`
 		if _, err := tx.ExecContext(ctx, sessions); err != nil {
 			return fmt.Errorf("apply session schema: %w", err)
+		}
+		version = 3
+	}
+	if version == 3 {
+		const bootstrapAttempts = `
+CREATE TABLE bootstrap_attempts (
+    occurred_at_ns INTEGER NOT NULL
+);
+CREATE INDEX bootstrap_attempts_time ON bootstrap_attempts(occurred_at_ns);
+PRAGMA user_version = 4;`
+		if _, err := tx.ExecContext(ctx, bootstrapAttempts); err != nil {
+			return fmt.Errorf("apply bootstrap attempt schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

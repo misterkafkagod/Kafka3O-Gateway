@@ -67,15 +67,15 @@ func TestLocalAuthenticationAndAudit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(events) != 11 {
-		t.Fatalf("audit event count = %d, want 11", len(events))
+	if len(events) != 12 {
+		t.Fatalf("audit event count = %d, want 12", len(events))
 	}
-	for i := 1; i < len(events); i += 2 {
+	for i := 2; i < len(events); i += 2 {
 		attempt, result := events[i], events[i+1]
 		if attempt.Outcome != AuditAttempted || attempt.OperationID == "" || attempt.OperationID != result.OperationID {
 			t.Fatalf("uncorrelated authentication audit at %d", i)
 		}
-		if i == 1 {
+		if i == 2 {
 			if result.Outcome != AuditSucceeded || result.ActorID != created.ID {
 				t.Fatal("successful authentication lacks user attribution")
 			}
@@ -254,7 +254,7 @@ func TestAuthenticationRechecksDisabledOrChangedCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true}
-	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", "bootstrap-attempt", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	result := identity.LocalAuthenticationResult{AccountID: account.ID, PasswordHash: hash, CredentialVersion: 1, EventID: "disabled", OperationID: "attempt", OccurredAt: time.Now()}
