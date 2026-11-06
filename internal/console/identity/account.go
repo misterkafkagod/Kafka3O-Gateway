@@ -94,6 +94,39 @@ type AdminSessionRevocationStore interface {
 	RevokeAdminSession(ctx context.Context, revocation AdminSessionRevocation) error
 }
 
+const (
+	DefaultAdminSessionPageSize = 50
+	MaxAdminSessionPageSize     = 100
+)
+
+type AdminSessionSummary struct {
+	ID                string
+	AccountID         string
+	Username          string
+	CreatedAt         time.Time
+	IdleExpiresAt     time.Time
+	AbsoluteExpiresAt time.Time
+	Current           bool
+}
+
+type AdminSessionListRequest struct {
+	Actor       LocalAdminActor
+	AfterID     string
+	Limit       int
+	OperationID string
+	OccurredAt  time.Time
+}
+
+type AdminSessionListResult struct {
+	OperationID string
+	Sessions    []AdminSessionSummary
+	NextCursor  string
+}
+
+type AdminSessionListStore interface {
+	ListAdminSessions(ctx context.Context, request AdminSessionListRequest) (AdminSessionListResult, error)
+}
+
 type LocalAccountStateChange struct {
 	Actor             LocalAdminActor
 	TargetID          string
@@ -233,6 +266,9 @@ var (
 	ErrAdminSessionUnavailable   = errors.New("target session is unavailable or expired")
 	ErrAdminSessionRevokeAudit   = errors.New("session revocation could not be audited")
 	ErrAdminSessionRevokeUnknown = errors.New("session revocation outcome is unknown")
+	ErrInvalidAdminSessionList   = errors.New("invalid session listing request")
+	ErrInvalidAdminSessionCursor = errors.New("invalid session listing cursor")
+	ErrAdminSessionListAudit     = errors.New("session listing could not be audited")
 	ErrLastLocalGlobalAdmin      = errors.New("the last enabled local global administrator cannot be disabled")
 	ErrAccountAdminConfig        = errors.New("account administration dependencies are required")
 	ErrAccountStateUnknown       = errors.New("local account state change outcome is unknown")

@@ -117,6 +117,19 @@ retry. Invalid or unknown submitted IDs, session tokens, CSRF values and
 usernames are not recorded in the revocation audit. This service is not
 yet exposed through the HTTPS API or an administration UI.
 
+The accompanying local session-listing foundation requires the same current
+unrestricted local global ADMIN and transactionally rechecks that authority.
+It returns only active local sessions for enabled accounts with current
+credential versions: the opaque session and account IDs, normalized
+username, creation/idle/absolute expiry times, and whether the session is the
+caller's. It never returns token or CSRF values or hashes, password hashes,
+or credential versions. Pages use an opaque session-ID cursor in ascending
+order, default to 50 entries, and are capped at 100. A well-formed cursor need
+not still exist, since sessions may expire or be revoked between pages; the
+listing is not a snapshot. Listing decisions are audited without usernames,
+session IDs, submitted cursors or credentials, and audit or commit failure
+returns no session data. The listing service is not yet exposed by HTTPS.
+
 The account-state service atomically updates the account state and
 credential version, revokes its sessions, and records the change. It rechecks
 the current local session and global ADMIN grant in the same transaction and
