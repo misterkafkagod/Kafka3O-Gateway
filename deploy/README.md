@@ -7,6 +7,12 @@ alone does not ensure randomness; never commit a token, private key, or a file
 containing them. Every holder of a gateway token can perform all its read and
 write operations; there are no per-user roles.
 
+The token also authorizes Kafka broker/topic configuration changes, partition
+increases, and replica reassignment where the Kafka principal has permission.
+Partition increases are irreversible and reassignments can move substantial
+data or change durability. Treat the gateway as an administrative endpoint.
+Sensitive and restart-required configuration is not editable through it.
+
 Set `KAFKA3O_HTTP__TLS__CERTIFICATEFILE` and `KAFKA3O_HTTP__TLS__KEYFILE` to
 paths readable by the gateway process. The certificate must match the hostname
 in the UI's gateway URL and be trusted by the user's browser. For local
@@ -36,6 +42,13 @@ network: SASL PLAIN without TLS exposes the password, and SASL alone does not
 encrypt Kafka data. Mutual TLS client certificates are not currently supported.
 Configure secrets using your deployment platform's secret management; process
 environments and mounted files may be visible to administrators.
+
+## Persistent EKS-D test brokers
+
+For the two long-lived, secured single-broker test clusters on `eksd-01`, see
+the [persistent Kafka test guide](kubernetes/test-kafka/README.md). It covers
+internal and SSH-forwarded access, read-only checks, and important storage and
+credential limitations.
 
 ## Two-gateway Compose demo
 

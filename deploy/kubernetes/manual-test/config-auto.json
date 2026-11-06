@@ -1,0 +1,6 @@
+{
+  "gateways": [
+    { "id": "kafka-a", "name": "Kafka A", "url": "http://localhost:5173/manual/gateways/a" },
+    { "id": "kafka-b", "name": "Kafka B", "url": "http://localhost:5173/manual/gateways/b" }
+  ]
+}

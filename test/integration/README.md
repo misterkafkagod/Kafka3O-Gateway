@@ -19,6 +19,23 @@ the external fixture cannot control the broker's lifecycle.
 The compaction regression waits up to 90 seconds for Kafka's log cleaner and
 requires the broker to support compacted topics.
 
+## Persistent secured brokers (read-only)
+
+The persistent EKS-D brokers are not disposable. From the repository root, run
+only the dedicated metadata, TLS/SCRAM rejection, and invalid validate-only
+administration checks against them:
+
+```powershell
+.\deploy\kubernetes\test-kafka\run-read-only-checks.ps1 -SshHost "john@192.168.1.109"
+```
+
+This runner does not apply configuration, create or delete topics, or produce
+records. The validate-only checks verify that existing configuration and topic
+placement remain unchanged. Do not point
+the disposable integration tests described below at the persistent clusters.
+See the [persistent broker guide](../../deploy/kubernetes/test-kafka/README.md)
+for prerequisites, connection details and security/storage limitations.
+
 ## Secured Kubernetes broker over SSH
 
 `kubernetes/run-secure-kafka-tests.ps1` creates an isolated namespace and a

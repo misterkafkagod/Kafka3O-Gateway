@@ -1,0 +1,356 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka3o-test-kafka
+  namespace: kafka3o-test-clusters
+data:
+  log4j2.properties: |
+    status = error
+    name = Kafka3oTestLogging
+    appender.console.type = Console
+    appender.console.name = STDERR
+    appender.console.target = SYSTEM_ERR
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = %d{ISO8601} %p %c - %m%n
+    rootLogger.level = warn
+    rootLogger.appenderRef.console.ref = STDERR
+  bootstrap.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    umask 077
+    export KAFKA_HEAP_OPTS="-Xms256m -Xmx512m"
+    export KAFKA_LOG4J_OPTS="-Dlog4j2.configurationFile=/etc/kafka3o/log4j2.properties"
+    runtime=/run/kafka3o
+    input=/run/kafka3o-security
+    data=/var/lib/kafka/data
+
+    for file in tls.crt tls.key sasl.password sasl.salt sasl.saltedpassword; do
+      if [[ ! -s "$input/$file" ]]; then
+        echo "Required Kafka security material is missing." >&2
+        exit 1
+      fi
+    done
+    password="$(<"$input/sasl.password")"
+    salt="$(<"$input/sasl.salt")"
+    salted="$(<"$input/sasl.saltedpassword")"
+    if [[ ! "$password" =~ ^[0-9a-f]{64}$ || ! "$salt" =~ ^[A-Za-z0-9+/]+={0,2}$ ||
+          ! "$salted" =~ ^[A-Za-z0-9+/]+={0,2}$ ||
+          ! "$KAFKA3O_SASL_USERNAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
+      echo "Invalid Kafka test security material." >&2
+      exit 1
+    fi
+    if ! openssl x509 -in "$input/tls.crt" -noout -checkend 0 >/dev/null 2>&1; then
+      echo "Kafka TLS certificate is invalid or expired." >&2
+      exit 1
+    fi
+    rm -f -- "$runtime/server.p12" "$runtime/truststore.p12" \
+      "$runtime/server.properties" "$runtime/client.properties"
+    export KAFKA_KEYSTORE_PASSWORD
+    KAFKA_KEYSTORE_PASSWORD="$(openssl rand -hex 24)"
+    if ! openssl pkcs12 -export -in "$input/tls.crt" -inkey "$input/tls.key" \
+        -name kafka -out "$runtime/server.p12" -passout env:KAFKA_KEYSTORE_PASSWORD >/dev/null 2>&1; then
+      echo "Could not prepare the Kafka TLS keystore." >&2
+      exit 1
+    fi
+    if ! keytool -importcert -noprompt -alias kafka -file "$input/tls.crt" \
+        -keystore "$runtime/truststore.p12" -storetype PKCS12 \
+        -storepass:env KAFKA_KEYSTORE_PASSWORD >/dev/null 2>&1; then
+      echo "Could not prepare the Kafka TLS truststore." >&2
+      exit 1
+    fi
+    cat > "$runtime/server.properties" <<EOF
+    process.roles=broker,controller
+    node.id=1
+    controller.quorum.voters=1@localhost:9093
+    listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9095,BROKER://127.0.0.1:9094,CONTROLLER://127.0.0.1:9093
+    advertised.listeners=INTERNAL://$KAFKA3O_INTERNAL_HOST:9092,EXTERNAL://127.0.0.1:$KAFKA3O_EXTERNAL_PORT,BROKER://localhost:9094
+    listener.security.protocol.map=INTERNAL:SASL_SSL,EXTERNAL:SASL_SSL,BROKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+    inter.broker.listener.name=BROKER
+    controller.listener.names=CONTROLLER
+    log.dirs=$data
+    auto.create.topics.enable=false
+    offsets.topic.replication.factor=1
+    offsets.topic.num.partitions=3
+    transaction.state.log.replication.factor=1
+    transaction.state.log.min.isr=1
+    transaction.state.log.num.partitions=3
+    group.initial.rebalance.delay.ms=0
+    log.retention.hours=168
+    log.retention.bytes=268435456
+    log.segment.bytes=67108864
+    log.retention.check.interval.ms=300000
+    ssl.keystore.type=PKCS12
+    ssl.keystore.location=$runtime/server.p12
+    ssl.keystore.password=$KAFKA_KEYSTORE_PASSWORD
+    ssl.key.password=$KAFKA_KEYSTORE_PASSWORD
+    ssl.client.auth=none
+    sasl.enabled.mechanisms=SCRAM-SHA-512
+    listener.name.internal.scram-sha-512.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required;
+    listener.name.external.scram-sha-512.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required;
+    EOF
+    cat > "$runtime/client.properties" <<EOF
+    security.protocol=SASL_SSL
+    sasl.mechanism=SCRAM-SHA-512
+    sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="$KAFKA3O_SASL_USERNAME" password="$password";
+    ssl.truststore.type=PKCS12
+    ssl.truststore.location=$runtime/truststore.p12
+    ssl.truststore.password=$KAFKA_KEYSTORE_PASSWORD
+    ssl.endpoint.identification.algorithm=https
+    EOF
+
+    if [[ ! -e "$data/meta.properties" ]]; then
+      shopt -s dotglob nullglob
+      existing=("$data"/*)
+      if (( ${#existing[@]} != 0 )); then
+        echo "Kafka data directory is not empty and has no cluster metadata; refusing to format." >&2
+        exit 1
+      fi
+      cluster_id="$(/opt/kafka/bin/kafka-storage.sh random-uuid)"
+      if ! /opt/kafka/bin/kafka-storage.sh format -t "$cluster_id" -c "$runtime/server.properties" \
+          --add-scram "SCRAM-SHA-512=[name=$KAFKA3O_SASL_USERNAME,iterations=8192,salt=\"$salt\",saltedpassword=\"$salted\"]" \
+          > "$runtime/format.log" 2>&1; then
+        echo "Kafka storage formatting failed; details withheld." >&2
+        exit 1
+      fi
+    elif [[ ! -s "$data/meta.properties" ]]; then
+      echo "Kafka cluster metadata is empty; refusing to start." >&2
+      exit 1
+    fi
+    unset password salt salted KAFKA_KEYSTORE_PASSWORD
+    exec /opt/kafka/bin/kafka-server-start.sh "$runtime/server.properties"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-a
+  namespace: kafka3o-test-clusters
+  labels:
+    app.kubernetes.io/part-of: kafka3o-test-clusters
+    kafka3o.dev/rollback: persistent-test-v1
+spec:
+  serviceName: kafka-a
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-a
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-a
+        app.kubernetes.io/part-of: kafka3o-test-clusters
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      nodeSelector:
+        kubernetes.io/hostname: eksd-01
+      hostAliases:
+        - ip: 127.0.0.1
+          hostnames:
+            - kafka-a.kafka3o-test-clusters.svc.cluster.local
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kafka
+          image: apache/kafka:4.3.1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "/etc/kafka3o/bootstrap.sh"]
+          env:
+            - name: KAFKA3O_INTERNAL_HOST
+              value: kafka-a.kafka3o-test-clusters.svc.cluster.local
+            - name: KAFKA3O_EXTERNAL_PORT
+              value: "19092"
+            - name: KAFKA3O_SASL_USERNAME
+              value: kafka3otest-a
+          ports:
+            - name: internal
+              containerPort: 9092
+            - name: forwarded
+              containerPort: 9095
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
+              ephemeral-storage: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: internal
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  if ! /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 \
+                      --command-config /run/kafka3o/client.properties >/dev/null 2>&1; then
+                    echo "Authenticated Kafka readiness check failed." >&2
+                    exit 1
+                  fi
+            periodSeconds: 20
+            timeoutSeconds: 20
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: internal
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+            - name: security
+              mountPath: /run/kafka3o-security
+              readOnly: true
+            - name: runtime
+              mountPath: /run/kafka3o
+            - name: configuration
+              mountPath: /etc/kafka3o
+              readOnly: true
+      volumes:
+        - name: kafka-data
+          persistentVolumeClaim:
+            claimName: kafka-a-data
+        - name: security
+          secret:
+            secretName: kafka-a-security
+            defaultMode: 0440
+        - name: runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+        - name: configuration
+          configMap:
+            name: kafka3o-test-kafka
+            defaultMode: 0550
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-b
+  namespace: kafka3o-test-clusters
+  labels:
+    app.kubernetes.io/part-of: kafka3o-test-clusters
+    kafka3o.dev/rollback: persistent-test-v1
+spec:
+  serviceName: kafka-b
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-b
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-b
+        app.kubernetes.io/part-of: kafka3o-test-clusters
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      nodeSelector:
+        kubernetes.io/hostname: eksd-01
+      hostAliases:
+        - ip: 127.0.0.1
+          hostnames:
+            - kafka-b.kafka3o-test-clusters.svc.cluster.local
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kafka
+          image: apache/kafka:4.3.1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "/etc/kafka3o/bootstrap.sh"]
+          env:
+            - name: KAFKA3O_INTERNAL_HOST
+              value: kafka-b.kafka3o-test-clusters.svc.cluster.local
+            - name: KAFKA3O_EXTERNAL_PORT
+              value: "19093"
+            - name: KAFKA3O_SASL_USERNAME
+              value: kafka3otest-b
+          ports:
+            - name: internal
+              containerPort: 9092
+            - name: forwarded
+              containerPort: 9095
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
+              ephemeral-storage: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: internal
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  if ! /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 \
+                      --command-config /run/kafka3o/client.properties >/dev/null 2>&1; then
+                    echo "Authenticated Kafka readiness check failed." >&2
+                    exit 1
+                  fi
+            periodSeconds: 20
+            timeoutSeconds: 20
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: internal
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+            - name: security
+              mountPath: /run/kafka3o-security
+              readOnly: true
+            - name: runtime
+              mountPath: /run/kafka3o
+            - name: configuration
+              mountPath: /etc/kafka3o
+              readOnly: true
+      volumes:
+        - name: kafka-data
+          persistentVolumeClaim:
+            claimName: kafka-b-data
+        - name: security
+          secret:
+            secretName: kafka-b-security
+            defaultMode: 0440
+        - name: runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+        - name: configuration
+          configMap:
+            name: kafka3o-test-kafka
+            defaultMode: 0550

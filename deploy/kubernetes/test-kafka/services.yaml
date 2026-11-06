@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-a
+  namespace: kafka3o-test-clusters
+  labels:
+    app.kubernetes.io/part-of: kafka3o-test-clusters
+    kafka3o.dev/rollback: persistent-test-v1
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kafka-a
+  ports:
+    - name: internal
+      port: 9092
+      targetPort: internal
+    - name: forwarded
+      port: 9095
+      targetPort: forwarded
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-b
+  namespace: kafka3o-test-clusters
+  labels:
+    app.kubernetes.io/part-of: kafka3o-test-clusters
+    kafka3o.dev/rollback: persistent-test-v1
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kafka-b
+  ports:
+    - name: internal
+      port: 9092
+      targetPort: internal
+    - name: forwarded
+      port: 9095
+      targetPort: forwarded

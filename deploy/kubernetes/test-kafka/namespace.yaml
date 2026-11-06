@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka3o-test-clusters
+  labels:
+    app.kubernetes.io/part-of: kafka3o-test-clusters
+    kafka3o.dev/purpose: persistent-test-kafka
