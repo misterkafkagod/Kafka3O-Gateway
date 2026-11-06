@@ -23,7 +23,10 @@ import (
 
 func serveCognitoFixtureRefresh(t *testing.T, f *cognitoCodeFixture, w http.ResponseWriter, r *http.Request, mode, nonce string, authValid bool) {
 	t.Helper()
-	if r.Method != http.MethodPost || !authValid || r.Form.Get("refresh_token") != fixtureRefresh ||
+	f.mu.RLock()
+	expectedRefresh := f.expectedRefresh
+	f.mu.RUnlock()
+	if r.Method != http.MethodPost || !authValid || r.Form.Get("refresh_token") != expectedRefresh ||
 		r.Form.Get("code") != "" || r.Form.Get("code_verifier") != "" || r.Form.Get("redirect_uri") != "" {
 		f.invalidCalls.Add(1)
 		http.Error(w, "bad fixture refresh", http.StatusBadRequest)
@@ -71,6 +74,10 @@ func serveCognitoFixtureRefresh(t *testing.T, f *cognitoCodeFixture, w http.Resp
 	switch mode {
 	case "refresh matching nonce":
 		claims["nonce"] = nonce
+	case "refresh no groups":
+		delete(claims, "cognito:groups")
+	case "refresh short expiry":
+		claims["exp"] = now.Add(2 * time.Minute).Unix()
 	case "refresh wrong nonce":
 		claims["nonce"] = "wrong-nonce"
 	case "refresh wrong subject":
@@ -161,10 +168,14 @@ func TestCognitoRefreshExchangeProtectsRotationAndPrivateProof(t *testing.T) {
 				}
 				details.Identity.Groups[0] = "forged-group"
 				details.Identity.Audience[0] = "forged-client"
+				details.PreviousIdentity.Groups[0] = "forged-previous-group"
+				details.PreviousIdentity.Audience[0] = "forged-previous-client"
 				details.EncryptedRefreshToken[0] ^= 1
 				again, err := proof.Details(protector, f.clock())
 				if err != nil || !reflect.DeepEqual(again.Identity.Groups, []string{"refreshed-group"}) ||
-					!reflect.DeepEqual(again.Identity.Audience, []string{f.provider.ClientID}) {
+					!reflect.DeepEqual(again.Identity.Audience, []string{f.provider.ClientID}) ||
+					!reflect.DeepEqual(again.PreviousIdentity.Groups, []string{"unmapped-group"}) ||
+					!reflect.DeepEqual(again.PreviousIdentity.Audience, []string{f.provider.ClientID}) {
 					t.Fatalf("caller changed the verified refresh proof: %v", err)
 				}
 				if token, err := protector.Open(binding, again.EncryptedRefreshToken); err != nil || token != wantToken {

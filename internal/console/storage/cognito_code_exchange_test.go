@@ -45,6 +45,7 @@ type cognitoCodeFixture struct {
 	forgedKey        *rsa.PrivateKey
 	auth             cognito.ClientAuthentication
 	mode             string
+	expectedRefresh  string
 	mu               sync.RWMutex
 	nonce            string
 	challenge        string
@@ -57,7 +58,9 @@ type cognitoCodeFixture struct {
 
 func newCognitoCodeFixture(t *testing.T, mode string, auth cognito.ClientAuthentication) *cognitoCodeFixture {
 	t.Helper()
-	f := &cognitoCodeFixture{cognitoAttemptFixture: newCognitoAttemptFixture(t), auth: auth, mode: mode}
+	f := &cognitoCodeFixture{
+		cognitoAttemptFixture: newCognitoAttemptFixture(t), auth: auth, mode: mode, expectedRefresh: fixtureRefresh,
+	}
 	var err error
 	f.privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

@@ -2,6 +2,7 @@ package cognito
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"math"
 	"slices"
@@ -104,11 +105,16 @@ func (e *CodeExchanger) RefreshCognitoSession(ctx context.Context, tokenHash [32
 	}
 	identity.Audience = slices.Clone(identity.Audience)
 	identity.Groups = slices.Clone(identity.Groups)
+	previous.Audience = slices.Clone(previous.Audience)
+	previous.Groups = slices.Clone(previous.Groups)
 	result := RefreshExchangeResult{
 		OperationID: operationID,
 		proof: &verifiedRefreshProof{
 			operationID: operationID, sessionID: reservation.SessionID, identityID: reservation.IdentityID,
-			previousGeneration: reservation.Generation, identity: identity, nonceHash: reservation.OriginalNonceHash,
+			previousGeneration: reservation.Generation, previousIdentity: previous,
+			previousClaimsFreshUntil: reservation.PreviousClaimsFreshUntil,
+			previousEncryptedHash:    sha256.Sum256(reservation.EncryptedRefreshToken),
+			identity:                 identity, nonceHash: reservation.OriginalNonceHash,
 			encryptedRefreshToken: encrypted, providerBinding: protector.providerBinding, verifiedAt: verifiedAt,
 			claimsFreshUntil: freshUntil, sessionDeadline: minTime(reservation.IdleExpiresAt, reservation.AbsoluteExpiresAt),
 		},

@@ -50,11 +50,12 @@ func (d *Database) ReserveCognitoRefresh(ctx context.Context, request cognito.Re
 	}
 	var nonceHash []byte
 	var audienceJSON, groupsJSON string
-	var issued, tokenExpiry, idleExpiry, absoluteExpiry int64
+	var issued, tokenExpiry, freshUntil, idleExpiry, absoluteExpiry int64
 	err = tx.QueryRowContext(ctx, `SELECT console_sessions.id, identities.id, cognito_session_credentials.refresh_generation,
 cognito_identities.issuer, cognito_identities.subject, cognito_session_credentials.audience_json,
 cognito_session_credentials.groups_json, cognito_session_credentials.issued_at_ns,
-cognito_session_credentials.token_expires_at_ns, cognito_session_credentials.original_nonce_hash,
+cognito_session_credentials.token_expires_at_ns, cognito_session_credentials.claims_fresh_until_ns,
+cognito_session_credentials.original_nonce_hash,
 cognito_session_credentials.encrypted_refresh_token, console_sessions.idle_expires_at_ns,
 console_sessions.absolute_expires_at_ns
 FROM console_sessions JOIN identities ON identities.id = console_sessions.identity_id
@@ -68,7 +69,7 @@ WHERE console_sessions.token_hash = ? AND console_sessions.auth_source = 'cognit
 		event.OccurredAt.UnixNano(), event.OccurredAt.UnixNano()).Scan(
 		&reservation.SessionID, &reservation.IdentityID, &reservation.Generation,
 		&reservation.PreviousIdentity.Issuer, &reservation.PreviousIdentity.Subject, &audienceJSON, &groupsJSON,
-		&issued, &tokenExpiry, &nonceHash, &reservation.EncryptedRefreshToken, &idleExpiry, &absoluteExpiry,
+		&issued, &tokenExpiry, &freshUntil, &nonceHash, &reservation.EncryptedRefreshToken, &idleExpiry, &absoluteExpiry,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return deny(cognito.ErrRefreshUnavailable)
@@ -84,7 +85,7 @@ WHERE console_sessions.token_hash = ? AND console_sessions.auth_source = 'cognit
 		json.Unmarshal([]byte(groupsJSON), &reservation.PreviousIdentity.Groups) != nil ||
 		len(reservation.PreviousIdentity.Audience) == 0 || reservation.PreviousIdentity.Groups == nil ||
 		reservation.PreviousIdentity.Issuer == "" || !cognito.ValidSubject(reservation.PreviousIdentity.Subject) ||
-		issued < 0 || issued >= tokenExpiry {
+		issued < 0 || issued >= tokenExpiry || freshUntil < 0 || freshUntil > tokenExpiry {
 		return deny(cognito.ErrRefreshState)
 	}
 	copy(reservation.OriginalNonceHash[:], nonceHash)
@@ -98,6 +99,7 @@ WHERE console_sessions.token_hash = ? AND console_sessions.auth_source = 'cognit
 	}
 	reservation.PreviousIdentity.IssuedAt = time.Unix(0, issued).UTC()
 	reservation.PreviousIdentity.ExpiresAt = time.Unix(0, tokenExpiry).UTC()
+	reservation.PreviousClaimsFreshUntil = time.Unix(0, freshUntil).UTC()
 	reservation.IdleExpiresAt = time.Unix(0, idleExpiry).UTC()
 	reservation.AbsoluteExpiresAt = time.Unix(0, absoluteExpiry).UTC()
 	binding := cognito.RefreshTokenBinding{

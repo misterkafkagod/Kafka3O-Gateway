@@ -3,6 +3,7 @@ package cognito
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,15 +20,16 @@ type RefreshReservationRequest struct {
 }
 
 type RefreshReservation struct {
-	OperationID           string
-	SessionID             string
-	IdentityID            string
-	Generation            int64
-	PreviousIdentity      VerifiedIdentity `json:"-"`
-	OriginalNonceHash     [32]byte         `json:"-"`
-	EncryptedRefreshToken []byte           `json:"-"`
-	IdleExpiresAt         time.Time
-	AbsoluteExpiresAt     time.Time
+	OperationID              string
+	SessionID                string
+	IdentityID               string
+	Generation               int64
+	PreviousIdentity         VerifiedIdentity `json:"-"`
+	PreviousClaimsFreshUntil time.Time
+	OriginalNonceHash        [32]byte `json:"-"`
+	EncryptedRefreshToken    []byte   `json:"-"`
+	IdleExpiresAt            time.Time
+	AbsoluteExpiresAt        time.Time
 }
 
 type RefreshFailureStatus string
@@ -51,17 +53,21 @@ type RefreshExchangeResult struct {
 }
 
 type verifiedRefreshProof struct {
-	operationID           string
-	sessionID             string
-	identityID            string
-	previousGeneration    int64
-	identity              VerifiedIdentity
-	nonceHash             [32]byte
-	encryptedRefreshToken []byte
-	providerBinding       [32]byte
-	verifiedAt            time.Time
-	claimsFreshUntil      time.Time
-	sessionDeadline       time.Time
+	operationID              string
+	sessionID                string
+	identityID               string
+	previousGeneration       int64
+	previousIdentity         VerifiedIdentity
+	previousClaimsFreshUntil time.Time
+	previousEncryptedHash    [32]byte
+	identity                 VerifiedIdentity
+	nonceHash                [32]byte
+	encryptedRefreshToken    []byte
+	providerBinding          [32]byte
+	verifiedAt               time.Time
+	claimsFreshUntil         time.Time
+	sessionDeadline          time.Time
+	completionAttempted      atomic.Bool
 }
 
 type VerifiedRefresh struct {
@@ -69,15 +75,24 @@ type VerifiedRefresh struct {
 }
 
 type RefreshCompletionDetails struct {
-	OperationID           string
-	SessionID             string
-	IdentityID            string
-	PreviousGeneration    int64
-	Identity              VerifiedIdentity `json:"-"`
-	OriginalNonceHash     [32]byte         `json:"-"`
-	EncryptedRefreshToken []byte           `json:"-"`
-	ClaimsFreshUntil      time.Time
-	ValidUntil            time.Time
+	OperationID              string
+	SessionID                string
+	IdentityID               string
+	PreviousGeneration       int64
+	PreviousIdentity         VerifiedIdentity `json:"-"`
+	PreviousClaimsFreshUntil time.Time
+	PreviousEncryptedHash    [32]byte         `json:"-"`
+	Identity                 VerifiedIdentity `json:"-"`
+	OriginalNonceHash        [32]byte         `json:"-"`
+	EncryptedRefreshToken    []byte           `json:"-"`
+	ClaimsFreshUntil         time.Time
+	ValidUntil               time.Time
+}
+
+type RefreshCompletionRequest struct {
+	Refresh    VerifiedRefresh        `json:"-"`
+	Protector  *RefreshTokenProtector `json:"-"`
+	OccurredAt time.Time
 }
 
 var (

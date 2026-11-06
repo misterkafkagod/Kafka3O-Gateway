@@ -61,6 +61,12 @@ func TestCognitoRefreshReservationPersistsAndBlocksReplay(t *testing.T) {
 		bytes.Contains(reservation.EncryptedRefreshToken, []byte(fixtureRefresh)) {
 		t.Fatalf("refresh reservation did not recover its protected snapshot: %v", err)
 	}
+	var previousFreshUntil int64
+	if err := f.db.db.QueryRowContext(ctx, "SELECT claims_fresh_until_ns FROM cognito_session_credentials WHERE session_id = ?",
+		reservation.SessionID).Scan(&previousFreshUntil); err != nil ||
+		reservation.PreviousClaimsFreshUntil.UnixNano() != previousFreshUntil {
+		t.Fatalf("refresh reservation did not bind the previous freshness deadline: %v", err)
+	}
 	binding := cognito.RefreshTokenBinding{SessionID: reservation.SessionID, IdentityID: reservation.IdentityID, Generation: reservation.Generation}
 	if token, err := protector.Open(binding, reservation.EncryptedRefreshToken); err != nil || token != fixtureRefresh {
 		t.Fatalf("reserved refresh credential did not decrypt: %v", err)

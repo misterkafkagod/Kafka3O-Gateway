@@ -28,9 +28,14 @@ func (r VerifiedRefresh) Details(protector *RefreshTokenProtector, now time.Time
 	identity := proof.identity
 	identity.Audience = slices.Clone(identity.Audience)
 	identity.Groups = slices.Clone(identity.Groups)
+	previous := proof.previousIdentity
+	previous.Audience = slices.Clone(previous.Audience)
+	previous.Groups = slices.Clone(previous.Groups)
 	return RefreshCompletionDetails{
 		OperationID: proof.operationID, SessionID: proof.sessionID, IdentityID: proof.identityID,
-		PreviousGeneration: proof.previousGeneration, Identity: identity, OriginalNonceHash: proof.nonceHash,
+		PreviousGeneration: proof.previousGeneration, PreviousIdentity: previous,
+		PreviousClaimsFreshUntil: proof.previousClaimsFreshUntil, PreviousEncryptedHash: proof.previousEncryptedHash,
+		Identity: identity, OriginalNonceHash: proof.nonceHash,
 		EncryptedRefreshToken: slices.Clone(proof.encryptedRefreshToken), ClaimsFreshUntil: proof.claimsFreshUntil,
 		ValidUntil: validUntil,
 	}, nil

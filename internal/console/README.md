@@ -166,7 +166,7 @@ without affecting local accounts. Each successful use opens the encrypted
 refresh token in server memory; it is never returned to the browser.
 
 A refresh-reservation foundation records one durable audited attempt per
-session and refresh generation before any future provider request. It
+session and refresh generation before a provider request. It
 rechecks the enabled identity, session expiry and protected credential after
 queued work; stale claims may reserve a refresh but do not grant access.
 Unresolved reservations block session use and cannot be replayed, including
@@ -182,14 +182,24 @@ missing or invalid refreshed ID tokens. A returned refresh token must be
 valid; if the response omits it, the existing token is retained. The next
 generation's token is encrypted and returned only in a private, provider-
 bound completion proof, with claim and session deadlines rechecked. The
-reserved session remains blocked: successful completion and token rotation
-are not yet persisted. Provider or verification failures are audited against
-the reservation without provider tokens where possible; an interrupted
-operation or failed audit may leave only the durable attempt. Errors after
+reserved session remains blocked until that proof is completed. Provider or
+verification failures are audited against the reservation without provider
+tokens where possible; an interrupted operation or failed audit may leave
+only the durable attempt. Errors after
 the operation ID is allocated return that ID for investigation, but no
 completion proof. Never automatically retry that generation. Synthetic TLS
 tests cover both client modes, rotation, failures, concurrency and replay;
 real Cognito behavior remains unverified.
+
+The standalone completion action consumes that proof once and transactionally
+rechecks the reservation, absence of an outcome, unchanged identity and
+credential snapshot, provider/key binding, enabled identity, revocation and
+claim/session deadlines. It atomically stores the verified claim snapshot,
+the next generation's encrypted retained or rotated token, and a redacted
+success audit. A failed or uncertain completion does not retry the provider
+request or reuse the proof; an unresolved reservation remains blocked. If
+the proof is lost on restart before completion, a new sign-in is required.
+Session resolution does not yet invoke or coordinate this refresh flow.
 
 Local logout requires the session-bound CSRF token and can revoke a Cognito
 session even if its claims are stale, its identity is disabled, its session
@@ -201,8 +211,8 @@ clears invalid cookies, so an already-cleared cookie cannot be used to
 request logout. Expired and disabled sessions are not yet automatically
 purged; define and implement retention cleanup before deployment. The database
 and WAL may still contain encrypted historical bytes after logical deletion.
-Session issuance is not exposed through a browser route; atomic refresh
-completion, group-role bindings, live Cognito and the secured deployment
+Session issuance is not exposed through a browser route; automatic refresh
+coordination, group-role bindings, live Cognito and the secured deployment
 remain unimplemented.
 
 `cmd/console serve` composes local login, session inspection, password
