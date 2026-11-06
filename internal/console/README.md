@@ -273,11 +273,14 @@ By default the Gateway checkout is expected beside the UI checkout; set
 `KAFKA3O_GATEWAY_DIR` to its absolute path if it is elsewhere. The opt-in
 test checks the built bundle's denied and successful sign-in, mandatory
 password replacement, new session and logout, cookie attributes, and absence
-of legacy Gateway requests. It also checks that an untrusted CA and a wrong
-hostname fail. The DOM and cookie behavior are simulated by jsdom, with
-Node's verified HTTPS transport; this is not a native-browser TLS or cookie
-test and does not deploy the preview. The normal UI and Go test suites do not
-need the sibling checkout or run this fixture unless explicitly enabled.
+of legacy Gateway requests. A separate administrator client lists sessions
+and revokes the preview session; the preview receives a real 401 on its next
+request, clears its signed-in state and does not replay the mutation. The
+test also checks that an untrusted CA and a wrong hostname fail. The DOM and
+cookie behavior are simulated by jsdom, with Node's verified HTTPS transport;
+this is not a native-browser TLS or cookie test and does not deploy the
+preview. The normal UI and Go test suites do not need the sibling checkout or
+run this fixture unless explicitly enabled.
 
 Before deploying a secured Console, every protected route must apply session
 and authorization checks and deny unknown purposes. Administrator recovery
