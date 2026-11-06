@@ -78,6 +78,7 @@ func (a authenticateLocal) Execute(ctx context.Context, username, password strin
 	result := LocalAuthenticationResult{EventID: eventID, OperationID: attempt.EventID, OccurredAt: a.now()}
 	if nameErr == nil && lookupErr == nil && verifyErr == nil && account.ID != "" && matches {
 		result.AccountID, result.PasswordHash = account.ID, account.PasswordHash
+		result.CredentialVersion = account.CredentialVersion
 	}
 	authenticated, auditErr := a.store.FinishLocalAuthentication(ctx, result)
 	if lookupErr != nil || verifyErr != nil || auditErr != nil {

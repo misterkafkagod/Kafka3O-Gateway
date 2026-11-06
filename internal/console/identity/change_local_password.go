@@ -73,8 +73,12 @@ func (c changeLocalPassword) Execute(ctx context.Context, accountID, username, c
 	if err != nil {
 		return err
 	}
+	revocationEventID, err := newOpaqueID(c.random)
+	if err != nil {
+		return err
+	}
 	return c.store.UpdateLocalPassword(ctx, LocalPasswordUpdate{
 		AccountID: accountID, PreviousHash: stored.PasswordHash, NewHash: newHash,
-		EventID: eventID, OccurredAt: c.now(),
+		EventID: eventID, RevocationEventID: revocationEventID, OccurredAt: c.now(),
 	})
 }

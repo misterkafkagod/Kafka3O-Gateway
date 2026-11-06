@@ -32,15 +32,26 @@ are not a confidentiality mechanism for low-entropy usernames or addresses.
 Authentication attempts and outcomes are correlated in the audit store.
 Failures are recorded without the supplied username, address, password, or
 bootstrap secret. Password replacement and its audit event commit atomically,
-and stale credentials cannot overwrite a concurrent change.
+and stale credentials cannot overwrite a concurrent change. The session
+foundation stores only SHA-256 digests of independent, random session and
+CSRF tokens. Session use rechecks the account and credential version;
+password changes revoke all local sessions in the same audited transaction.
+Default lifetimes are 30 minutes idle and eight hours absolute; deployments
+may configure shorter or longer values up to the 24-hour absolute maximum.
 
-Before exposing these operations, the Console must implement HTTPS sessions,
-CSRF/origin protection, and an endpoint that derives the account identity
-from the authenticated session. It must restrict a bootstrap account to
-changing its password until replacement succeeds, revoke existing sessions
-atomically on password change or reset, and apply the same throttling to
-recovery flows. Bootstrap access also needs an appropriately restricted,
-rate-limited administrative channel and auditable failed attempts. Neither
-the core authenticator nor the password-change helper is a session or
-authorization boundary. Deployment, session integration, administrator
-recovery, audit retention, and end-to-end redaction remain unverified.
+The cookie and CSRF helpers provide a host-only Secure, HttpOnly, SameSite
+Strict session cookie, a separate script-readable Secure CSRF cookie, and an
+exact HTTPS Origin and session-bound CSRF-header check. They are not wired to
+HTTP handlers. Never log the raw session or CSRF token.
+
+Before exposing these operations, the Console must enforce verified HTTPS and
+wire these helpers on every relevant route. It must derive the account
+identity from the resolved session, restrict bootstrap accounts to password
+replacement/logout/session information, and deny unknown access purposes.
+Account disable and administrator reset must atomically revoke sessions,
+protect the last enabled local global ADMIN, and apply throttling to recovery.
+Bootstrap access also needs a restricted, rate-limited administrative channel
+and auditable failed attempts. The standalone helpers are not a complete
+authentication or authorization boundary. Deployment, HTTP integration,
+administrator recovery, audit retention, and end-to-end redaction remain
+unverified.

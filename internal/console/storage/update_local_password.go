@@ -37,7 +37,8 @@ func (d *Database) UpdateLocalPassword(ctx context.Context, update identity.Loca
 			result = errors.Join(result, fmt.Errorf("roll back local password update: %w", err))
 		}
 	}()
-	res, err := tx.ExecContext(ctx, `UPDATE local_accounts SET password_hash = ?, must_change_password = 0
+	res, err := tx.ExecContext(ctx, `UPDATE local_accounts SET password_hash = ?, must_change_password = 0,
+credential_version = credential_version + 1
 WHERE identity_id = ? AND password_hash = ? AND EXISTS (
 SELECT 1 FROM identities WHERE id = local_accounts.identity_id AND enabled = 1
 )`, update.NewHash, update.AccountID, update.PreviousHash)
@@ -50,6 +51,26 @@ SELECT 1 FROM identities WHERE id = local_accounts.identity_id AND enabled = 1
 	}
 	if count != 1 {
 		event.Decision, event.Outcome = "denied", AuditFailed
+	} else {
+		revoked, err := tx.ExecContext(ctx, `UPDATE console_sessions SET revoked_at_ns = ?
+WHERE identity_id = ? AND revoked_at_ns IS NULL`, update.OccurredAt.UTC().UnixNano(), update.AccountID)
+		if err != nil {
+			return fmt.Errorf("revoke local sessions after password update: %w", err)
+		}
+		revokedCount, err := revoked.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("inspect revoked local sessions: %w", err)
+		}
+		if revokedCount > 0 {
+			revocation := AuditEvent{
+				EventID: update.RevocationEventID, OperationID: update.EventID, OccurredAt: update.OccurredAt,
+				ActorID: update.AccountID, Source: AuditSourceLocal, Action: "console.sessions.revoke_on_password_change",
+				Decision: "allowed", Outcome: AuditSucceeded,
+			}
+			if err := insertAuditEvent(ctx, tx, revocation); err != nil {
+				return err
+			}
+		}
 	}
 	if err := insertAuditEvent(ctx, tx, event); err != nil {
 		return err

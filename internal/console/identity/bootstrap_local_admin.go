@@ -56,7 +56,7 @@ func (b bootstrapLocalAdmin) Execute(ctx context.Context, secret, username, pass
 	if err != nil {
 		return LocalAccount{}, err
 	}
-	account := LocalAccount{ID: id, Username: name, PasswordHash: hash, Enabled: true, MustChangePassword: true}
+	account := LocalAccount{ID: id, Username: name, PasswordHash: hash, Enabled: true, MustChangePassword: true, CredentialVersion: 1}
 	if err := b.store.CreateInitialAdmin(ctx, account, eventID, b.now()); err != nil {
 		return LocalAccount{}, err
 	}

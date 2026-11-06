@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 2 {
+	if version > 3 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -83,6 +83,28 @@ CREATE INDEX local_auth_attempts_time ON local_auth_attempts(occurred_at_ns);
 PRAGMA user_version = 2;`
 		if _, err := tx.ExecContext(ctx, localAccounts); err != nil {
 			return fmt.Errorf("apply local account schema: %w", err)
+		}
+		version = 2
+	}
+	if version == 2 {
+		const sessions = `
+ALTER TABLE local_accounts ADD COLUMN credential_version INTEGER NOT NULL DEFAULT 1 CHECK (credential_version > 0);
+CREATE TABLE console_sessions (
+    id TEXT PRIMARY KEY NOT NULL,
+    identity_id TEXT NOT NULL REFERENCES identities(id),
+    credential_version INTEGER NOT NULL CHECK (credential_version > 0),
+    token_hash BLOB NOT NULL UNIQUE,
+    csrf_hash BLOB NOT NULL,
+    created_at_ns INTEGER NOT NULL,
+    idle_expires_at_ns INTEGER NOT NULL,
+    absolute_expires_at_ns INTEGER NOT NULL,
+    revoked_at_ns INTEGER,
+    CHECK (created_at_ns < idle_expires_at_ns AND idle_expires_at_ns <= absolute_expires_at_ns)
+);
+CREATE INDEX console_sessions_identity ON console_sessions(identity_id);
+PRAGMA user_version = 3;`
+		if _, err := tx.ExecContext(ctx, sessions); err != nil {
+			return fmt.Errorf("apply session schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

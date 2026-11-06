@@ -257,7 +257,7 @@ func TestAuthenticationRechecksDisabledOrChangedCredentials(t *testing.T) {
 	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	result := identity.LocalAuthenticationResult{AccountID: account.ID, PasswordHash: hash, EventID: "disabled", OperationID: "attempt", OccurredAt: time.Now()}
+	result := identity.LocalAuthenticationResult{AccountID: account.ID, PasswordHash: hash, CredentialVersion: 1, EventID: "disabled", OperationID: "attempt", OccurredAt: time.Now()}
 	if _, err := db.db.ExecContext(ctx, "UPDATE identities SET enabled = 0 WHERE id = ?", account.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -277,5 +277,12 @@ func TestAuthenticationRechecksDisabledOrChangedCredentials(t *testing.T) {
 	result.EventID = "changed"
 	if ok, err := db.FinishLocalAuthentication(ctx, result); err != nil || ok {
 		t.Fatalf("changed credential: authenticated=%t err=%v", ok, err)
+	}
+	if _, err := db.db.ExecContext(ctx, "UPDATE local_accounts SET password_hash = ?, credential_version = 2 WHERE identity_id = ?", hash, account.ID); err != nil {
+		t.Fatal(err)
+	}
+	result.EventID = "version-changed"
+	if ok, err := db.FinishLocalAuthentication(ctx, result); err != nil || ok {
+		t.Fatalf("changed credential version: authenticated=%t err=%v", ok, err)
 	}
 }

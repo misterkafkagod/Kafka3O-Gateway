@@ -12,6 +12,7 @@ type LocalAccount struct {
 	PasswordHash       string `json:"-"`
 	Enabled            bool
 	MustChangePassword bool
+	CredentialVersion  int64 `json:"-"`
 }
 
 type InitialAdminStore interface {
@@ -30,11 +31,12 @@ type LocalAuthenticationAttempt struct {
 }
 
 type LocalAuthenticationResult struct {
-	AccountID    string
-	PasswordHash string `json:"-"`
-	EventID      string
-	OperationID  string
-	OccurredAt   time.Time
+	AccountID         string
+	PasswordHash      string `json:"-"`
+	CredentialVersion int64  `json:"-"`
+	EventID           string
+	OperationID       string
+	OccurredAt        time.Time
 }
 
 type LocalAuthenticationStore interface {
@@ -44,11 +46,12 @@ type LocalAuthenticationStore interface {
 }
 
 type LocalPasswordUpdate struct {
-	AccountID    string
-	PreviousHash string `json:"-"`
-	NewHash      string `json:"-"`
-	EventID      string
-	OccurredAt   time.Time
+	AccountID         string
+	PreviousHash      string `json:"-"`
+	NewHash           string `json:"-"`
+	EventID           string
+	RevocationEventID string
+	OccurredAt        time.Time
 }
 
 type LocalPasswordStore interface {

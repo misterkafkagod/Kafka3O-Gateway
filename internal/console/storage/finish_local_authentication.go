@@ -18,7 +18,9 @@ func (d *Database) FinishLocalAuthentication(ctx context.Context, authentication
 	if err := validateAuditEvent(event); err != nil {
 		return false, err
 	}
-	if authentication.OperationID == "" || (authentication.AccountID == "") != (authentication.PasswordHash == "") {
+	if authentication.OperationID == "" || (authentication.AccountID == "") != (authentication.PasswordHash == "") ||
+		(authentication.AccountID == "" && authentication.CredentialVersion != 0) ||
+		(authentication.AccountID != "" && authentication.CredentialVersion < 1) {
 		return false, identity.ErrInvalidLocalAccount
 	}
 	if authentication.AccountID != "" {
@@ -42,7 +44,8 @@ func (d *Database) FinishLocalAuthentication(ctx context.Context, authentication
 		err = tx.QueryRowContext(ctx, `SELECT EXISTS (
 SELECT 1 FROM local_accounts JOIN identities ON identities.id = local_accounts.identity_id
 WHERE identities.id = ? AND identities.enabled = 1 AND local_accounts.password_hash = ?
-)`, authentication.AccountID, authentication.PasswordHash).Scan(&authenticated)
+AND local_accounts.credential_version = ?
+)`, authentication.AccountID, authentication.PasswordHash, authentication.CredentialVersion).Scan(&authenticated)
 		if err != nil {
 			return false, fmt.Errorf("recheck local identity: %w", err)
 		}

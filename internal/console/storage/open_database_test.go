@@ -2,12 +2,16 @@ package storage
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/authorization"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 )
 
 func TestOpenDatabaseCreatesDurableDatabaseWithRequiredSettings(t *testing.T) {
@@ -27,7 +31,7 @@ func TestOpenDatabaseCreatesDurableDatabaseWithRequiredSettings(t *testing.T) {
 			t.Fatalf("%s: %v", query, err)
 		}
 	}
-	if journal != "wal" || sync != 2 || foreignKeys != 1 || version != 2 {
+	if journal != "wal" || sync != 2 || foreignKeys != 1 || version != 3 {
 		t.Fatalf("journal=%q synchronous=%d foreignKeys=%d version=%d", journal, sync, foreignKeys, version)
 	}
 	info, err := os.Stat(path)
@@ -107,7 +111,7 @@ func TestOpenDatabaseMigratesVersionOneWithoutLosingAudit(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{
-		"DROP TABLE role_grants", "DROP TABLE local_accounts", "DROP TABLE identities",
+		"DROP TABLE console_sessions", "DROP TABLE role_grants", "DROP TABLE local_accounts", "DROP TABLE identities",
 		"DROP TABLE bootstrap_state", "DROP TABLE local_auth_attempts", "PRAGMA user_version = 1",
 	} {
 		if _, err := db.db.ExecContext(ctx, statement); err != nil {
@@ -127,7 +131,47 @@ func TestOpenDatabaseMigratesVersionOneWithoutLosingAudit(t *testing.T) {
 		t.Fatalf("events after migration = %+v, %v", events, err)
 	}
 	var version int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 2 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 3 {
 		t.Fatalf("schema version = %d, %v", version, err)
+	}
+}
+
+func TestOpenDatabaseMigratesVersionTwoWithoutLosingAccounts(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "console.sqlite")
+	db, err := OpenDatabase(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, err := identity.HashLocalPassword(rand.Reader, "initial passphrase")
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := identity.LocalAccount{ID: "user-1", Username: "admin", PasswordHash: hash, Enabled: true, MustChangePassword: true}
+	if err := db.CreateInitialAdmin(ctx, account, "bootstrap", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		"DROP TABLE console_sessions", "ALTER TABLE local_accounts DROP COLUMN credential_version", "PRAGMA user_version = 2",
+	} {
+		if _, err := db.db.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = OpenDatabase(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	stored, err := db.FindLocalAccount(ctx, "admin")
+	if err != nil || stored.ID != account.ID || stored.PasswordHash != hash || stored.CredentialVersion != 1 {
+		t.Fatalf("account was not preserved during migration: err=%v", err)
+	}
+	grants, err := db.ListAccountGrants(ctx, account.ID)
+	if err != nil || len(grants) != 1 || grants[0].Role != authorization.RoleAdmin {
+		t.Fatalf("grant was not preserved during migration: err=%v", err)
 	}
 }

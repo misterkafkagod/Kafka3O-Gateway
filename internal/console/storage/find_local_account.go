@@ -16,10 +16,10 @@ func (d *Database) FindLocalAccount(ctx context.Context, username string) (ident
 	}
 	var account identity.LocalAccount
 	err = d.db.QueryRowContext(ctx, `SELECT identities.id, local_accounts.username, local_accounts.password_hash,
-identities.enabled, local_accounts.must_change_password
+identities.enabled, local_accounts.must_change_password, local_accounts.credential_version
 FROM local_accounts JOIN identities ON identities.id = local_accounts.identity_id
 WHERE local_accounts.username = ?`, name).Scan(
-		&account.ID, &account.Username, &account.PasswordHash, &account.Enabled, &account.MustChangePassword,
+		&account.ID, &account.Username, &account.PasswordHash, &account.Enabled, &account.MustChangePassword, &account.CredentialVersion,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return identity.LocalAccount{}, identity.ErrAccountNotFound
