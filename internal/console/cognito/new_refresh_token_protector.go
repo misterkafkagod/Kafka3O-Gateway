@@ -29,5 +29,7 @@ func NewRefreshTokenProtector(attempts *AttemptManager, random io.Reader, key []
 	if err != nil {
 		return nil, ErrInvalidRefreshProtectionConfig
 	}
-	return &RefreshTokenProtector{aead: aead, random: random, providerBinding: attempts.providerBinding}, nil
+	return &RefreshTokenProtector{
+		aead: aead, random: random, providerBinding: attempts.providerBinding, providerIssuer: attempts.providerIssuer,
+	}, nil
 }

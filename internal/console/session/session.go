@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/authorization"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 )
 
@@ -80,6 +81,12 @@ type CognitoRefreshStore interface {
 	cognito.RefreshStore
 	InspectCognitoRefresh(context.Context, [32]byte, time.Time) (CognitoRefreshState, error)
 	CompleteCognitoRefresh(context.Context, cognito.RefreshCompletionRequest) error
+}
+
+// SessionGrantStore revalidates the session and returns only grants for the
+// requested scope. ErrInvalidSession has the same exact contract as Store.
+type SessionGrantStore interface {
+	ResolveSessionGrants(context.Context, [32]byte, string, time.Time, *cognito.RefreshTokenProtector) ([]authorization.Grant, error)
 }
 
 type CognitoRefreshState uint8

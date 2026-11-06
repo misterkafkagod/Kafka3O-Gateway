@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 8 {
+	if version > 9 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -202,6 +202,21 @@ CREATE INDEX cognito_session_credentials_identity ON cognito_session_credentials
 PRAGMA user_version = 8;`
 		if _, err := tx.ExecContext(ctx, cognitoSessions); err != nil {
 			return fmt.Errorf("apply Cognito session schema: %w", err)
+		}
+		version = 8
+	}
+	if version == 8 {
+		const cognitoGroupBindings = `
+CREATE TABLE cognito_group_bindings (
+    issuer TEXT COLLATE BINARY NOT NULL CHECK (length(issuer) > 0),
+    group_name TEXT COLLATE BINARY NOT NULL CHECK (length(group_name) > 0),
+    cluster_id TEXT COLLATE BINARY NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('VIEWER', 'OPERATOR', 'ADMIN')),
+    PRIMARY KEY (issuer, group_name, cluster_id)
+);
+PRAGMA user_version = 9;`
+		if _, err := tx.ExecContext(ctx, cognitoGroupBindings); err != nil {
+			return fmt.Errorf("apply Cognito group binding schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

@@ -214,6 +214,20 @@ is not treated as definite invalidity or permission to replace a session.
 The existing local-only and non-refreshing Cognito managers do not coordinate
 refresh.
 
+The standalone session-grant resolver combines direct grants with an
+initially empty, server-owned table of exact issuer and case-sensitive
+verified group bindings. Each binding grants one global or cluster-specific
+VIEWER, OPERATOR or ADMIN role. Resolution returns at most the strongest
+global and requested-cluster grants, never the group names. Local sessions
+receive direct grants only and do not query the group-mapping table. The
+resolver rechecks the current session,
+account, provider/key binding, pending refresh, claim/session deadlines and
+current mappings transactionally; malformed or unavailable state fails
+closed. Every authorization decision must resolve current grants again; a
+returned snapshot is not a durable authorization or delegation. Group
+mapping administration and independent Gateway enforcement remain P54/P55;
+no mapping-management or Kafka route is exposed by this foundation.
+
 Local logout requires the session-bound CSRF token and can revoke a Cognito
 session even if its claims are stale, its identity is disabled, its session
 has expired, or its provider or encryption key is unavailable, provided the
@@ -241,8 +255,8 @@ stopped. Operators must monitor errors and backlog. The database, WAL and
 backups may retain encrypted historical bytes after logical deletion; their
 retention, secure disposal and deployed-volume behavior remain unverified.
 Session issuance is not exposed through a browser route, and the standalone
-Console process does not yet enable the refreshing manager. Group-role
-bindings, live Cognito and the secured deployment remain unimplemented.
+Console process does not yet enable the refreshing manager. Group-binding
+administration, live Cognito and the secured deployment remain unimplemented.
 The authentication-only preview offers explicit sign-out when session
 inspection is unavailable; a missing CSRF token or uncertain logout does not
 silently replace the session or automatically retry the mutation.

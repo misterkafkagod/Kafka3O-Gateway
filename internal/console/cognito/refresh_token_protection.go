@@ -19,6 +19,7 @@ type RefreshTokenProtector struct {
 	aead            cipher.AEAD
 	random          io.Reader
 	providerBinding [32]byte
+	providerIssuer  string
 	mu              sync.Mutex
 }
 

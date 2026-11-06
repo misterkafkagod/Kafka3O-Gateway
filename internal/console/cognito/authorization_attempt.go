@@ -75,6 +75,7 @@ type AttemptManager struct {
 	aead            cipher.AEAD
 	keyFingerprint  [32]byte
 	providerBinding [32]byte
+	providerIssuer  string
 	now             func() time.Time
 	mu              sync.Mutex
 }

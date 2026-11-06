@@ -34,6 +34,6 @@ func NewAttemptManager(store AttemptStore, random io.Reader, now func() time.Tim
 	}
 	return &AttemptManager{
 		store: store, random: random, now: now, aead: aead,
-		keyFingerprint: sha256.Sum256(key), providerBinding: binding,
+		keyFingerprint: sha256.Sum256(key), providerBinding: binding, providerIssuer: provider.Issuer,
 	}, nil
 }

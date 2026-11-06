@@ -490,7 +490,7 @@ func TestVersionFiveMigrationPreservesAccountsSessionsAndResetReservations(t *te
 		t.Fatal(err)
 	}
 	path := f.db.path
-	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE cognito_session_credentials; DROP TABLE cognito_identities; ALTER TABLE console_sessions DROP COLUMN auth_source; DROP TABLE cognito_authorization_attempts; DROP TABLE local_account_creation_attempts; PRAGMA user_version = 5"); err != nil {
+	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE cognito_group_bindings; DROP TABLE cognito_session_credentials; DROP TABLE cognito_identities; ALTER TABLE console_sessions DROP COLUMN auth_source; DROP TABLE cognito_authorization_attempts; DROP TABLE local_account_creation_attempts; PRAGMA user_version = 5"); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.db.Close(); err != nil {
@@ -521,7 +521,7 @@ func TestVersionFiveMigrationPreservesAccountsSessionsAndResetReservations(t *te
 		t.Fatalf("version-five migration lost the pending reset: %v", err)
 	}
 	var version, tables int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 8 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 9 {
 		t.Fatalf("version-five migration schema version=%d err=%v", version, err)
 	}
 	err = db.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'local_account_creation_attempts'").Scan(&tables)
