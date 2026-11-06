@@ -78,6 +78,22 @@ type LocalAdminActor struct {
 	SessionID string
 }
 
+type AdminSessionRevocation struct {
+	Actor       LocalAdminActor
+	SessionID   string
+	OperationID string
+	EventID     string
+	OccurredAt  time.Time
+}
+
+type AdminSessionRevocationResult struct {
+	OperationID string
+}
+
+type AdminSessionRevocationStore interface {
+	RevokeAdminSession(ctx context.Context, revocation AdminSessionRevocation) error
+}
+
 type LocalAccountStateChange struct {
 	Actor             LocalAdminActor
 	TargetID          string
@@ -198,37 +214,41 @@ type LocalAccountCreationResult struct {
 }
 
 var (
-	ErrInvalidUsername         = errors.New("invalid local username")
-	ErrInvalidBootstrapConfig  = errors.New("a strong bootstrap secret and dependencies are required")
-	ErrInvalidBootstrapSecret  = errors.New("bootstrap authentication failed")
-	ErrBootstrapThrottled      = errors.New("bootstrap temporarily throttled")
-	ErrAlreadyBootstrapped     = errors.New("local administrator has already been bootstrapped")
-	ErrAccountNotFound         = errors.New("local account not found")
-	ErrInvalidLocalAccount     = errors.New("invalid local account")
-	ErrAuthenticationFailed    = errors.New("authentication failed")
-	ErrAuthenticationThrottled = errors.New("authentication temporarily throttled")
-	ErrAuthenticationConfig    = errors.New("local authentication dependencies are required")
-	ErrInvalidClientAddress    = errors.New("a valid client address is required")
-	ErrPasswordUnchanged       = errors.New("the replacement password must differ from the current password")
-	ErrInvalidAdminSession     = errors.New("administrator session is unavailable or expired")
-	ErrGlobalAdminRequired     = errors.New("global administrator access is required")
-	ErrAdminPasswordChange     = errors.New("administrator must change the temporary password")
-	ErrLastLocalGlobalAdmin    = errors.New("the last enabled local global administrator cannot be disabled")
-	ErrAccountAdminConfig      = errors.New("account administration dependencies are required")
-	ErrAccountStateUnknown     = errors.New("local account state change outcome is unknown")
-	ErrAccountStateAudit       = errors.New("local account state change could not be audited")
-	ErrInvalidAccountList      = errors.New("invalid local account listing request")
-	ErrInvalidAccountCursor    = errors.New("local account listing cursor is invalid")
-	ErrAccountListAudit        = errors.New("local account listing could not be audited")
-	ErrPasswordResetThrottled  = errors.New("password reset temporarily throttled")
-	ErrInvalidPasswordReset    = errors.New("password reset attempt is unavailable or already used")
-	ErrPasswordResetExpired    = errors.New("password reset attempt has expired")
-	ErrLocalAccountChanged     = errors.New("local account changed during password reset")
-	ErrPasswordResetUnknown    = errors.New("password reset outcome is unknown")
-	ErrPasswordResetAudit      = errors.New("password reset failure could not be audited")
-	ErrUsernameTaken           = errors.New("local username is already in use")
-	ErrInvalidAccountCreation  = errors.New("local account creation attempt is unavailable or already used")
-	ErrAccountCreationExpired  = errors.New("local account creation attempt has expired")
-	ErrAccountCreationUnknown  = errors.New("local account creation outcome is unknown")
-	ErrAccountCreationAudit    = errors.New("local account creation failure could not be audited")
+	ErrInvalidUsername           = errors.New("invalid local username")
+	ErrInvalidBootstrapConfig    = errors.New("a strong bootstrap secret and dependencies are required")
+	ErrInvalidBootstrapSecret    = errors.New("bootstrap authentication failed")
+	ErrBootstrapThrottled        = errors.New("bootstrap temporarily throttled")
+	ErrAlreadyBootstrapped       = errors.New("local administrator has already been bootstrapped")
+	ErrAccountNotFound           = errors.New("local account not found")
+	ErrInvalidLocalAccount       = errors.New("invalid local account")
+	ErrAuthenticationFailed      = errors.New("authentication failed")
+	ErrAuthenticationThrottled   = errors.New("authentication temporarily throttled")
+	ErrAuthenticationConfig      = errors.New("local authentication dependencies are required")
+	ErrInvalidClientAddress      = errors.New("a valid client address is required")
+	ErrPasswordUnchanged         = errors.New("the replacement password must differ from the current password")
+	ErrInvalidAdminSession       = errors.New("administrator session is unavailable or expired")
+	ErrGlobalAdminRequired       = errors.New("global administrator access is required")
+	ErrAdminPasswordChange       = errors.New("administrator must change the temporary password")
+	ErrInvalidSessionID          = errors.New("invalid session identifier")
+	ErrAdminSessionUnavailable   = errors.New("target session is unavailable or expired")
+	ErrAdminSessionRevokeAudit   = errors.New("session revocation could not be audited")
+	ErrAdminSessionRevokeUnknown = errors.New("session revocation outcome is unknown")
+	ErrLastLocalGlobalAdmin      = errors.New("the last enabled local global administrator cannot be disabled")
+	ErrAccountAdminConfig        = errors.New("account administration dependencies are required")
+	ErrAccountStateUnknown       = errors.New("local account state change outcome is unknown")
+	ErrAccountStateAudit         = errors.New("local account state change could not be audited")
+	ErrInvalidAccountList        = errors.New("invalid local account listing request")
+	ErrInvalidAccountCursor      = errors.New("local account listing cursor is invalid")
+	ErrAccountListAudit          = errors.New("local account listing could not be audited")
+	ErrPasswordResetThrottled    = errors.New("password reset temporarily throttled")
+	ErrInvalidPasswordReset      = errors.New("password reset attempt is unavailable or already used")
+	ErrPasswordResetExpired      = errors.New("password reset attempt has expired")
+	ErrLocalAccountChanged       = errors.New("local account changed during password reset")
+	ErrPasswordResetUnknown      = errors.New("password reset outcome is unknown")
+	ErrPasswordResetAudit        = errors.New("password reset failure could not be audited")
+	ErrUsernameTaken             = errors.New("local username is already in use")
+	ErrInvalidAccountCreation    = errors.New("local account creation attempt is unavailable or already used")
+	ErrAccountCreationExpired    = errors.New("local account creation attempt has expired")
+	ErrAccountCreationUnknown    = errors.New("local account creation outcome is unknown")
+	ErrAccountCreationAudit      = errors.New("local account creation failure could not be audited")
 )

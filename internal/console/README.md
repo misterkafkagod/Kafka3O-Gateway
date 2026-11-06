@@ -105,6 +105,18 @@ a new sign-in. If a password-change response is lost, its outcome may be
 unknown: do not automatically retry; sign in afresh and investigate audit
 records. Never log the raw session or CSRF token.
 
+The local session-administration foundation can revoke one active local
+session by its separate opaque session ID. It requires an unrestricted
+current local global ADMIN and rechecks the actor's session, expiry and
+grant in the same transaction. The target revocation and its redacted audit
+outcome commit atomically; an unavailable or expired target is rejected.
+An administrator may revoke their own session without disabling the account
+or other sessions. Audit failure blocks the revocation, and an uncertain
+commit requires investigation by operation ID rather than an automatic
+retry. Invalid or unknown submitted IDs, session tokens, CSRF values and
+usernames are not recorded in the revocation audit. This service is not
+yet exposed through the HTTPS API or an administration UI.
+
 The account-state service atomically updates the account state and
 credential version, revokes its sessions, and records the change. It rechecks
 the current local session and global ADMIN grant in the same transaction and
