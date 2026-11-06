@@ -1,8 +1,9 @@
 # Console security foundations
 
-The identity, authorization, and SQLite packages are building blocks only.
-They are not connected to the running Gateway or a Console HTTP server.
-The existing shared-token and manual-test paths are not user authorization.
+The identity, authorization, and SQLite packages are not connected to the
+running Gateway. A loopback-only Console process exposes session endpoints
+for development, but is not deployed or a complete security boundary. The
+existing shared-token and manual-test paths are not user authorization.
 
 Local passwords use Argon2id with a unique random salt. Usernames are
 case-insensitive ASCII identifiers, 1–64 characters, beginning with a letter
@@ -70,22 +71,38 @@ may configure shorter or longer values up to the 24-hour absolute maximum.
 
 The cookie and CSRF helpers provide a host-only Secure, HttpOnly, SameSite
 Strict session cookie, a separate script-readable Secure CSRF cookie, and an
-exact HTTPS Origin and session-bound CSRF-header check. Standalone HTTP
-handlers implement local login, session inspection, password replacement, and
-logout. They accept direct TLS requests only, use the direct peer address for
-throttling, and require the configured exact HTTPS origin. They are tested but
-not mounted in any running process and expose no Kafka routes. A successful
-password change revokes all local sessions and requires a new sign-in. Never
-log the raw session or CSRF token.
+exact HTTPS Origin and session-bound CSRF-header check.
 
-Before exposing these operations, the Console needs a verified HTTPS server
-and must wire session and authorization checks on every relevant route. It
-must restrict bootstrap accounts to password replacement/logout/session
-information and deny unknown access purposes. Account disable and
-administrator reset must atomically revoke sessions, protect the last enabled
-local global ADMIN, and apply throttling to recovery. Bootstrap access also
-has a local pipe-only administrative command but no deployed bootstrap channel.
-The standalone handlers are not a
-complete authentication or authorization boundary. Runtime composition,
-deployment, administrator
+`cmd/console serve` composes local login, session inspection, password
+replacement and logout into a TLS-only server. It refuses to start without an
+enabled local global administrator, and exposes no Kafka or account-management
+routes. Configure it with:
+
+- `KAFKA3O_CONSOLE_DB_PATH`: the absolute path to the bootstrapped database.
+- `KAFKA3O_CONSOLE_ORIGIN`: the exact browser HTTPS origin, with no path.
+- `KAFKA3O_CONSOLE_TLS_CERT_FILE` and `KAFKA3O_CONSOLE_TLS_KEY_FILE`: absolute
+  paths to the certificate chain and matching private key.
+- `KAFKA3O_CONSOLE_LISTEN`: a numeric loopback address and nonzero port;
+  defaults to `127.0.0.1:8443`. Non-loopback listeners are not supported yet.
+
+Remove `KAFKA3O_CONSOLE_BOOTSTRAP_SECRET` from the server environment before
+starting it. The private key must be owner-only on Unix; Windows deployments
+must separately configure and verify restrictive ACLs. The certificate must
+match the configured origin, be valid at startup and permit server
+authentication. TLS 1.2 or newer is required. Clients must independently
+verify the certificate chain and hostname; a self-signed certificate is not
+automatically trusted. The handlers use the direct peer address for throttling
+and never trust forwarded headers.
+
+Bootstrap sessions may inspect their session, change the temporary password or
+log out. A successful password change revokes all local sessions and requires
+a new sign-in. If a password-change response is lost, its outcome may be
+unknown: do not automatically retry; sign in afresh and investigate audit
+records. Never log the raw session or CSRF token.
+
+Before deploying a secured Console, every future protected route must apply
+session and authorization checks and deny unknown purposes. Account disable
+and administrator reset must atomically revoke sessions, protect the last
+enabled local global ADMIN, and apply throttling to recovery. A deployed
+bootstrap channel, browser integration, Gateway enforcement, administrator
 recovery, audit retention, and end-to-end redaction remain unverified.

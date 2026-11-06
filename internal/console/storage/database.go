@@ -78,6 +78,8 @@ var (
 	ErrDatabaseInUse       = errors.New("Console database is already in use")
 	ErrInvalidDatabaseLock = errors.New("Console database lock must be an owner-only regular file")
 	ErrUnsupportedLock     = errors.New("Console database locking is unsupported on this platform")
+	ErrBootstrapRequired   = errors.New("initial local administrator has not been bootstrapped")
+	ErrNoLocalGlobalAdmin  = errors.New("no enabled local global administrator is available; recovery is required")
 	ErrUnsupportedSchema   = errors.New("database schema version is newer than supported")
 	ErrInvalidAuditEvent   = errors.New("invalid audit event")
 	ErrInvalidAuditFilter  = errors.New("invalid audit filter")

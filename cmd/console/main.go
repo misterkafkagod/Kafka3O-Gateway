@@ -15,8 +15,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "console:", err)
 		os.Exit(1)
 	}
-	if _, err := fmt.Fprintln(os.Stdout, "Initial administrator created. Sign in and replace the temporary password."); err != nil {
-		fmt.Fprintln(os.Stderr, "console: bootstrap completed, but writing confirmation failed:", err)
-		os.Exit(1)
+	if len(os.Args) == 2 && os.Args[1] == "bootstrap" {
+		if _, err := fmt.Fprintln(os.Stdout, "Initial administrator created. Sign in and replace the temporary password."); err != nil {
+			fmt.Fprintln(os.Stderr, "console: bootstrap completed, but writing confirmation failed:", err)
+			os.Exit(1)
+		}
 	}
 }
