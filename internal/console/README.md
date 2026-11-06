@@ -21,6 +21,20 @@ to 10 attempts per 15-minute window, including successful attempts. The window
 and anonymous denial audit survive restarts; an unavailable audit store blocks
 bootstrap. Each bootstrap service admits at most four concurrent password hashes.
 
+`cmd/console` provides an offline `bootstrap` command. Run it only as a
+trusted operating-system account with access to the dedicated Console database;
+database-file or host administrators can bypass application policy. Set
+`KAFKA3O_CONSOLE_DB_PATH` to an absolute database path and supply the separately
+provisioned expected secret in `KAFKA3O_CONSOLE_BOOTSTRAP_SECRET`. A trusted
+local process must pipe the presented secret, one LF, the username, one LF,
+and the exact UTF-8 password bytes to the command. Do not append a newline
+unless it is part of the password. Terminal and regular-file input are refused
+to avoid echoed or persisted plaintext. Do not put credentials in command
+arguments, shell history, logs, or plaintext files. Remove the bootstrap secret
+from the environment and its provisioning system after successful use.
+Stop any Console server before this offline operation; this is not a network
+endpoint or an account-recovery tool.
+
 Local authentication uses generic failures for unknown, invalid, disabled, or
 incorrect credentials and checks a dummy hash for unknown users. A durable
 sliding 15-minute window permits at most 10 attempts per normalized username,
@@ -59,7 +73,8 @@ must restrict bootstrap accounts to password replacement/logout/session
 information and deny unknown access purposes. Account disable and
 administrator reset must atomically revoke sessions, protect the last enabled
 local global ADMIN, and apply throttling to recovery. Bootstrap access also
-needs a restricted administrative channel. The standalone handlers are not a
+has a local pipe-only administrative command but no deployed bootstrap channel.
+The standalone handlers are not a
 complete authentication or authorization boundary. Runtime composition,
 deployment, administrator
 recovery, audit retention, and end-to-end redaction remain unverified.
