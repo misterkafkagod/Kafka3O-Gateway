@@ -76,6 +76,20 @@ The cookie and CSRF helpers provide a host-only Secure, HttpOnly, SameSite
 Strict session cookie, a separate script-readable Secure CSRF cookie, and an
 exact HTTPS Origin and session-bound CSRF-header check.
 
+The standalone Cognito verifier discovers only a configured HTTPS issuer and
+requires exact configured authorization, token and JWKS endpoints. It rejects
+redirects, verifies the provider certificate and hostname, and limits
+discovery and JWKS responses to 4 MiB and ID tokens to 1 MiB. It verifies
+RS256 signatures and key rotation, exact issuer and client audience,
+expiration, nonce, `token_use=id` and authorized-party constraints. Unknown
+claims are tolerated; the returned opaque subject and group names come only
+from the verified token and confer no role by themselves. A cached signing key
+can validate an unexpired token during an outage; the planned session refresh
+must separately deny access when a required provider refresh fails. Discovery
+and key failures are reported without returning tokens or provider responses.
+This verifier uses synthetic TLS fixtures only; no Cognito login route,
+refresh, real User Pool or secured deployment is implemented by it.
+
 `cmd/console serve` composes local login, session inspection, password
 replacement, logout, administrator account listing, creation, state changes,
 password reset, and session listing and revocation into a TLS-only server.
