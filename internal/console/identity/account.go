@@ -92,6 +92,42 @@ type LocalAccountStateStore interface {
 	SetLocalAccountEnabled(ctx context.Context, change LocalAccountStateChange) error
 }
 
+type LocalPasswordResetAttempt struct {
+	Actor       LocalAdminActor
+	TargetID    string
+	OperationID string
+	OccurredAt  time.Time
+}
+
+type LocalPasswordResetFailure struct {
+	Actor       LocalAdminActor
+	TargetID    string
+	OperationID string
+	EventID     string
+	OccurredAt  time.Time
+	Rejected    bool
+}
+
+type LocalPasswordResetCompletion struct {
+	Actor             LocalAdminActor
+	TargetID          string
+	OperationID       string
+	EventID           string
+	RevocationEventID string
+	NewHash           string `json:"-"`
+	OccurredAt        time.Time
+}
+
+type LocalPasswordResetStore interface {
+	ReserveLocalPasswordReset(ctx context.Context, attempt LocalPasswordResetAttempt) error
+	FailLocalPasswordReset(ctx context.Context, failure LocalPasswordResetFailure) error
+	CompleteLocalPasswordReset(ctx context.Context, completion LocalPasswordResetCompletion) error
+}
+
+type PasswordResetResult struct {
+	OperationID string
+}
+
 var (
 	ErrInvalidUsername         = errors.New("invalid local username")
 	ErrInvalidBootstrapConfig  = errors.New("a strong bootstrap secret and dependencies are required")
@@ -110,4 +146,9 @@ var (
 	ErrAdminPasswordChange     = errors.New("administrator must change the temporary password")
 	ErrLastLocalGlobalAdmin    = errors.New("the last enabled local global administrator cannot be disabled")
 	ErrAccountAdminConfig      = errors.New("account administration dependencies are required")
+	ErrPasswordResetThrottled  = errors.New("password reset temporarily throttled")
+	ErrInvalidPasswordReset    = errors.New("password reset attempt is unavailable or already used")
+	ErrPasswordResetExpired    = errors.New("password reset attempt has expired")
+	ErrLocalAccountChanged     = errors.New("local account changed during password reset")
+	ErrPasswordResetUnknown    = errors.New("password reset outcome is unknown")
 )

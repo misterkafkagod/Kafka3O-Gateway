@@ -108,9 +108,29 @@ also revokes any remaining old sessions. This operation is not mounted in the
 HTTP server. Future handlers must derive its actor from an authenticated,
 CSRF-checked session, never from client-supplied identity or session IDs.
 
+The standalone administrator password-reset service also requires a current
+local global ADMIN session without a pending password change. It rechecks that
+session and grant after hashing, then atomically replaces the password, requires
+a further password change, increments the credential version, revokes all target
+sessions, and records the correlated outcome. A concurrent account or password
+change prevents the reset from overwriting newer credentials. Self-reset signs
+the administrator out; resetting a disabled account does not enable it.
+
+Reset attempts use a durable 15-minute window: at most 10 per existing target,
+60 per authorized administrator, and 300 globally. Rejected passwords and
+unknown targets count towards the applicable limits; unauthenticated or
+non-admin callers cannot exhaust them. Unknown target input and passwords are
+not recorded in audit or rate-limit records. Each reset service admits at most
+four concurrent password hashes. An unavailable audit store blocks the reset;
+interrupted requests may leave only an attempted event. If the commit outcome
+is unknown, use the returned operation ID to investigate audit and account
+state; do not automatically retry. This service is not mounted in the HTTP
+server. Future handlers must derive the actor from an authenticated,
+CSRF-checked session and must never accept client-supplied actor or session IDs.
+
 Before deploying a secured Console, every protected route must apply session
-and authorization checks and deny unknown purposes. Administrator password
-reset and recovery still require throttling and atomic session revocation;
-grant management must also protect the last enabled local global ADMIN. A
+and authorization checks and deny unknown purposes. Administrator recovery
+when no enabled local global ADMIN remains is not implemented; grant
+management must also protect the last enabled local global ADMIN. A
 deployed bootstrap channel, browser integration, Gateway enforcement, audit
 retention, and end-to-end redaction remain unverified.

@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 4 {
+	if version > 5 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -117,6 +117,25 @@ CREATE INDEX bootstrap_attempts_time ON bootstrap_attempts(occurred_at_ns);
 PRAGMA user_version = 4;`
 		if _, err := tx.ExecContext(ctx, bootstrapAttempts); err != nil {
 			return fmt.Errorf("apply bootstrap attempt schema: %w", err)
+		}
+		version = 4
+	}
+	if version == 4 {
+		const passwordResetAttempts = `
+CREATE TABLE password_reset_attempts (
+    operation_id TEXT PRIMARY KEY NOT NULL,
+    actor_key BLOB NOT NULL,
+    target_key BLOB NOT NULL,
+    session_id TEXT NOT NULL,
+    credential_version INTEGER CHECK (credential_version > 0),
+    occurred_at_ns INTEGER NOT NULL,
+    completed INTEGER NOT NULL CHECK (completed IN (0, 1)),
+    CHECK (completed = 1 OR credential_version IS NOT NULL)
+);
+CREATE INDEX password_reset_attempts_time ON password_reset_attempts(occurred_at_ns);
+PRAGMA user_version = 5;`
+		if _, err := tx.ExecContext(ctx, passwordResetAttempts); err != nil {
+			return fmt.Errorf("apply password reset attempt schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
