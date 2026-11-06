@@ -221,9 +221,25 @@ browser still sends the session cookie. Local logout and administrator
 revocation atomically remove retained Cognito refresh-token material; audit
 failure prevents revocation and is reported. Ordinary session inspection
 clears invalid cookies, so an already-cleared cookie cannot be used to
-request logout. Expired and disabled sessions are not yet automatically
-purged; define and implement retention cleanup before deployment. The database
-and WAL may still contain encrypted historical bytes after logical deletion.
+request logout.
+
+The Console process runs one cleanup batch at startup and every minute. Each
+batch transactionally revokes and removes up to 100 Cognito credentials whose
+sessions are revoked, whose identities are disabled, or whose idle or absolute
+lifetime has expired. Stale claims and unresolved refreshes alone are not
+eligible. Every removed session receives a redacted audit event in the same
+transaction, and refresh-reservation audit events are retained. Cleanup of a
+disabled identity prevents that session from reviving if the identity is
+later re-enabled; the future identity-disable operation must itself revoke
+sessions atomically rather than wait for this worker.
+
+Cleanup work has a 10-second deadline. Errors and a full batch are logged
+without credential or identity values; a failure does not stop local login,
+and the next scheduled batch rechecks current state. More than 100 eligible
+sessions take multiple batches, and no cleanup occurs while the process is
+stopped. Operators must monitor errors and backlog. The database, WAL and
+backups may retain encrypted historical bytes after logical deletion; their
+retention, secure disposal and deployed-volume behavior remain unverified.
 Session issuance is not exposed through a browser route, and the standalone
 Console process does not yet enable the refreshing manager. Group-role
 bindings, live Cognito and the secured deployment remain unimplemented.

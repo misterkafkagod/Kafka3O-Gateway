@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
@@ -47,6 +48,18 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second,
 		WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10,
 	}
+	cleanupContext, stopCleanup := context.WithCancel(ctx)
+	cleanupTicker := time.NewTicker(time.Minute)
+	cleanupDone := make(chan struct{})
+	go func() {
+		defer close(cleanupDone)
+		maintainCognitoCredentials(cleanupContext, db, rand.Reader, time.Now, cleanupTicker.C, logger)
+	}()
+	defer func() {
+		stopCleanup()
+		cleanupTicker.Stop()
+		<-cleanupDone
+	}()
 	logger.Info("Console session API listening", "address", listener.Addr().String())
 	return serveConsole(ctx, server, listener)
 }
