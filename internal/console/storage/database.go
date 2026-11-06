@@ -3,12 +3,18 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"os"
+	"sync"
 	"time"
 )
 
 type Database struct {
 	db   *sql.DB
 	path string
+	lock *os.File
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 type AuditSource string
@@ -69,6 +75,9 @@ var (
 	ErrInvalidDatabasePath = errors.New("database path must be an absolute regular file")
 	ErrInsecureDatabase    = errors.New("database file permissions must restrict access to its owner")
 	ErrDatabaseSettings    = errors.New("required SQLite settings are unavailable")
+	ErrDatabaseInUse       = errors.New("Console database is already in use")
+	ErrInvalidDatabaseLock = errors.New("Console database lock must be an owner-only regular file")
+	ErrUnsupportedLock     = errors.New("Console database locking is unsupported on this platform")
 	ErrUnsupportedSchema   = errors.New("database schema version is newer than supported")
 	ErrInvalidAuditEvent   = errors.New("invalid audit event")
 	ErrInvalidAuditFilter  = errors.New("invalid audit filter")

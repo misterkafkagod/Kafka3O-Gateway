@@ -35,6 +35,17 @@ from the environment and its provisioning system after successful use.
 Stop any Console server before this offline operation; this is not a network
 endpoint or an account-recovery tool.
 
+Opening a Console database acquires an operating-system lock on an adjacent
+`.lock` file, so a second Console or offline bootstrap process fails rather
+than sharing the same store. On Unix its permissions must be owner-only;
+Windows deployments must separately configure and verify restrictive ACLs.
+The lock is released on process exit, but the empty lock file remains; do
+not delete or replace it while the store is in use. Protect the database
+directory, use one canonical database path without hard-link aliases, and
+use a local filesystem with reliable locks. This mechanism does not prevent a
+host administrator or a non-Console process with direct SQLite access from
+bypassing application controls.
+
 Local authentication uses generic failures for unknown, invalid, disabled, or
 incorrect credentials and checks a dummy hash for unknown users. A durable
 sliding 15-minute window permits at most 10 attempts per normalized username,

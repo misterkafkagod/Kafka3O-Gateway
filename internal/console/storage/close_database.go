@@ -1,5 +1,10 @@
 package storage
 
+import "errors"
+
 func (d *Database) Close() error {
-	return d.db.Close()
+	d.closeOnce.Do(func() {
+		d.closeErr = errors.Join(d.db.Close(), d.lock.Close())
+	})
+	return d.closeErr
 }

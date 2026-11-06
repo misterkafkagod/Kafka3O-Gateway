@@ -10,10 +10,19 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func OpenDatabase(ctx context.Context, path string) (*Database, error) {
+func OpenDatabase(ctx context.Context, path string) (opened *Database, result error) {
 	if err := ensureDatabaseFile(path); err != nil {
 		return nil, err
 	}
+	lock, err := openDatabaseLock(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if result != nil {
+			result = errors.Join(result, lock.Close())
+		}
+	}()
 	db, err := sql.Open("sqlite", sqliteDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("open SQLite: %w", err)
@@ -40,5 +49,5 @@ func OpenDatabase(ctx context.Context, path string) (*Database, error) {
 	if err := migrateDatabase(ctx, db); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	return &Database{db: db, path: path}, nil
+	return &Database{db: db, path: path, lock: lock}, nil
 }
