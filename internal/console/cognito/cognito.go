@@ -47,8 +47,9 @@ type verificationAttempt struct {
 type verificationAttemptKey struct{}
 
 var (
-	ErrInvalidProviderConfig = errors.New("invalid Cognito provider configuration")
-	ErrInvalidProvider       = errors.New("Cognito discovery does not match configured provider")
-	ErrProviderUnavailable   = errors.New("Cognito provider verification is unavailable")
-	ErrInvalidIDToken        = errors.New("Cognito ID token is invalid")
+	ErrInvalidProviderConfig  = errors.New("invalid Cognito provider configuration")
+	ErrInvalidProvider        = errors.New("Cognito discovery does not match configured provider")
+	ErrProviderUnavailable    = errors.New("Cognito provider verification is unavailable")
+	ErrInvalidIDToken         = errors.New("Cognito ID token is invalid")
+	ErrInvalidBrowserCallback = errors.New("Cognito browser callback is invalid")
 )

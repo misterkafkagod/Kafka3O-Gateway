@@ -138,6 +138,17 @@ The application session cookie remains SameSite=Strict. These helpers do
 not expose an SSO route or prevent replacement of an existing session; that
 protection must be completed before browser integration.
 
+The standalone callback parser accepts a query of at most 8,192 bytes with
+one canonical state and exactly one authorization code or provider error.
+It rejects duplicate or unknown parameters, malformed encoding, control
+characters and oversized values. Provider error descriptions and error URIs
+are discarded rather than displayed or followed. The cookie reader requires
+exactly one canonical browser binding. The same code validation is used by
+the exchanger, which rejects invalid codes before any provider request.
+The eventual handler must consume and audit the browser-bound attempt for
+both success and provider denial, clear transient cookies, and must not log
+the query, code or binding. No callback route is exposed yet.
+
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each
 exchange once before dispatch and rechecks the attempt and verified-token

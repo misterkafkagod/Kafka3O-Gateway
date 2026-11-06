@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"strings"
 	"time"
-	"unicode"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -31,7 +29,7 @@ func (e *CodeExchanger) ExchangeAuthorizationCode(ctx context.Context, attempt C
 	var refresh string
 	var verifiedAt time.Time
 	var exchangeErr error
-	if code == "" || len(code) > 2048 || strings.IndexFunc(code, unicode.IsControl) >= 0 {
+	if !validAuthorizationCode(code) {
 		exchangeErr = ErrCodeExchangeUnavailable
 	} else {
 		token, err := e.oauth.Exchange(oidc.ClientContext(ctx, e.client), code, oauth2.VerifierOption(proof.codeVerifier))
