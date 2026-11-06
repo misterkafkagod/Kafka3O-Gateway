@@ -41,17 +41,21 @@ may configure shorter or longer values up to the 24-hour absolute maximum.
 
 The cookie and CSRF helpers provide a host-only Secure, HttpOnly, SameSite
 Strict session cookie, a separate script-readable Secure CSRF cookie, and an
-exact HTTPS Origin and session-bound CSRF-header check. They are not wired to
-HTTP handlers. Never log the raw session or CSRF token.
+exact HTTPS Origin and session-bound CSRF-header check. Standalone HTTP
+handlers implement local login, session inspection, password replacement, and
+logout. They accept direct TLS requests only, use the direct peer address for
+throttling, and require the configured exact HTTPS origin. They are tested but
+not mounted in any running process and expose no Kafka routes. A successful
+password change revokes all local sessions and requires a new sign-in. Never
+log the raw session or CSRF token.
 
-Before exposing these operations, the Console must enforce verified HTTPS and
-wire these helpers on every relevant route. It must derive the account
-identity from the resolved session, restrict bootstrap accounts to password
-replacement/logout/session information, and deny unknown access purposes.
-Account disable and administrator reset must atomically revoke sessions,
-protect the last enabled local global ADMIN, and apply throttling to recovery.
-Bootstrap access also needs a restricted, rate-limited administrative channel
-and auditable failed attempts. The standalone helpers are not a complete
-authentication or authorization boundary. Deployment, HTTP integration,
-administrator recovery, audit retention, and end-to-end redaction remain
-unverified.
+Before exposing these operations, the Console needs a verified HTTPS server
+and must wire session and authorization checks on every relevant route. It
+must restrict bootstrap accounts to password replacement/logout/session
+information and deny unknown access purposes. Account disable and
+administrator reset must atomically revoke sessions, protect the last enabled
+local global ADMIN, and apply throttling to recovery. Bootstrap access also
+needs a restricted, rate-limited administrative channel and auditable failed
+attempts. The standalone handlers are not a complete authentication or
+authorization boundary. Runtime composition, deployment, administrator
+recovery, audit retention, and end-to-end redaction remain unverified.

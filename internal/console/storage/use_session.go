@@ -52,7 +52,7 @@ RETURNING id, identity_id, created_at_ns, idle_expires_at_ns, absolute_expires_a
 	principal.CreatedAt = time.Unix(0, created).UTC()
 	principal.IdleExpiresAt = time.Unix(0, idle).UTC()
 	principal.AbsoluteExpiresAt = time.Unix(0, absolute).UTC()
-	if err := tx.QueryRowContext(ctx, "SELECT must_change_password FROM local_accounts WHERE identity_id = ?", principal.AccountID).Scan(&principal.MustChangePassword); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT username, must_change_password FROM local_accounts WHERE identity_id = ?", principal.AccountID).Scan(&principal.Username, &principal.MustChangePassword); err != nil {
 		return session.Principal{}, fmt.Errorf("read session account restrictions: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

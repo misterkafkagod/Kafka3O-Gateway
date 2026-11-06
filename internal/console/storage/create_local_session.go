@@ -36,11 +36,12 @@ func (d *Database) CreateLocalSession(ctx context.Context, record session.Record
 			result = errors.Join(result, fmt.Errorf("roll back session creation: %w", err))
 		}
 	}()
+	var username string
 	var mustChange bool
-	err = tx.QueryRowContext(ctx, `SELECT local_accounts.must_change_password
+	err = tx.QueryRowContext(ctx, `SELECT local_accounts.username, local_accounts.must_change_password
 FROM local_accounts JOIN identities ON identities.id = local_accounts.identity_id
 WHERE identities.id = ? AND identities.enabled = 1 AND local_accounts.credential_version = ?`,
-		record.AccountID, record.CredentialVersion).Scan(&mustChange)
+		record.AccountID, record.CredentialVersion).Scan(&username, &mustChange)
 	if errors.Is(err, sql.ErrNoRows) {
 		event.ActorID, event.Source, event.Decision, event.Outcome = "anonymous", AuditSourceAnonymous, "denied", AuditDenied
 		event.ResourceKind, event.ResourceID = "", ""
@@ -70,7 +71,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, record.SessionID, record.AccountID, record.Cre
 		return session.Principal{}, fmt.Errorf("commit local session: %w", err)
 	}
 	return session.Principal{
-		SessionID: record.SessionID, AccountID: record.AccountID, MustChangePassword: mustChange,
+		SessionID: record.SessionID, AccountID: record.AccountID, Username: username, MustChangePassword: mustChange,
 		CreatedAt: record.CreatedAt.UTC(), IdleExpiresAt: record.IdleExpiresAt.UTC(),
 		AbsoluteExpiresAt: record.AbsoluteExpiresAt.UTC(), CSRFHash: record.CSRFHash,
 	}, nil

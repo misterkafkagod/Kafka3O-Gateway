@@ -16,6 +16,7 @@ const (
 type Principal struct {
 	SessionID          string
 	AccountID          string
+	Username           string
 	MustChangePassword bool
 	CreatedAt          time.Time
 	IdleExpiresAt      time.Time
