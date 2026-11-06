@@ -21,6 +21,8 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/settings"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
 
@@ -69,6 +71,14 @@ func main() {
 	createTopic := topics.NewCreateTopic(kafka.NewCreateKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	deleteTopic := topics.NewDeleteTopic(kafka.NewDeleteKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
+	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
+	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
+	alterConfiguration := settings.NewAlterConfiguration(describeConfigurations, kafka.NewAlterConfiguration(writeAdmin), cfg.Kafka.Timeout)
+	describePlacement := kafka.NewDescribePlacement(kafkaClient)
+	listKafkaReassignments := kafka.NewListKafkaReassignments(admin)
+	increasePartitions := partitions.NewIncreasePartitionCount(describePlacement, kafka.NewUpdateKafkaPartitions(writeAdmin), cfg.Kafka.Timeout)
+	listReassignments := partitions.NewListReassignments(describePlacement, listKafkaReassignments, cfg.Kafka.Timeout)
+	reassignPartition := partitions.NewReassignPartition(describePlacement, listKafkaReassignments, kafka.NewAlterKafkaReassignment(writeAdmin), cfg.Kafka.Timeout)
 
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
@@ -82,6 +92,13 @@ func main() {
 	httpapi.RegisterCreateTopic(api, createTopic)
 	httpapi.RegisterDeleteTopic(api, deleteTopic)
 	httpapi.RegisterListConsumerGroups(api, listConsumerGroups)
+	httpapi.RegisterGetTopicConfigurations(api, getConfigurations)
+	httpapi.RegisterGetBrokerConfigurations(api, getConfigurations)
+	httpapi.RegisterAlterTopicConfiguration(api, alterConfiguration)
+	httpapi.RegisterAlterBrokerConfiguration(api, alterConfiguration)
+	httpapi.RegisterIncreasePartitions(api, increasePartitions)
+	httpapi.RegisterListReassignments(api, listReassignments)
+	httpapi.RegisterReassignPartition(api, reassignPartition)
 
 	server := newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
 
