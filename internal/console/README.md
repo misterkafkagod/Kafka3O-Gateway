@@ -174,12 +174,22 @@ The existing unbound paths do not depend on the binding table and continue
 to reject bound sessions.
 
 This is not yet a browser session implementation: issuing and resolving
-managers and HTTP routes do not supply a marker. Logout lookup, administrator
-reauthorization and provider refresh still reject bound sessions; their
-future bound variants must verify the same current binding transactionally.
-Marker generation, cookie lifecycle and local/SSO integration remain
-unfinished. Binding rows for inactive markers are retained until that marker
-is reused; bounded retention and cleanup must be addressed before deployment.
+managers and HTTP routes do not supply a marker. Separate storage-only
+bound logout lookup and revocation actions check the current binding; the
+revocation transaction also removes any retained Cognito credentials and
+audits the result. A current Cognito session can be locally logged out even
+when its claims, identity, lifetime or retained provider credential are
+unavailable. The HTTP handler must still validate Origin and CSRF before
+revocation. The existing unbound HTTP logout clears cookies for an exact
+invalid-session result, but retains them for wrapped operational or
+uncertain failures. Unbound logout and revocation reject bound sessions.
+
+Administrator reauthorization and provider refresh still reject bound
+sessions; their future bound variants must verify the same current binding
+transactionally. Marker generation, cookie lifecycle and local/SSO
+integration remain unfinished. Binding rows for inactive markers are retained
+until that marker is reused; bounded retention and cleanup must be addressed
+before deployment.
 
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each

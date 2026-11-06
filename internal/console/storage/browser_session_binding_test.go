@@ -97,7 +97,7 @@ func TestBrowserSessionLocalConflictAndRevocation(t *testing.T) {
 	if err != identity.ErrInvalidAdminSession || rollbackErr != nil {
 		t.Fatalf("unbound admin authorization accepted a browser-bound session: %v (rollback: %v)", err, rollbackErr)
 	}
-	if err := f.db.RevokeSession(ctx, first.TokenHash, "browser-revocation-event", f.clock()); err != nil {
+	if err := f.db.RevokeBoundSession(ctx, first.TokenHash, binding, "browser-revocation-event", f.clock()); err != nil {
 		t.Fatal(err)
 	}
 	replacement, _ := browserSessionRecord("replacement", "browser-local-b", binding, f.clock())
@@ -513,7 +513,7 @@ func TestBrowserSessionConcurrentRevocationAndIssuance(t *testing.T) {
 	revoked, issued := make(chan error, 1), make(chan error, 1)
 	go func() {
 		<-start
-		revoked <- f.db.RevokeSession(ctx, first.TokenHash, "browser-concurrent-revocation", f.clock())
+		revoked <- f.db.RevokeBoundSession(ctx, first.TokenHash, binding, "browser-concurrent-revocation", f.clock())
 	}()
 	go func() {
 		<-start

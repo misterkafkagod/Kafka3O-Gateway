@@ -174,7 +174,7 @@ func TestBoundSessionRejectsInactiveAndCorruptBindings(t *testing.T) {
 			}
 			switch mode {
 			case "revoked":
-				if err := f.db.RevokeSession(ctx, record.TokenHash, "bound-revocation", f.clock()); err != nil {
+				if err := f.db.RevokeBoundSession(ctx, record.TokenHash, binding, "bound-revocation", f.clock()); err != nil {
 					t.Fatal(err)
 				}
 			case "disabled":

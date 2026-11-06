@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -348,6 +349,21 @@ func (s uncertainSessions) ResolveForLogout(ctx context.Context, token string) (
 
 func (uncertainSessions) Revoke(context.Context, string) error { return errors.New("unexpected") }
 
+type uncertainLogoutSessions struct {
+	principal session.Principal
+	revokeErr error
+}
+
+func (s uncertainLogoutSessions) Resolve(context.Context, string) (session.Principal, error) {
+	return s.principal, nil
+}
+
+func (s uncertainLogoutSessions) ResolveForLogout(context.Context, string) (session.Principal, error) {
+	return s.principal, nil
+}
+
+func (s uncertainLogoutSessions) Revoke(context.Context, string) error { return s.revokeErr }
+
 type unusedLogin struct{}
 
 func (unusedLogin) Execute(context.Context, string, string, netip.Addr) (session.Credentials, error) {
@@ -419,6 +435,46 @@ func TestSessionAPIKeepsCookiesOnUncertainValidation(t *testing.T) {
 			handler.ServeHTTP(response, request)
 			if response.Code != http.StatusServiceUnavailable || len(response.Result().Cookies()) != 0 {
 				t.Fatalf("uncertain validation cleared cookies or allowed login: status=%d", response.Code)
+			}
+		})
+	}
+}
+
+func TestSessionAPIKeepsCookiesOnUncertainLogout(t *testing.T) {
+	csrfBytes := bytes.Repeat([]byte{17}, 32)
+	csrf := base64.RawURLEncoding.EncodeToString(csrfBytes)
+	for _, tt := range []struct {
+		name        string
+		err         error
+		status      int
+		cookieCount int
+	}{
+		{"definite invalid session", session.ErrInvalidSession, http.StatusUnauthorized, 2},
+		{"uncertain rollback", errors.Join(session.ErrInvalidSession, errors.New("synthetic rollback failure")), http.StatusServiceUnavailable, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logs, nil))
+			sessions := uncertainLogoutSessions{
+				principal: session.Principal{SessionID: "test-session", AccountID: "test-account", CSRFHash: sha256.Sum256(csrfBytes)},
+				revokeErr: tt.err,
+			}
+			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, sessions, "https://console.example", logger)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := httptest.NewRequest(http.MethodPost, "https://console.example/api/session/logout", nil)
+			request.Header.Set("Origin", "https://console.example")
+			request.Header.Set(session.CSRFHeader, csrf)
+			request.AddCookie(&http.Cookie{Name: session.CookieName, Value: "opaque-cookie"})
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != tt.status || len(response.Result().Cookies()) != tt.cookieCount {
+				t.Fatalf("logout status=%d cookies=%d", response.Code, len(response.Result().Cookies()))
+			}
+			if strings.Contains(logs.String(), csrf) || strings.Contains(logs.String(), "opaque-cookie") ||
+				strings.Contains(logs.String(), "synthetic rollback failure") {
+				t.Fatal("logout failure exposed credentials or internal errors")
 			}
 		})
 	}
