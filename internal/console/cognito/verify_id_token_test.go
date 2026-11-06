@@ -178,6 +178,7 @@ func TestCognitoVerifyIDTokenRejectsUntrustedClaimsAndSignatures(t *testing.T) {
 	valid := signFixtureToken(t, key, "RS256", cognitoFixtureClaims(fixture.config, now))
 	got, err := verifier.VerifyIDToken(context.Background(), valid, nonce)
 	if err != nil || got.Issuer != fixture.config.Issuer || got.Subject != "opaque|subject-not-a-uuid" ||
+		!reflect.DeepEqual(got.Audience, []string{fixture.config.ClientID}) || !got.IssuedAt.Equal(now.Add(-time.Minute)) ||
 		!reflect.DeepEqual(got.Groups, []string{"engineers", "admin-looking-unmapped-group"}) ||
 		!got.ExpiresAt.Equal(now.Add(time.Hour)) {
 		t.Fatalf("valid synthetic ID token was rejected: %v", err)
@@ -194,9 +195,13 @@ func TestCognitoVerifyIDTokenRejectsUntrustedClaimsAndSignatures(t *testing.T) {
 		{"expiry boundary", func(c map[string]any) { c["exp"] = now.Unix() }, key, "RS256"},
 		{"wrong nonce", func(c map[string]any) { c["nonce"] = "wrong-nonce" }, key, "RS256"},
 		{"missing nonce", func(c map[string]any) { delete(c, "nonce") }, key, "RS256"},
+		{"null nonce", func(c map[string]any) { c["nonce"] = nil }, key, "RS256"},
 		{"wrong token use", func(c map[string]any) { c["token_use"] = "access" }, key, "RS256"},
 		{"missing subject", func(c map[string]any) { delete(c, "sub") }, key, "RS256"},
 		{"wrong group type", func(c map[string]any) { c["cognito:groups"] = "ADMIN" }, key, "RS256"},
+		{"null groups", func(c map[string]any) { c["cognito:groups"] = nil }, key, "RS256"},
+		{"null group member", func(c map[string]any) { c["cognito:groups"] = []any{"engineers", nil} }, key, "RS256"},
+		{"empty group member", func(c map[string]any) { c["cognito:groups"] = []string{""} }, key, "RS256"},
 		{"future issuance", func(c map[string]any) { c["iat"] = now.Add(6 * time.Minute).Unix() }, key, "RS256"},
 		{"missing issuance", func(c map[string]any) { delete(c, "iat") }, key, "RS256"},
 		{"issuance after expiry", func(c map[string]any) {

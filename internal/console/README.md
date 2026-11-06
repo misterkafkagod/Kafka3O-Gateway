@@ -90,6 +90,20 @@ and key failures are reported without returning tokens or provider responses.
 This verifier uses synthetic TLS fixtures only; no Cognito login route,
 refresh, real User Pool or secured deployment is implemented by it.
 
+The standalone refreshed-ID-token verifier checks the same signature,
+issuer, client, token-use, expiry and group rules, then compares the verified
+issuer, subject and audience to the last verified identity. Audience order
+may differ; its members may not. The original login nonce may be absent from
+a refreshed token, but if present must match the retained original nonce
+digest. It rejects missing ID tokens and tokens at least five minutes old,
+and requires a strictly later issuance time than the last verified token, so
+a refresh in the same timestamp second fails closed. The caller must retain
+the original nonce digest and trusted verified identity, not accept them from
+the browser, and enforce the earliest of five minutes after verification,
+five minutes after issuance or the verified token's expiry. This primitive
+does not perform a provider refresh, persist tokens, create sessions or
+enforce that deadline; live Cognito behavior remains unverified.
+
 The standalone Cognito authorization-attempt service creates independent
 random state, nonce, PKCE verifier and browser binding. Only state, nonce and
 browser-binding digests and an AES-256-GCM-encrypted verifier are stored;

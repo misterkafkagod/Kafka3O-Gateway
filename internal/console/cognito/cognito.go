@@ -24,7 +24,9 @@ type ProviderConfig struct {
 type VerifiedIdentity struct {
 	Issuer    string
 	Subject   string
+	Audience  []string
 	Groups    []string
+	IssuedAt  time.Time
 	ExpiresAt time.Time
 }
 
