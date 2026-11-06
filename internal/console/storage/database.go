@@ -12,6 +12,7 @@ type Database struct {
 	db   *sql.DB
 	path string
 	lock *os.File
+	now  func() time.Time
 
 	closeOnce sync.Once
 	closeErr  error

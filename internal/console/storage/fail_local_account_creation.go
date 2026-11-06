@@ -30,6 +30,11 @@ func (d *Database) FailLocalAccountCreation(ctx context.Context, failure identit
 			result = errors.Join(result, fmt.Errorf("roll back failed local account creation: %w", err))
 		}
 	}()
+	failure.OccurredAt, err = d.transactionTime(failure.OccurredAt)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = failure.OccurredAt
 	consumeErr := consumeLocalAccountCreation(ctx, tx, failure.Actor, failure.AccountID, failure.OperationID, failure.OccurredAt)
 	if errors.Is(consumeErr, identity.ErrAccountCreationExpired) {
 		event.Decision, event.Outcome = "denied", AuditDenied

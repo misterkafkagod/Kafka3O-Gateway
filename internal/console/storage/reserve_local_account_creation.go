@@ -34,6 +34,11 @@ func (d *Database) ReserveLocalAccountCreation(ctx context.Context, attempt iden
 			result = errors.Join(result, fmt.Errorf("roll back local account creation reservation: %w", err))
 		}
 	}()
+	attempt.OccurredAt, err = d.transactionTime(attempt.OccurredAt)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = attempt.OccurredAt
 	authorizationErr := authorizeLocalGlobalAdmin(ctx, tx, attempt.Actor, attempt.OccurredAt)
 	var decisionErr error
 	switch {

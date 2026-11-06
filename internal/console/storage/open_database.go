@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -49,5 +50,5 @@ func OpenDatabase(ctx context.Context, path string) (opened *Database, result er
 	if err := migrateDatabase(ctx, db); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	return &Database{db: db, path: path, lock: lock}, nil
+	return &Database{db: db, path: path, lock: lock, now: time.Now}, nil
 }

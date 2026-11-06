@@ -22,7 +22,7 @@ func (testStore) CreateLocalSession(context.Context, Record) (Principal, error) 
 	return Principal{}, errors.New("unexpected store call")
 }
 
-func (testStore) UseSession(context.Context, [32]byte, time.Time, time.Time) (Principal, error) {
+func (testStore) UseSession(context.Context, [32]byte, func() time.Time, time.Duration) (Principal, error) {
 	return Principal{}, errors.New("unexpected store call")
 }
 
@@ -59,6 +59,19 @@ func TestSessionConfigurationAndEntropyFailure(t *testing.T) {
 	_, err = manager.IssueLocal(context.Background(), identity.LocalAccount{ID: "user", Enabled: true, CredentialVersion: 1})
 	if !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Fatalf("entropy failure: %v", err)
+	}
+}
+
+func TestResolveRejectsInvalidClockBeforeUsingStore(t *testing.T) {
+	token := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+	for _, invalid := range []time.Time{{}, time.Date(1969, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2262, 1, 1, 0, 0, 0, 0, time.UTC)} {
+		manager, err := NewManager(testStore{}, rand.Reader, func() time.Time { return invalid }, time.Minute, time.Hour)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := manager.Resolve(context.Background(), token); !errors.Is(err, ErrInvalidSessionConfig) {
+			t.Fatalf("invalid resolve clock: %v", err)
+		}
 	}
 }
 

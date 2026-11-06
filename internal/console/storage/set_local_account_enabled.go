@@ -35,6 +35,10 @@ func (d *Database) SetLocalAccountEnabled(ctx context.Context, change identity.L
 			result = errors.Join(result, fmt.Errorf("roll back local account state change: %w", err))
 		}
 	}()
+	change.OccurredAt, err = d.transactionTime(change.OccurredAt)
+	if err != nil {
+		return err
+	}
 	event := AuditEvent{
 		EventID: change.EventID, OperationID: change.OperationID, OccurredAt: change.OccurredAt,
 		ActorID: "anonymous", Source: AuditSourceAnonymous, Action: action, Decision: "denied", Outcome: AuditDenied,

@@ -44,7 +44,7 @@ type Record struct {
 
 type Store interface {
 	CreateLocalSession(ctx context.Context, record Record) (Principal, error)
-	UseSession(ctx context.Context, tokenHash [32]byte, now, newIdleExpiry time.Time) (Principal, error)
+	UseSession(ctx context.Context, tokenHash [32]byte, now func() time.Time, idleLifetime time.Duration) (Principal, error)
 	RevokeSession(ctx context.Context, tokenHash [32]byte, eventID string, now time.Time) error
 }
 

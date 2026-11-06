@@ -68,6 +68,9 @@ CSRF tokens. Session use rechecks the account and credential version;
 password changes revoke all local sessions in the same audited transaction.
 Default lifetimes are 30 minutes idle and eight hours absolute; deployments
 may configure shorter or longer values up to the 24-hour absolute maximum.
+Session expiry and administrative reservation expiry are checked again after
+the database connection is acquired, so queued requests cannot revive expired
+sessions or complete expired operations.
 
 The cookie and CSRF helpers provide a host-only Secure, HttpOnly, SameSite
 Strict session cookie, a separate script-readable Secure CSRF cookie, and an

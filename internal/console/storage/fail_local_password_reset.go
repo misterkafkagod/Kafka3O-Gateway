@@ -30,6 +30,11 @@ func (d *Database) FailLocalPasswordReset(ctx context.Context, failure identity.
 			result = errors.Join(result, fmt.Errorf("roll back failed password reset: %w", err))
 		}
 	}()
+	failure.OccurredAt, err = d.transactionTime(failure.OccurredAt)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = failure.OccurredAt
 	_, consumeErr := consumeLocalPasswordReset(ctx, tx, failure.Actor, failure.TargetID, failure.OperationID, failure.OccurredAt)
 	if errors.Is(consumeErr, identity.ErrPasswordResetExpired) {
 		event.Decision, event.Outcome = "denied", AuditDenied

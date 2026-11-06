@@ -10,10 +10,8 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
 )
 
-func (d *Database) UseSession(ctx context.Context, tokenHash [32]byte, now, newIdleExpiry time.Time) (principal session.Principal, result error) {
-	if tokenHash == ([32]byte{}) || now.IsZero() || now.Year() < 1970 ||
-		newIdleExpiry.Year() > 2261 || !newIdleExpiry.After(now) ||
-		newIdleExpiry.Sub(now) > session.MaxAbsoluteLifetime {
+func (d *Database) UseSession(ctx context.Context, tokenHash [32]byte, clock func() time.Time, idleLifetime time.Duration) (principal session.Principal, result error) {
+	if tokenHash == ([32]byte{}) || clock == nil || idleLifetime <= 0 || idleLifetime > session.MaxAbsoluteLifetime {
 		return session.Principal{}, session.ErrInvalidSessionConfig
 	}
 	tx, err := d.db.BeginTx(ctx, nil)
@@ -25,6 +23,11 @@ func (d *Database) UseSession(ctx context.Context, tokenHash [32]byte, now, newI
 			result = errors.Join(result, fmt.Errorf("roll back session validation: %w", err))
 		}
 	}()
+	now := clock().UTC()
+	newIdleExpiry := now.Add(idleLifetime)
+	if now.IsZero() || now.Year() < 1970 || newIdleExpiry.Year() > 2261 || !newIdleExpiry.After(now) {
+		return session.Principal{}, session.ErrInvalidSessionConfig
+	}
 	var created, idle, absolute int64
 	var csrfHash []byte
 	err = tx.QueryRowContext(ctx, `UPDATE console_sessions

@@ -40,6 +40,11 @@ func (d *Database) CompleteLocalAccountCreation(ctx context.Context, completion 
 			result = errors.Join(result, fmt.Errorf("roll back local account creation: %w", err))
 		}
 	}()
+	completion.OccurredAt, err = d.transactionTime(completion.OccurredAt)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = completion.OccurredAt
 	consumeErr := consumeLocalAccountCreation(ctx, tx, completion.Actor, account.ID, completion.OperationID, completion.OccurredAt)
 	var decisionErr error
 	switch {

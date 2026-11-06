@@ -32,6 +32,11 @@ func (d *Database) CompleteLocalPasswordReset(ctx context.Context, completion id
 			result = errors.Join(result, fmt.Errorf("roll back local password reset: %w", err))
 		}
 	}()
+	completion.OccurredAt, err = d.transactionTime(completion.OccurredAt)
+	if err != nil {
+		return err
+	}
+	event.OccurredAt = completion.OccurredAt
 	version, consumeErr := consumeLocalPasswordReset(ctx, tx, completion.Actor, completion.TargetID, completion.OperationID, completion.OccurredAt)
 	var decisionErr error
 	switch {
