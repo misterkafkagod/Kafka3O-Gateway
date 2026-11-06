@@ -44,7 +44,7 @@ FROM console_sessions JOIN identities ON identities.id = console_sessions.identi
 LEFT JOIN cognito_identities ON cognito_identities.identity_id = identities.id
 LEFT JOIN cognito_session_credentials ON cognito_session_credentials.session_id = console_sessions.id
   AND cognito_session_credentials.identity_id = identities.id
-WHERE console_sessions.token_hash = ?`, tokenHash[:]).Scan(
+WHERE console_sessions.token_hash = ? AND console_sessions.browser_binding_hash IS NULL`, tokenHash[:]).Scan(
 		&source, &version, &revoked, &idle, &absolute, &enabled, &cognitoIdentity,
 		&generation, &freshUntil, &tokenExpiry, &reserved,
 	)

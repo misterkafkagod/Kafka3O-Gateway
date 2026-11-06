@@ -94,6 +94,12 @@ func TestCognitoRefreshCompletionRejectsChangedReservationAndSession(t *testing.
 				t.Fatal(err)
 			}
 		}, cognito.ErrRefreshUnavailable, AuditFailed, false},
+		{"browser binding", func(t *testing.T, f *cognitoCompletionFixture) {
+			_, err := f.db.db.Exec("UPDATE console_sessions SET browser_binding_hash = ? WHERE id = ?", bytes.Repeat([]byte{1}, 32), f.details.SessionID)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}, cognito.ErrRefreshUnavailable, AuditFailed, false},
 		{"generation", func(t *testing.T, f *cognitoCompletionFixture) {
 			_, err := f.db.db.Exec("UPDATE cognito_session_credentials SET refresh_generation = 2 WHERE session_id = ?", f.details.SessionID)
 			if err != nil {

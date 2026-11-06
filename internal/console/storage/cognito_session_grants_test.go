@@ -411,7 +411,7 @@ func TestCognitoSessionGrantsFailClosedOnRefreshOutageAndInvalidPolicy(t *testin
 func TestCognitoGroupBindingVersionEightMigrationAndRestart(t *testing.T) {
 	f := newRefreshingSessionFixture(t, "refresh rotated")
 	ctx := context.Background()
-	if _, err := f.db.db.Exec("DROP TABLE cognito_group_bindings; PRAGMA user_version = 8"); err != nil {
+	if _, err := f.db.db.Exec("DROP TABLE console_browser_sessions; ALTER TABLE console_sessions DROP COLUMN browser_binding_hash; DROP TABLE cognito_group_bindings; PRAGMA user_version = 8"); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 2; i++ {
@@ -429,7 +429,7 @@ func TestCognitoGroupBindingVersionEightMigrationAndRestart(t *testing.T) {
 		}
 		if i == 0 {
 			var version, bindings int
-			if err := f.db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 9 {
+			if err := f.db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 10 {
 				t.Fatalf("version-eight migration did not advance: version=%d err=%v", version, err)
 			}
 			if err := f.db.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cognito_group_bindings").Scan(&bindings); err != nil || bindings != 0 {

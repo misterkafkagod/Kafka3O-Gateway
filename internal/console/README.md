@@ -149,6 +149,31 @@ The eventual handler must consume and audit the browser-bound attempt for
 both success and provider denial, clear transient cookies, and must not log
 the query, code or binding. No callback route is exposed yet.
 
+The storage foundation can optionally bind a new local or Cognito session to
+the digest of a separate, stable browser marker. Session creation checks the
+marker's current session and records the new binding in the same transaction
+as creation and its audit. A competing active session is denied and audited;
+only the exact `ErrBrowserSessionConflict` confirms that denial was recorded.
+A revoked, disabled, idle-expired or absolutely expired session can be
+replaced. The old session retains its marker digest when the current binding
+changes. Bound issuance rechecks a non-regressing clock and session deadlines
+before and after commit; Cognito issuance also rechecks exchange freshness.
+Audit, commit and uncertain outcomes must not be treated as a confirmed
+denial or retried automatically. An outcome that may have committed is not
+reported as an ordinary invalid session.
+
+This is not yet a browser session implementation: the existing issuing
+managers and HTTP routes do not supply a marker, and ordinary session use,
+logout lookup, administrator reauthorization, grant resolution and refresh
+reject bound sessions. Existing unbound sessions retain their prior behavior.
+A future bound resolver and administrator reauthorization must check both
+the session's digest and the current marker-to-session binding on every
+request, including refresh and grant decisions; otherwise an old session
+could revive after replacement. Marker generation, cookie lifecycle and
+local/SSO integration remain unfinished. Binding rows for inactive markers
+are retained until that marker is reused; bounded retention and cleanup
+must be addressed before deployment.
+
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each
 exchange once before dispatch and rechecks the attempt and verified-token

@@ -16,7 +16,7 @@ func (d *Database) FindCognitoSessionForLogout(ctx context.Context, tokenHash [3
 	var principal session.Principal
 	var csrfHash []byte
 	err := d.db.QueryRowContext(ctx, `SELECT id, identity_id, csrf_hash FROM console_sessions
-WHERE token_hash = ? AND auth_source = 'cognito' AND revoked_at_ns IS NULL`, tokenHash[:]).Scan(
+WHERE token_hash = ? AND browser_binding_hash IS NULL AND auth_source = 'cognito' AND revoked_at_ns IS NULL`, tokenHash[:]).Scan(
 		&principal.SessionID, &principal.AccountID, &csrfHash,
 	)
 	if errors.Is(err, sql.ErrNoRows) {

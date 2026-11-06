@@ -20,6 +20,7 @@ JOIN local_accounts ON local_accounts.identity_id = identities.id
 WHERE console_sessions.id = ? AND identities.id = ? AND identities.enabled = 1
 AND console_sessions.credential_version = local_accounts.credential_version
 AND console_sessions.auth_source = 'local'
+AND console_sessions.browser_binding_hash IS NULL
 AND console_sessions.revoked_at_ns IS NULL
 AND console_sessions.idle_expires_at_ns > ? AND console_sessions.absolute_expires_at_ns > ?`,
 		actor.SessionID, actor.AccountID, at.UTC().UnixNano(), at.UTC().UnixNano()).Scan(&mustChange, &globalAdmin)

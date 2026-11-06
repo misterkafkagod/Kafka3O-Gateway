@@ -51,19 +51,63 @@ WHERE identities.id = ? AND identities.enabled = 1 AND local_accounts.credential
 	if err != nil {
 		return session.Principal{}, fmt.Errorf("recheck session identity: %w", err)
 	}
+	checkedAt, err := d.validateBrowserSessionLifetime(record, record.CreatedAt)
+	if err != nil {
+		if err != session.ErrInvalidSession {
+			return session.Principal{}, err
+		}
+		event.OccurredAt, event.Decision, event.Outcome = checkedAt, "denied", AuditValidationRejected
+		event.ResourceKind, event.ResourceID = "", ""
+		if err := insertAuditEvent(ctx, tx, event); err != nil {
+			return session.Principal{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return session.Principal{}, fmt.Errorf("commit expired browser session denial: %w", err)
+		}
+		return session.Principal{}, session.ErrInvalidSession
+	}
+	event.OccurredAt = checkedAt
+	if err := d.checkBrowserSession(ctx, tx, record.BrowserBindingHash, record.CreatedAt); err != nil {
+		if err != session.ErrBrowserSessionConflict {
+			return session.Principal{}, err
+		}
+		event.Decision, event.Outcome = "denied", AuditDenied
+		event.ResourceKind, event.ResourceID = "", ""
+		if err := insertAuditEvent(ctx, tx, event); err != nil {
+			return session.Principal{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return session.Principal{}, fmt.Errorf("commit browser session denial: %w", err)
+		}
+		return session.Principal{}, session.ErrBrowserSessionConflict
+	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO console_sessions
-(id, identity_id, credential_version, token_hash, csrf_hash, created_at_ns, idle_expires_at_ns, absolute_expires_at_ns)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, record.SessionID, record.AccountID, record.CredentialVersion,
+(id, identity_id, credential_version, token_hash, csrf_hash, created_at_ns, idle_expires_at_ns, absolute_expires_at_ns, browser_binding_hash)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, record.SessionID, record.AccountID, record.CredentialVersion,
 		record.TokenHash[:], record.CSRFHash[:], record.CreatedAt.UTC().UnixNano(),
-		record.IdleExpiresAt.UTC().UnixNano(), record.AbsoluteExpiresAt.UTC().UnixNano())
+		record.IdleExpiresAt.UTC().UnixNano(), record.AbsoluteExpiresAt.UTC().UnixNano(), browserBindingValue(record.BrowserBindingHash))
 	if err != nil {
 		return session.Principal{}, fmt.Errorf("create local session: %w", err)
 	}
+	if err := bindBrowserSession(ctx, tx, record.BrowserBindingHash, record.SessionID); err != nil {
+		return session.Principal{}, err
+	}
+	checkedAt, err = d.validateBrowserSessionLifetime(record, checkedAt)
+	if err != nil {
+		return session.Principal{}, browserSessionOutcomeUnknown(err)
+	}
+	event.OccurredAt = checkedAt
 	if err := insertAuditEvent(ctx, tx, event); err != nil {
 		return session.Principal{}, err
 	}
 	if err := tx.Commit(); err != nil {
+		if record.BrowserBindingHash != ([32]byte{}) {
+			return session.Principal{}, errors.Join(session.ErrBrowserSessionUnknown, fmt.Errorf("commit local session: %w", err))
+		}
 		return session.Principal{}, fmt.Errorf("commit local session: %w", err)
+	}
+	if _, err := d.validateBrowserSessionLifetime(record, checkedAt); err != nil {
+		return session.Principal{}, browserSessionOutcomeUnknown(err)
 	}
 	return session.Principal{
 		SessionID: record.SessionID, AccountID: record.AccountID, Username: username, Source: session.SourceLocal, MustChangePassword: mustChange,

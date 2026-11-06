@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 9 {
+	if version > 10 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -217,6 +217,20 @@ CREATE TABLE cognito_group_bindings (
 PRAGMA user_version = 9;`
 		if _, err := tx.ExecContext(ctx, cognitoGroupBindings); err != nil {
 			return fmt.Errorf("apply Cognito group binding schema: %w", err)
+		}
+		version = 9
+	}
+	if version == 9 {
+		const browserSessions = `
+ALTER TABLE console_sessions ADD COLUMN browser_binding_hash BLOB
+    CHECK (browser_binding_hash IS NULL OR length(browser_binding_hash) = 32);
+CREATE TABLE console_browser_sessions (
+    browser_hash BLOB PRIMARY KEY NOT NULL CHECK (length(browser_hash) = 32),
+    session_id TEXT NOT NULL UNIQUE REFERENCES console_sessions(id)
+);
+PRAGMA user_version = 10;`
+		if _, err := tx.ExecContext(ctx, browserSessions); err != nil {
+			return fmt.Errorf("apply browser session binding schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

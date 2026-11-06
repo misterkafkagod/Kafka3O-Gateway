@@ -45,15 +45,16 @@ type Credentials struct {
 }
 
 type Record struct {
-	SessionID         string
-	AccountID         string
-	CredentialVersion int64
-	TokenHash         [32]byte `json:"-"`
-	CSRFHash          [32]byte `json:"-"`
-	CreatedAt         time.Time
-	IdleExpiresAt     time.Time
-	AbsoluteExpiresAt time.Time
-	EventID           string
+	SessionID          string
+	AccountID          string
+	CredentialVersion  int64
+	TokenHash          [32]byte `json:"-"`
+	CSRFHash           [32]byte `json:"-"`
+	BrowserBindingHash [32]byte `json:"-"`
+	CreatedAt          time.Time
+	IdleExpiresAt      time.Time
+	AbsoluteExpiresAt  time.Time
+	EventID            string
 }
 
 // Store returns ErrInvalidSession directly only when invalidity is certain.
@@ -138,6 +139,9 @@ var (
 	ErrCognitoSessionUnknown     = errors.New("Cognito session outcome is unknown")
 	ErrCognitoSessionAudit       = errors.New("Cognito session audit failed")
 	ErrCognitoRefreshUnavailable = errors.New("Cognito session refresh is unavailable")
+	// Only the exact conflict sentinel confirms a durably audited denial.
+	ErrBrowserSessionConflict = errors.New("browser already has an active session")
+	ErrBrowserSessionUnknown  = errors.New("browser session outcome is unavailable")
 )
 
 func NewManager(store Store, random io.Reader, now func() time.Time, idleLifetime, absoluteLifetime time.Duration) (*Manager, error) {

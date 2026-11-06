@@ -89,7 +89,7 @@ FROM console_sessions JOIN identities ON identities.id = console_sessions.identi
 JOIN cognito_identities ON cognito_identities.identity_id = identities.id
 JOIN cognito_session_credentials ON cognito_session_credentials.session_id = console_sessions.id
   AND cognito_session_credentials.identity_id = identities.id
-WHERE console_sessions.id = ? AND identities.id = ?`, details.SessionID, details.IdentityID).Scan(
+WHERE console_sessions.id = ? AND identities.id = ? AND console_sessions.browser_binding_hash IS NULL`, details.SessionID, details.IdentityID).Scan(
 		&enabled, &source, &version, &revoked, &idle, &absolute, &issuer, &subject, &generation,
 		&nonce, &audienceJSON, &groupsJSON, &issued, &expiry, &freshUntil, &encrypted,
 	)

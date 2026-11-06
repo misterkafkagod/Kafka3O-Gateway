@@ -35,7 +35,7 @@ func (d *Database) UseSession(ctx context.Context, tokenHash [32]byte, clock fun
 	var source string
 	err = tx.QueryRowContext(ctx, `UPDATE console_sessions
 SET idle_expires_at_ns = min(absolute_expires_at_ns, ?)
-WHERE token_hash = ? AND revoked_at_ns IS NULL AND idle_expires_at_ns > ? AND absolute_expires_at_ns > ?
+WHERE token_hash = ? AND browser_binding_hash IS NULL AND revoked_at_ns IS NULL AND idle_expires_at_ns > ? AND absolute_expires_at_ns > ?
 AND EXISTS (
     SELECT 1 FROM identities WHERE identities.id = console_sessions.identity_id AND identities.enabled = 1
       AND (

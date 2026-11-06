@@ -62,7 +62,7 @@ FROM console_sessions JOIN identities ON identities.id = console_sessions.identi
 JOIN cognito_session_credentials ON cognito_session_credentials.session_id = console_sessions.id
   AND cognito_session_credentials.identity_id = identities.id
 JOIN cognito_identities ON cognito_identities.identity_id = identities.id
-WHERE console_sessions.token_hash = ? AND console_sessions.auth_source = 'cognito'
+WHERE console_sessions.token_hash = ? AND console_sessions.browser_binding_hash IS NULL AND console_sessions.auth_source = 'cognito'
   AND console_sessions.credential_version = 1 AND console_sessions.revoked_at_ns IS NULL
   AND identities.enabled = 1 AND console_sessions.idle_expires_at_ns > ?
   AND console_sessions.absolute_expires_at_ns > ?`, request.TokenHash[:],

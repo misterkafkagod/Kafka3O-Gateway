@@ -52,6 +52,15 @@ func (d *Database) CreateCognitoSession(ctx context.Context, record session.Cogn
 		}
 		return session.Principal{}, cause
 	}
+	now, err = d.validateBrowserSessionLifetime(record.Session, now)
+	if err != nil {
+		if err == session.ErrInvalidSession {
+			event.OccurredAt = now
+			return deny(session.ErrCognitoSessionUnavailable, AuditValidationRejected)
+		}
+		return session.Principal{}, err
+	}
+	event.OccurredAt = now
 	details, err = record.Exchange.Details(record.Protector, now)
 	if err != nil || !record.Session.IdleExpiresAt.After(now) {
 		return deny(errors.Join(session.ErrCognitoSessionUnavailable, err), AuditValidationRejected)
@@ -71,6 +80,12 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 		event.ActorID, event.Source = accountID, AuditSourceCognito
 		return deny(session.ErrCognitoSessionUnavailable, AuditDenied)
 	}
+	if err := d.checkBrowserSession(ctx, tx, record.Session.BrowserBindingHash, now); err != nil {
+		if err == session.ErrBrowserSessionConflict {
+			return deny(err, AuditDenied)
+		}
+		return session.Principal{}, err
+	}
 	encrypted, err := record.Protector.Seal(cognito.RefreshTokenBinding{
 		SessionID: record.Session.SessionID, IdentityID: accountID, Generation: 1,
 	}, details.RefreshToken)
@@ -79,6 +94,14 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 	}
 	now, err = d.transactionTime(now)
 	if err != nil {
+		return session.Principal{}, err
+	}
+	now, err = d.validateBrowserSessionLifetime(record.Session, now)
+	if err != nil {
+		if err == session.ErrInvalidSession {
+			event.OccurredAt = now
+			return deny(session.ErrCognitoSessionUnavailable, AuditValidationRejected)
+		}
 		return session.Principal{}, err
 	}
 	event.OccurredAt = now
@@ -108,11 +131,15 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO console_sessions
-(id, identity_id, credential_version, token_hash, csrf_hash, created_at_ns, idle_expires_at_ns, absolute_expires_at_ns, auth_source)
-VALUES (?, ?, 1, ?, ?, ?, ?, ?, 'cognito')`, record.Session.SessionID, accountID,
+(id, identity_id, credential_version, token_hash, csrf_hash, created_at_ns, idle_expires_at_ns, absolute_expires_at_ns, auth_source, browser_binding_hash)
+VALUES (?, ?, 1, ?, ?, ?, ?, ?, 'cognito', ?)`, record.Session.SessionID, accountID,
 		record.Session.TokenHash[:], record.Session.CSRFHash[:], record.Session.CreatedAt.UTC().UnixNano(),
-		record.Session.IdleExpiresAt.UTC().UnixNano(), record.Session.AbsoluteExpiresAt.UTC().UnixNano()); err != nil {
+		record.Session.IdleExpiresAt.UTC().UnixNano(), record.Session.AbsoluteExpiresAt.UTC().UnixNano(),
+		browserBindingValue(record.Session.BrowserBindingHash)); err != nil {
 		return session.Principal{}, fmt.Errorf("create Cognito session: %w", err)
+	}
+	if err := bindBrowserSession(ctx, tx, record.Session.BrowserBindingHash, record.Session.SessionID); err != nil {
+		return session.Principal{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO cognito_session_credentials
 (session_id, identity_id, exchange_operation_id, original_nonce_hash, audience_json, groups_json,
@@ -123,20 +150,43 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`, record.Session.SessionID, accountID,
 		details.ClaimsFreshUntil.UTC().UnixNano(), encrypted); err != nil {
 		return session.Principal{}, fmt.Errorf("store encrypted Cognito session credentials: %w", err)
 	}
+	if record.Session.BrowserBindingHash != ([32]byte{}) {
+		now, err = d.validateBrowserSessionLifetime(record.Session, now)
+		if err != nil {
+			return session.Principal{}, browserSessionOutcomeUnknown(err)
+		}
+		if _, err := record.Exchange.Details(record.Protector, now); err != nil {
+			return session.Principal{}, browserSessionOutcomeUnknown(errors.Join(session.ErrCognitoSessionUnavailable, err))
+		}
+		event.OccurredAt = now
+	}
 	event.ActorID, event.Source, event.Decision, event.Outcome = accountID, AuditSourceCognito, "allowed", AuditSucceeded
 	event.ResourceKind, event.ResourceID = "session", record.Session.SessionID
 	if err := insertAuditEvent(ctx, tx, event); err != nil {
 		return session.Principal{}, errors.Join(session.ErrCognitoSessionAudit, err)
 	}
 	if err := tx.Commit(); err != nil {
+		if record.Session.BrowserBindingHash != ([32]byte{}) {
+			return session.Principal{}, browserSessionOutcomeUnknown(errors.Join(session.ErrCognitoSessionUnknown, fmt.Errorf("commit Cognito session: %w", err)))
+		}
 		return session.Principal{}, errors.Join(session.ErrCognitoSessionUnknown, fmt.Errorf("commit Cognito session: %w", err))
 	}
 	completedAt, err := d.transactionTime(event.OccurredAt)
 	if err != nil {
+		if record.Session.BrowserBindingHash != ([32]byte{}) {
+			return session.Principal{}, browserSessionOutcomeUnknown(errors.Join(session.ErrCognitoSessionUnknown, err))
+		}
 		return session.Principal{}, errors.Join(session.ErrCognitoSessionUnknown, err)
+	}
+	completedAt, err = d.validateBrowserSessionLifetime(record.Session, completedAt)
+	if err != nil {
+		return session.Principal{}, browserSessionOutcomeUnknown(err)
 	}
 	_, err = record.Exchange.Details(record.Protector, completedAt)
 	if err != nil || !record.Session.IdleExpiresAt.After(completedAt) {
+		if record.Session.BrowserBindingHash != ([32]byte{}) {
+			return session.Principal{}, browserSessionOutcomeUnknown(errors.Join(session.ErrCognitoSessionUnavailable, err))
+		}
 		return session.Principal{}, errors.Join(session.ErrCognitoSessionUnavailable, err)
 	}
 	return session.Principal{

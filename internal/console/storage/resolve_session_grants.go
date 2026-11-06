@@ -54,7 +54,7 @@ LEFT JOIN local_accounts ON local_accounts.identity_id = identities.id
 LEFT JOIN cognito_identities ON cognito_identities.identity_id = identities.id
 LEFT JOIN cognito_session_credentials AS credentials ON credentials.session_id = sessions.id
   AND credentials.identity_id = identities.id
-WHERE sessions.token_hash = ?`, tokenHash[:]).Scan(
+WHERE sessions.token_hash = ? AND sessions.browser_binding_hash IS NULL`, tokenHash[:]).Scan(
 		&sessionID, &accountID, &source, &version, &revoked, &deadlines.idle, &deadlines.absolute,
 		&enabled, &localVersion, &mustChange, &issuer, &subject, &groupsJSON, &generation, &freshness,
 		&tokenExpiry, &encrypted, &reserved,
