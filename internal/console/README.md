@@ -162,17 +162,24 @@ Audit, commit and uncertain outcomes must not be treated as a confirmed
 denial or retried automatically. An outcome that may have committed is not
 reported as an ordinary invalid session.
 
-This is not yet a browser session implementation: the existing issuing
-managers and HTTP routes do not supply a marker, and ordinary session use,
-logout lookup, administrator reauthorization, grant resolution and refresh
-reject bound sessions. Existing unbound sessions retain their prior behavior.
-A future bound resolver and administrator reauthorization must check both
-the session's digest and the current marker-to-session binding on every
-request, including refresh and grant decisions; otherwise an old session
-could revive after replacement. Marker generation, cookie lifecycle and
-local/SSO integration remain unfinished. Binding rows for inactive markers
-are retained until that marker is reused; bounded retention and cleanup
-must be addressed before deployment.
+Separate storage-only bound session-use and grant-resolution actions require
+the marker digest and transactionally verify both the session's digest and
+the current marker-to-session binding. They recheck identity, revocation,
+deadlines and current direct or verified-group grants; an old session cannot
+revive after replacement. Bound Cognito claims must be fresh and cannot
+trigger provider refresh through these actions. Missing binding storage, or a
+clock observed to regress during an action or before session/claim issuance,
+is an operational failure, not an ordinary invalid session.
+The existing unbound paths do not depend on the binding table and continue
+to reject bound sessions.
+
+This is not yet a browser session implementation: issuing and resolving
+managers and HTTP routes do not supply a marker. Logout lookup, administrator
+reauthorization and provider refresh still reject bound sessions; their
+future bound variants must verify the same current binding transactionally.
+Marker generation, cookie lifecycle and local/SSO integration remain
+unfinished. Binding rows for inactive markers are retained until that marker
+is reused; bounded retention and cleanup must be addressed before deployment.
 
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each

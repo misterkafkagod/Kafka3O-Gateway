@@ -10,9 +10,9 @@ func (d *Database) validateBrowserSessionLifetime(record session.Record, request
 	if record.BrowserBindingHash == ([32]byte{}) {
 		return requested, nil
 	}
-	now := d.now().UTC()
-	if now.IsZero() || now.Year() < 1970 || now.Year() > 2261 || now.Before(requested) {
-		return time.Time{}, ErrInvalidAuditEvent
+	now, err := d.strictTransactionTime(requested)
+	if err != nil {
+		return time.Time{}, err
 	}
 	if !record.IdleExpiresAt.After(now) || !record.AbsoluteExpiresAt.After(now) {
 		return now, session.ErrInvalidSession
