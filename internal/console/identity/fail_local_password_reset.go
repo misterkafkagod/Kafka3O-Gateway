@@ -12,7 +12,7 @@ func (s resetLocalPassword) failLocalPasswordReset(ctx context.Context, attempt 
 		EventID: eventID, OccurredAt: s.now(), Rejected: errors.Is(cause, ErrInvalidPassword),
 	})
 	if err != nil {
-		return errors.Join(cause, fmt.Errorf("record failed password reset: %w", err))
+		return errors.Join(ErrPasswordResetAudit, cause, fmt.Errorf("record failed password reset: %w", err))
 	}
 	return cause
 }

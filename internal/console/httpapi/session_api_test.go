@@ -66,10 +66,14 @@ func newTestConsole(t *testing.T) testConsole {
 	if err != nil {
 		t.Fatal(err)
 	}
+	reset, err := identity.NewResetLocalPassword(db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewUnstartedServer(nil)
 	origin := "https://" + server.Listener.Addr().String()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, change, manager, origin, logger)
+	handler, err := consoleapi.NewSessionAPI(login, change, reset, manager, origin, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,10 +290,16 @@ func (unusedPasswordChange) Execute(context.Context, string, string, string, str
 	return errors.New("unexpected")
 }
 
+type unusedPasswordReset struct{}
+
+func (unusedPasswordReset) Execute(context.Context, identity.LocalAdminActor, string, string) (identity.PasswordResetResult, error) {
+	return identity.PasswordResetResult{}, errors.New("unexpected")
+}
+
 func TestSessionAPIReportsFailuresWithoutLoggingSecrets(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
-	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +331,7 @@ func (l *throttledLogin) Execute(_ context.Context, _, _ string, client netip.Ad
 func TestLoginThrottleUsesDirectPeerRatherThanForwardedHeaders(t *testing.T) {
 	login := &throttledLogin{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}

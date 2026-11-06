@@ -580,7 +580,8 @@ func TestPasswordResetSurfacesCanceledOutcomeAudit(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := reset.Execute(ctx, actor, target.ID, "temporary reset passphrase")
-	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "record failed password reset") || result.OperationID == "" {
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, identity.ErrPasswordResetAudit) ||
+		!strings.Contains(err.Error(), "record failed password reset") || result.OperationID == "" {
 		t.Fatalf("canceled audit failure was not surfaced: %v", err)
 	}
 	if _, err := f.manager.Resolve(context.Background(), targetSession.Token); err != nil {
@@ -589,6 +590,34 @@ func TestPasswordResetSurfacesCanceledOutcomeAudit(t *testing.T) {
 	events, err := f.db.ListAuditEvents(context.Background(), AuditFilter{Global: true, Action: "console.local_password_reset", Limit: 10})
 	if err != nil || len(events) != 1 || events[0].Outcome != AuditAttempted || events[0].OperationID != result.OperationID {
 		t.Fatalf("canceled reset did not retain attempted audit: count=%d err=%v", len(events), err)
+	}
+}
+
+func TestPasswordResetSurfacesValidationAuditFailure(t *testing.T) {
+	f := newAccountAdministrationFixture(t)
+	ctx := context.Background()
+	target, targetSession := f.addAccount(t, "subject-1", "other-user", "", "")
+	_, err := f.db.db.ExecContext(ctx, `CREATE TRIGGER reject_reset_validation_audit BEFORE INSERT ON audit_events
+WHEN NEW.action = 'console.local_password_reset' AND NEW.outcome = 'validation_rejected'
+BEGIN SELECT RAISE(FAIL, 'audit unavailable'); END;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reset, err := identity.NewResetLocalPassword(f.db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
+	result, err := reset.Execute(ctx, actor, target.ID, "short")
+	if !errors.Is(err, identity.ErrInvalidPassword) || !errors.Is(err, identity.ErrPasswordResetAudit) || result.OperationID == "" {
+		t.Fatalf("validation audit failure was not surfaced: %v", err)
+	}
+	if _, err := f.manager.Resolve(ctx, targetSession.Token); err != nil {
+		t.Fatalf("failed validation revoked target session: %v", err)
+	}
+	events, err := f.db.ListAuditEvents(ctx, AuditFilter{Global: true, Action: "console.local_password_reset", Limit: 10})
+	if err != nil || len(events) != 1 || events[0].Outcome != AuditAttempted || events[0].OperationID != result.OperationID {
+		t.Fatalf("validation audit failure did not retain attempted event: count=%d err=%v", len(events), err)
 	}
 }
 

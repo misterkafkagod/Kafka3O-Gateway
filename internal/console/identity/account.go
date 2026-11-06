@@ -151,4 +151,5 @@ var (
 	ErrPasswordResetExpired    = errors.New("password reset attempt has expired")
 	ErrLocalAccountChanged     = errors.New("local account changed during password reset")
 	ErrPasswordResetUnknown    = errors.New("password reset outcome is unknown")
+	ErrPasswordResetAudit      = errors.New("password reset failure could not be audited")
 )

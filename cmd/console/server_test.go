@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"io"
@@ -176,6 +177,7 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "console.sqlite")
 	secret := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
 	const initialPassword, replacement = "initial passphrase", "replacement passphrase"
+	const resetTemporary, finalPassword = "reset temporary passphrase", "final replacement passphrase"
 	if err := runBootstrap(context.Background(), path, secret, strings.NewReader(secret+"\nadmin\n"+initialPassword)); err != nil {
 		t.Fatal(err)
 	}
@@ -324,8 +326,54 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"mustChangePassword":false`)) {
 		t.Fatalf("replacement login status=%d", resp.StatusCode)
 	}
+	var login struct {
+		AccountID string `json:"accountId"`
+	}
+	if err := json.Unmarshal(data, &login); err != nil || login.AccountID == "" {
+		t.Fatal("replacement login did not return the account ID")
+	}
 	cookies = resp.Cookies()
 	csrf = ""
+	for _, cookie := range cookies {
+		if cookie.Name == session.CSRFCookieName {
+			csrf = cookie.Value
+		}
+	}
+	resetPath := "/api/admin/local-accounts/" + login.AccountID + "/password-reset"
+	resetBody := `{"temporaryPassword":"reset temporary passphrase"}`
+	resp, _ = request(http.MethodPost, resetPath, resetBody, origin, cookies, "")
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("password reset without CSRF status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodPost, resetPath, resetBody, origin, cookies, csrf)
+	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"signInRequired":true`)) ||
+		!bytes.Contains(data, []byte(`"operationId":`)) {
+		t.Fatalf("administrator self-reset status=%d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodGet, "/api/session", "", "", cookies, "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("self-reset session remained valid: %d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodPost, "/api/session/local", `{"username":"admin","password":"reset temporary passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"mustChangePassword":true`)) {
+		t.Fatalf("reset login status=%d", resp.StatusCode)
+	}
+	cookies, csrf = resp.Cookies(), ""
+	for _, cookie := range cookies {
+		if cookie.Name == session.CSRFCookieName {
+			csrf = cookie.Value
+		}
+	}
+	resp, _ = request(http.MethodPost, "/api/session/password",
+		`{"currentPassword":"reset temporary passphrase","newPassword":"final replacement passphrase"}`, origin, cookies, csrf)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("reset temporary password replacement status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodPost, "/api/session/local", `{"username":"admin","password":"final replacement passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"mustChangePassword":false`)) {
+		t.Fatalf("final administrator login status=%d", resp.StatusCode)
+	}
+	cookies, csrf = resp.Cookies(), ""
 	for _, cookie := range cookies {
 		if cookie.Name == session.CSRFCookieName {
 			csrf = cookie.Value
@@ -375,14 +423,18 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	if err != nil || stored.MustChangePassword {
 		t.Fatalf("replacement password state was not preserved: %v", err)
 	}
-	matches, err := identity.VerifyLocalPassword(replacement, stored.PasswordHash)
+	matches, err := identity.VerifyLocalPassword(finalPassword, stored.PasswordHash)
 	if err != nil || !matches {
-		t.Fatalf("replacement password was not persisted: %v", err)
+		t.Fatalf("final password was not persisted: %v", err)
+	}
+	events, err := db.ListAuditEvents(context.Background(), storage.AuditFilter{Global: true, Action: "console.local_password_reset", Limit: 10})
+	if err != nil || len(events) != 2 || events[1].Outcome != storage.AuditSucceeded || events[1].ResourceID != login.AccountID {
+		t.Fatalf("administrator reset audit count=%d err=%v", len(events), err)
 	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range []string{secret, initialPassword, replacement, rawSession, csrf, forgedBearer} {
+	for _, value := range []string{secret, initialPassword, replacement, resetTemporary, finalPassword, rawSession, csrf, forgedBearer} {
 		if strings.Contains(logs.String(), value) {
 			t.Fatal("session server logged a credential")
 		}

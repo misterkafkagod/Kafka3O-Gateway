@@ -23,6 +23,7 @@ type Sessions interface {
 type SessionAPI struct {
 	login        LocalLogin
 	change       identity.ChangeLocalPassword
+	reset        identity.ResetLocalPassword
 	sessions     Sessions
 	csrf         *session.CSRFVerifier
 	expectedHost string
@@ -44,6 +45,10 @@ type localLoginBody struct {
 type changePasswordBody struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
+}
+
+type resetPasswordBody struct {
+	TemporaryPassword string `json:"temporaryPassword"`
 }
 
 type sessionResponse struct {

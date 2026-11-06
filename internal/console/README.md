@@ -74,9 +74,9 @@ Strict session cookie, a separate script-readable Secure CSRF cookie, and an
 exact HTTPS Origin and session-bound CSRF-header check.
 
 `cmd/console serve` composes local login, session inspection, password
-replacement and logout into a TLS-only server. It refuses to start without an
-enabled local global administrator, and exposes no Kafka or account-management
-routes. Configure it with:
+replacement, logout and administrator password reset into a TLS-only server.
+It refuses to start without an enabled local global administrator and exposes
+no Kafka routes or other account-management routes. Configure it with:
 
 - `KAFKA3O_CONSOLE_DB_PATH`: the absolute path to the bootstrapped database.
 - `KAFKA3O_CONSOLE_ORIGIN`: the exact browser HTTPS origin, with no path.
@@ -108,13 +108,14 @@ also revokes any remaining old sessions. This operation is not mounted in the
 HTTP server. Future handlers must derive its actor from an authenticated,
 CSRF-checked session, never from client-supplied identity or session IDs.
 
-The standalone administrator password-reset service also requires a current
-local global ADMIN session without a pending password change. It rechecks that
-session and grant after hashing, then atomically replaces the password, requires
-a further password change, increments the credential version, revokes all target
-sessions, and records the correlated outcome. A concurrent account or password
-change prevents the reset from overwriting newer credentials. Self-reset signs
-the administrator out; resetting a disabled account does not enable it.
+The administrator password-reset service requires a current local global
+ADMIN session without a pending password change. It rechecks that session and
+grant after hashing, then atomically replaces the password, requires a further
+password change, increments the credential version, revokes all target
+sessions, and records the correlated outcome. A concurrent account or
+password change prevents the reset from overwriting newer credentials.
+Self-reset signs the administrator out; resetting a disabled account does not
+enable it.
 
 Reset attempts use a durable 15-minute window: at most 10 per existing target,
 60 per authorized administrator, and 300 globally. Rejected passwords and
@@ -123,10 +124,20 @@ non-admin callers cannot exhaust them. Unknown target input and passwords are
 not recorded in audit or rate-limit records. Each reset service admits at most
 four concurrent password hashes. An unavailable audit store blocks the reset;
 interrupted requests may leave only an attempted event. If the commit outcome
-is unknown, use the returned operation ID to investigate audit and account
-state; do not automatically retry. This service is not mounted in the HTTP
-server. Future handlers must derive the actor from an authenticated,
-CSRF-checked session and must never accept client-supplied actor or session IDs.
+is unknown, use the returned operation ID, when available, to investigate audit
+and account state; do not automatically retry.
+
+The loopback server mounts `POST /api/admin/local-accounts/{accountID}/password-reset`
+with JSON `{ "temporaryPassword": "..." }`. It derives the actor and session
+from the session cookie and requires the exact HTTPS Origin and session-bound
+`X-Kafka3O-CSRF` header; actor or session IDs in the body are rejected. The
+response includes an `operationId` and `signInRequired`, which is true for
+self-reset. Validation, permission, conflict and throttle errors are explicit;
+`password_reset_audit_unavailable` and `password_reset_outcome_unknown` are
+service errors, not success. A lost response can also have an unknown outcome
+without an operation ID: investigate the target and audit before any retry.
+Send temporary passwords only over verified TLS and never put them in logs,
+URLs, command histories, or files.
 
 Before deploying a secured Console, every protected route must apply session
 and authorization checks and deny unknown purposes. Administrator recovery
