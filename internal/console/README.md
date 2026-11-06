@@ -202,6 +202,13 @@ sessions and do not depend on the binding table. These primitives do not
 dispatch provider refresh; bound exchange, completion and waiter revalidation
 must carry and recheck the same marker before integration.
 
+A separate read-only bound refresh dispatch guard rechecks the exact durable
+reservation, current session and browser mapping, credential and verified
+snapshot, session deadlines and non-regressing time. It does not contact the
+provider or make the reserved session usable. A binding can still change
+after this check or while a provider request is in flight; future bound
+completion must recheck the binding and never retry an uncertain request.
+
 Marker generation, cookie lifecycle and local/SSO integration remain
 unfinished. Binding rows for inactive markers are retained until that marker
 is reused; bounded retention and cleanup must be addressed before deployment.

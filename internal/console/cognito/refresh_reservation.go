@@ -32,6 +32,13 @@ type RefreshReservation struct {
 	AbsoluteExpiresAt        time.Time
 }
 
+type BoundRefreshDispatchRequest struct {
+	TokenHash          [32]byte           `json:"-"`
+	BrowserBindingHash [32]byte           `json:"-"`
+	Reservation        RefreshReservation `json:"-"`
+	OccurredAt         time.Time
+}
+
 type RefreshFailureStatus string
 
 const (
