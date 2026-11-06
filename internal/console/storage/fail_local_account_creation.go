@@ -30,7 +30,7 @@ func (d *Database) FailLocalAccountCreation(ctx context.Context, failure identit
 			result = errors.Join(result, fmt.Errorf("roll back failed local account creation: %w", err))
 		}
 	}()
-	failure.OccurredAt, err = d.transactionTime(failure.OccurredAt)
+	failure.OccurredAt, err = d.adminTransactionTime(failure.Actor, failure.OccurredAt)
 	if err != nil {
 		return err
 	}

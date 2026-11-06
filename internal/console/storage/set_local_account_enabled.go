@@ -35,7 +35,7 @@ func (d *Database) SetLocalAccountEnabled(ctx context.Context, change identity.L
 			result = errors.Join(identity.ErrAccountStateUnknown, result, fmt.Errorf("roll back local account state change: %w", err))
 		}
 	}()
-	change.OccurredAt, err = d.transactionTime(change.OccurredAt)
+	change.OccurredAt, err = d.adminTransactionTime(change.Actor, change.OccurredAt)
 	if err != nil {
 		return err
 	}

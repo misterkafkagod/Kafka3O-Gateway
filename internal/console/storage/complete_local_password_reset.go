@@ -32,7 +32,7 @@ func (d *Database) CompleteLocalPasswordReset(ctx context.Context, completion id
 			result = errors.Join(result, fmt.Errorf("roll back local password reset: %w", err))
 		}
 	}()
-	completion.OccurredAt, err = d.transactionTime(completion.OccurredAt)
+	completion.OccurredAt, err = d.adminTransactionTime(completion.Actor, completion.OccurredAt)
 	if err != nil {
 		return err
 	}

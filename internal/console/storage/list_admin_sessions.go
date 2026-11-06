@@ -29,7 +29,7 @@ func (d *Database) ListAdminSessions(ctx context.Context, request identity.Admin
 			result = errors.Join(identity.ErrAdminSessionListAudit, result, fmt.Errorf("roll back session listing: %w", err))
 		}
 	}()
-	request.OccurredAt, err = d.transactionTime(request.OccurredAt)
+	request.OccurredAt, err = d.adminTransactionTime(request.Actor, request.OccurredAt)
 	if err != nil {
 		return identity.AdminSessionListResult{}, err
 	}

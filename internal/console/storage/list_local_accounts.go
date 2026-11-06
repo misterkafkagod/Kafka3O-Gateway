@@ -28,7 +28,7 @@ func (d *Database) ListLocalAccounts(ctx context.Context, request identity.Local
 			result = errors.Join(identity.ErrAccountListAudit, result, fmt.Errorf("roll back local account listing: %w", err))
 		}
 	}()
-	request.OccurredAt, err = d.transactionTime(request.OccurredAt)
+	request.OccurredAt, err = d.adminTransactionTime(request.Actor, request.OccurredAt)
 	if err != nil {
 		return identity.LocalAccountListResult{}, err
 	}

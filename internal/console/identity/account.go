@@ -74,8 +74,9 @@ type LocalPasswordStore interface {
 }
 
 type LocalAdminActor struct {
-	AccountID string
-	SessionID string
+	AccountID          string
+	SessionID          string
+	BrowserBindingHash [32]byte `json:"-"`
 }
 
 type AdminSessionRevocation struct {

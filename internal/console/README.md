@@ -184,12 +184,16 @@ revocation. The existing unbound HTTP logout clears cookies for an exact
 invalid-session result, but retains them for wrapped operational or
 uncertain failures. Unbound logout and revocation reject bound sessions.
 
-Administrator reauthorization and provider refresh still reject bound
-sessions; their future bound variants must verify the same current binding
-transactionally. Marker generation, cookie lifecycle and local/SSO
-integration remain unfinished. Binding rows for inactive markers are retained
-until that marker is reused; bounded retention and cleanup must be addressed
-before deployment.
+Local administrator actions can also receive a marker digest in their
+trusted actor and transactionally recheck the current binding alongside the
+local global-ADMIN grant and session state. Reservation and completion
+reauthorize separately. Existing handlers construct actors themselves and do
+not accept actor or marker values from request bodies; they do not supply a
+bound marker yet. Existing provider-refresh paths still reject bound sessions;
+future bound refresh must verify the same current binding transactionally.
+Marker generation, cookie lifecycle and local/SSO integration remain
+unfinished. Binding rows for inactive markers are retained until that marker
+is reused; bounded retention and cleanup must be addressed before deployment.
 
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each

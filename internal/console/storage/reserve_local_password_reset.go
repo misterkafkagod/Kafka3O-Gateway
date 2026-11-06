@@ -37,7 +37,7 @@ func (d *Database) ReserveLocalPasswordReset(ctx context.Context, attempt identi
 			result = errors.Join(result, fmt.Errorf("roll back password reset reservation: %w", err))
 		}
 	}()
-	attempt.OccurredAt, err = d.transactionTime(attempt.OccurredAt)
+	attempt.OccurredAt, err = d.adminTransactionTime(attempt.Actor, attempt.OccurredAt)
 	if err != nil {
 		return err
 	}

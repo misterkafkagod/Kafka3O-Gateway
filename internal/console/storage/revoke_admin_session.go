@@ -29,7 +29,7 @@ func (d *Database) RevokeAdminSession(ctx context.Context, revocation identity.A
 			result = errors.Join(identity.ErrAdminSessionRevokeUnknown, result, fmt.Errorf("roll back session revocation: %w", err))
 		}
 	}()
-	revocation.OccurredAt, err = d.transactionTime(revocation.OccurredAt)
+	revocation.OccurredAt, err = d.adminTransactionTime(revocation.Actor, revocation.OccurredAt)
 	if err != nil {
 		return err
 	}
