@@ -165,6 +165,18 @@ provider, callback or encryption key and corrupted ciphertext fail closed
 without affecting local accounts. Each successful use opens the encrypted
 refresh token in server memory; it is never returned to the browser.
 
+A refresh-reservation foundation records one durable audited attempt per
+session and refresh generation before any future provider request. It
+rechecks the enabled identity, session expiry and protected credential after
+queued work; stale claims may reserve a refresh but do not grant access.
+Unresolved reservations block session use and cannot be replayed, including
+after a restart. Local sessions remain independent and local logout can
+still revoke the reserved session. The reservation event is part of the
+replay-prevention state: never remove it while the corresponding credential
+generation exists. No provider request, successful refresh completion or
+rotation is wired yet; do not use this foundation as a complete refresh
+flow.
+
 Local logout requires the session-bound CSRF token and can revoke a Cognito
 session even if its claims are stale, its identity is disabled, its session
 has expired, or its provider or encryption key is unavailable, provided the

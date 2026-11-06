@@ -1,6 +1,6 @@
 package cognito
 
-func validSubject(subject string) bool {
+func ValidSubject(subject string) bool {
 	if len(subject) == 0 || len(subject) > 255 {
 		return false
 	}

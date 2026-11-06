@@ -35,7 +35,7 @@ func (v *Verifier) verifyIdentityToken(ctx context.Context, rawToken string) (Ve
 	}
 	now := v.now()
 	if err := token.Claims(&claims); err != nil || token.Issuer != v.issuer ||
-		claims.TokenUse != "id" || !validSubject(token.Subject) ||
+		claims.TokenUse != "id" || !ValidSubject(token.Subject) ||
 		now.IsZero() || token.IssuedAt.IsZero() || token.IssuedAt.After(now.Add(5*time.Minute)) ||
 		!token.IssuedAt.Before(token.Expiry) || !token.Expiry.After(now) ||
 		(claims.AuthorizedParty != "" && claims.AuthorizedParty != v.clientID) ||

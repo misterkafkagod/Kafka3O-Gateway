@@ -52,6 +52,11 @@ AND EXISTS (
             AND ? = 1
             AND cognito_session_credentials.claims_fresh_until_ns > ?
             AND cognito_session_credentials.token_expires_at_ns > ?
+            AND NOT EXISTS (
+              SELECT 1 FROM audit_events
+              WHERE event_id = console_sessions.id || '.refresh.' || cognito_session_credentials.refresh_generation
+                AND action = 'console.cognito.refresh' AND outcome = 'attempted'
+            )
         )
       )
 )
