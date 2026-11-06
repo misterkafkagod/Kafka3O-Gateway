@@ -17,6 +17,7 @@ type LocalLogin interface {
 
 type Sessions interface {
 	Resolve(ctx context.Context, token string) (session.Principal, error)
+	ResolveForLogout(ctx context.Context, token string) (session.Principal, error)
 	Revoke(ctx context.Context, token string) error
 }
 
@@ -81,6 +82,7 @@ type adminSessionResponse struct {
 	ID                string `json:"id"`
 	AccountID         string `json:"accountId"`
 	Username          string `json:"username"`
+	Source            string `json:"authSource"`
 	CreatedAt         string `json:"createdAt"`
 	IdleExpiresAt     string `json:"idleExpiresAt"`
 	AbsoluteExpiresAt string `json:"absoluteExpiresAt"`
@@ -90,6 +92,7 @@ type adminSessionResponse struct {
 type sessionResponse struct {
 	AccountID          string `json:"accountId"`
 	Username           string `json:"username"`
+	Source             string `json:"authSource"`
 	MustChangePassword bool   `json:"mustChangePassword"`
 	AbsoluteExpiresAt  string `json:"absoluteExpiresAt"`
 }

@@ -103,6 +103,7 @@ type AdminSessionSummary struct {
 	ID                string
 	AccountID         string
 	Username          string
+	Source            string
 	CreatedAt         time.Time
 	IdleExpiresAt     time.Time
 	AbsoluteExpiresAt time.Time

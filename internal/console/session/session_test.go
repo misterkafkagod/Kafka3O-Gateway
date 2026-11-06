@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 )
 
@@ -22,7 +23,7 @@ func (testStore) CreateLocalSession(context.Context, Record) (Principal, error) 
 	return Principal{}, errors.New("unexpected store call")
 }
 
-func (testStore) UseSession(context.Context, [32]byte, func() time.Time, time.Duration) (Principal, error) {
+func (testStore) UseSession(context.Context, [32]byte, func() time.Time, time.Duration, *cognito.RefreshTokenProtector) (Principal, error) {
 	return Principal{}, errors.New("unexpected store call")
 }
 

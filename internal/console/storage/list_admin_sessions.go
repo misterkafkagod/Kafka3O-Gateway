@@ -54,30 +54,39 @@ func (d *Database) ListAdminSessions(ctx context.Context, request identity.Admin
 			event.Outcome, decisionErr = AuditValidationRejected, identity.ErrInvalidAdminSessionCursor
 			break
 		}
-		rows, err := tx.QueryContext(ctx, `SELECT console_sessions.id, identities.id, local_accounts.username,
+		rows, err := tx.QueryContext(ctx, `SELECT console_sessions.id, identities.id,
+CASE WHEN console_sessions.auth_source = 'cognito' THEN 'cognito-user' ELSE local_accounts.username END,
+console_sessions.auth_source,
 console_sessions.created_at_ns, console_sessions.idle_expires_at_ns, console_sessions.absolute_expires_at_ns
 FROM console_sessions JOIN identities ON identities.id = console_sessions.identity_id
-JOIN local_accounts ON local_accounts.identity_id = identities.id
+LEFT JOIN local_accounts ON local_accounts.identity_id = identities.id
+LEFT JOIN cognito_session_credentials ON cognito_session_credentials.session_id = console_sessions.id
+  AND cognito_session_credentials.identity_id = identities.id
+LEFT JOIN cognito_identities ON cognito_identities.identity_id = cognito_session_credentials.identity_id
 WHERE console_sessions.id > ? AND console_sessions.revoked_at_ns IS NULL
 AND console_sessions.idle_expires_at_ns > ? AND console_sessions.absolute_expires_at_ns > ?
-AND identities.enabled = 1 AND local_accounts.credential_version = console_sessions.credential_version
+AND identities.enabled = 1 AND (
+  (console_sessions.auth_source = 'local' AND local_accounts.credential_version = console_sessions.credential_version)
+  OR (console_sessions.auth_source = 'cognito' AND cognito_identities.identity_id IS NOT NULL AND console_sessions.credential_version = 1)
+)
 ORDER BY console_sessions.id ASC LIMIT ?`, request.AfterID, request.OccurredAt.UnixNano(), request.OccurredAt.UnixNano(), request.Limit+1)
 		if err != nil {
-			return identity.AdminSessionListResult{}, fmt.Errorf("query active local sessions: %w", err)
+			return identity.AdminSessionListResult{}, fmt.Errorf("query active sessions: %w", err)
 		}
 		defer rows.Close()
 		page.Sessions = make([]identity.AdminSessionSummary, 0, request.Limit+1)
 		for rows.Next() {
 			var item identity.AdminSessionSummary
 			var created, idle, absolute int64
-			if err := rows.Scan(&item.ID, &item.AccountID, &item.Username, &created, &idle, &absolute); err != nil {
-				return identity.AdminSessionListResult{}, fmt.Errorf("read active local session: %w", err)
+			if err := rows.Scan(&item.ID, &item.AccountID, &item.Username, &item.Source, &created, &idle, &absolute); err != nil {
+				return identity.AdminSessionListResult{}, fmt.Errorf("read active session: %w", err)
 			}
 			normalized, nameErr := identity.NormalizeLocalUsername(item.Username)
 			if identity.ValidateSessionID(item.ID) != nil || item.AccountID == "" ||
 				identity.ValidateLocalAccountCursor(item.AccountID) != nil || nameErr != nil || normalized != item.Username ||
+				(item.Source != "local" && item.Source != "cognito") ||
 				created >= idle || idle > absolute {
-				return identity.AdminSessionListResult{}, errors.New("stored local session has invalid metadata")
+				return identity.AdminSessionListResult{}, errors.New("stored session has invalid metadata")
 			}
 			item.CreatedAt = time.Unix(0, created).UTC()
 			item.IdleExpiresAt = time.Unix(0, idle).UTC()

@@ -191,9 +191,11 @@ func TestLocalSessionHTTPFlow(t *testing.T) {
 	var result struct {
 		AccountID          string `json:"accountId"`
 		Username           string `json:"username"`
+		Source             string `json:"authSource"`
 		MustChangePassword bool   `json:"mustChangePassword"`
 	}
-	if err := json.Unmarshal(data, &result); err != nil || result.AccountID == "" || result.Username != "admin" || !result.MustChangePassword {
+	if err := json.Unmarshal(data, &result); err != nil || result.AccountID == "" || result.Username != "admin" ||
+		result.Source != "local" || !result.MustChangePassword {
 		t.Fatal("login response did not identify the restricted account")
 	}
 	var sessionCookie, csrfCookie *http.Cookie
@@ -214,8 +216,8 @@ func TestLocalSessionHTTPFlow(t *testing.T) {
 		t.Fatal("login JSON contained a session credential")
 	}
 	cookies := []*http.Cookie{sessionCookie, csrfCookie}
-	response, _ = c.request(t, http.MethodGet, "/api/session", "", "", cookies, "")
-	if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != "no-store" {
+	response, data = c.request(t, http.MethodGet, "/api/session", "", "", cookies, "")
+	if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != "no-store" || !bytes.Contains(data, []byte(`"authSource":"local"`)) {
 		t.Fatalf("current session status = %d", response.StatusCode)
 	}
 	response, _ = c.request(t, http.MethodPost, "/api/session/local", loginBody, c.origin, cookies, "")
@@ -325,6 +327,10 @@ func TestSessionAPIRejectsInsecureAndMalformedRequests(t *testing.T) {
 type failedSessions struct{}
 
 func (failedSessions) Resolve(context.Context, string) (session.Principal, error) {
+	return session.Principal{}, errors.New("secret value must not be logged")
+}
+
+func (failedSessions) ResolveForLogout(context.Context, string) (session.Principal, error) {
 	return session.Principal{}, errors.New("secret value must not be logged")
 }
 

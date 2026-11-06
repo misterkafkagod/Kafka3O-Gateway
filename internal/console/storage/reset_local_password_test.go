@@ -754,7 +754,7 @@ func TestVersionFourMigrationPreservesAccountsAndSessions(t *testing.T) {
 	f := newAccountAdministrationFixture(t)
 	ctx := context.Background()
 	path := f.db.path
-	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE cognito_authorization_attempts; DROP TABLE local_account_creation_attempts; DROP TABLE password_reset_attempts; PRAGMA user_version = 4"); err != nil {
+	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE cognito_session_credentials; DROP TABLE cognito_identities; ALTER TABLE console_sessions DROP COLUMN auth_source; DROP TABLE cognito_authorization_attempts; DROP TABLE local_account_creation_attempts; DROP TABLE password_reset_attempts; PRAGMA user_version = 4"); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.db.Close(); err != nil {

@@ -57,10 +57,17 @@ func (d *Database) RevokeAdminSession(ctx context.Context, revocation identity.A
 		var targetExists int
 		err := tx.QueryRowContext(ctx, `SELECT 1 FROM console_sessions
 JOIN identities ON identities.id = console_sessions.identity_id
-JOIN local_accounts ON local_accounts.identity_id = identities.id
 WHERE console_sessions.id = ? AND console_sessions.revoked_at_ns IS NULL
 AND console_sessions.idle_expires_at_ns > ? AND console_sessions.absolute_expires_at_ns > ?
-AND identities.enabled = 1 AND local_accounts.credential_version = console_sessions.credential_version`,
+AND identities.enabled = 1 AND (
+  (console_sessions.auth_source = 'local'
+    AND EXISTS (SELECT 1 FROM local_accounts WHERE local_accounts.identity_id = identities.id
+      AND local_accounts.credential_version = console_sessions.credential_version))
+  OR (console_sessions.auth_source = 'cognito' AND EXISTS (SELECT 1 FROM cognito_session_credentials JOIN cognito_identities
+    ON cognito_identities.identity_id = cognito_session_credentials.identity_id
+    WHERE cognito_session_credentials.session_id = console_sessions.id
+      AND cognito_session_credentials.identity_id = identities.id AND console_sessions.credential_version = 1))
+)`,
 			revocation.SessionID, revocation.OccurredAt.UnixNano(), revocation.OccurredAt.UnixNano()).Scan(&targetExists)
 		if errors.Is(err, sql.ErrNoRows) {
 			event.Outcome, decisionErr = AuditValidationRejected, identity.ErrAdminSessionUnavailable
@@ -80,6 +87,9 @@ AND identities.enabled = 1 AND local_accounts.credential_version = console_sessi
 		}
 		if count != 1 {
 			return errors.New("target session changed during revocation")
+		}
+		if _, err := tx.ExecContext(ctx, "DELETE FROM cognito_session_credentials WHERE session_id = ?", revocation.SessionID); err != nil {
+			return fmt.Errorf("remove revoked Cognito credentials: %w", err)
 		}
 		event.ResourceKind, event.ResourceID, event.Outcome = "session", revocation.SessionID, AuditSucceeded
 	}

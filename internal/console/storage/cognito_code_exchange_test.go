@@ -328,6 +328,65 @@ func TestCognitoCodeExchangeAcceptsExactResponseLimit(t *testing.T) {
 	}
 }
 
+func TestCognitoCodeExchangeProvidesBoundSessionProof(t *testing.T) {
+	f := newCognitoCodeFixture(t, "success", cognito.ClientAuthenticationPublic)
+	start, consumed := f.consumeAttempt(t)
+	result, err := f.exchanger.ExchangeAuthorizationCode(context.Background(), consumed, fixtureCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protector, err := cognito.NewRefreshTokenProtector(f.manager, rand.Reader, bytes.Repeat([]byte{9}, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	proof, err := result.ForSession(protector, f.clock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result.OperationID, result.Identity.Subject, result.RefreshToken = "forged-operation", "forged-subject", "forged-token"
+	result.Identity.Audience[0] = "forged-audience"
+	result.Identity.Groups[0] = "forged-group"
+	details, err := proof.Details(protector, f.clock())
+	if err != nil || details.OperationID != start.OperationID || details.Identity.Subject != "opaque|synthetic-subject" ||
+		details.Identity.Audience[0] != f.provider.ClientID || details.Identity.Groups[0] != "unmapped-group" ||
+		details.RefreshToken != fixtureRefresh || details.NonceHash != consumed.NonceHash ||
+		!details.ClaimsFreshUntil.Equal(time.Unix(f.clock().Add(-time.Minute).Unix(), 0).Add(5*time.Minute)) {
+		t.Fatalf("session proof was affected by mutable exchange fields: %v", err)
+	}
+	details.Identity.Audience[0] = "mutated-copy"
+	details, err = proof.Details(protector, f.clock())
+	if err != nil || details.Identity.Audience[0] != f.provider.ClientID {
+		t.Fatalf("session proof returned a mutable identity alias: %v", err)
+	}
+	serialized, err := json.Marshal(details)
+	if err != nil || bytes.Contains(serialized, []byte(fixtureRefresh)) || bytes.Contains(serialized, []byte("opaque|synthetic-subject")) {
+		t.Fatal("session exchange details exposed provider credentials or attributes in JSON")
+	}
+	if _, err := (cognito.VerifiedCodeExchange{}).Details(protector, f.clock()); !errors.Is(err, cognito.ErrCodeExchangeUnavailable) {
+		t.Fatalf("forged exchange proof was accepted: %v", err)
+	}
+	if _, err := result.ForSession(nil, f.clock()); !errors.Is(err, cognito.ErrCodeExchangeUnavailable) {
+		t.Fatalf("missing protector was accepted: %v", err)
+	}
+	otherManager, err := cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key, f.provider, "https://console.example/other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherProtector, err := cognito.NewRefreshTokenProtector(otherManager, rand.Reader, bytes.Repeat([]byte{9}, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := proof.Details(otherProtector, f.clock()); !errors.Is(err, cognito.ErrCodeExchangeUnavailable) {
+		t.Fatalf("session proof accepted another provider binding: %v", err)
+	}
+	if _, err := proof.Details(protector, details.ValidUntil); !errors.Is(err, cognito.ErrCodeExchangeExpired) {
+		t.Fatalf("expired session proof was accepted: %v", err)
+	}
+	if _, err := proof.Details(protector, f.clock().Add(-time.Second)); !errors.Is(err, cognito.ErrCodeExchangeUnavailable) {
+		t.Fatalf("session proof accepted a clock earlier than verification: %v", err)
+	}
+}
+
 func TestCognitoCodeExchangeRejectsInvalidTokensAndUnknownOutcomes(t *testing.T) {
 	for _, tt := range []struct {
 		mode string

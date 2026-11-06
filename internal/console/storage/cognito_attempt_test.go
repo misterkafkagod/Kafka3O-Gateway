@@ -535,7 +535,7 @@ BEGIN SELECT RAISE(FAIL, 'audit unavailable'); END;`); err != nil {
 func TestCognitoVersionSixMigrationPreservesLocalState(t *testing.T) {
 	f := newAccountAdministrationFixture(t)
 	ctx := context.Background()
-	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE cognito_authorization_attempts; PRAGMA user_version = 6"); err != nil {
+	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE cognito_session_credentials; DROP TABLE cognito_identities; ALTER TABLE console_sessions DROP COLUMN auth_source; DROP TABLE cognito_authorization_attempts; PRAGMA user_version = 6"); err != nil {
 		t.Fatal(err)
 	}
 	path := f.db.path
@@ -556,7 +556,7 @@ func TestCognitoVersionSixMigrationPreservesLocalState(t *testing.T) {
 		t.Fatalf("version-six migration lost the administrator session: %v", err)
 	}
 	var version, tables int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 7 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 8 {
 		t.Fatalf("version-six migration did not advance: version=%d err=%v", version, err)
 	}
 	if err := db.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'cognito_authorization_attempts'").Scan(&tables); err != nil || tables != 1 {

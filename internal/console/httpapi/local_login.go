@@ -68,7 +68,7 @@ func (a *SessionAPI) localLogin(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, sessionCookie)
 	http.SetCookie(w, csrfCookie)
 	a.writeJSON(w, http.StatusOK, "application/json", sessionResponse{
-		AccountID: credentials.Principal.AccountID, Username: credentials.Principal.Username,
+		AccountID: credentials.Principal.AccountID, Username: credentials.Principal.Username, Source: string(session.SourceLocal),
 		MustChangePassword: credentials.Principal.MustChangePassword,
 		AbsoluteExpiresAt:  credentials.Principal.AbsoluteExpiresAt.UTC().Format(time.RFC3339),
 	})

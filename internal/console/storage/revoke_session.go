@@ -30,18 +30,29 @@ func (d *Database) RevokeSession(ctx context.Context, tokenHash [32]byte, eventI
 			result = errors.Join(result, fmt.Errorf("roll back session revocation: %w", err))
 		}
 	}()
-	err = tx.QueryRowContext(ctx, "SELECT id, identity_id FROM console_sessions WHERE token_hash = ? AND revoked_at_ns IS NULL",
-		tokenHash[:]).Scan(&event.ResourceID, &event.ActorID)
+	var source string
+	err = tx.QueryRowContext(ctx, "SELECT id, identity_id, auth_source FROM console_sessions WHERE token_hash = ? AND revoked_at_ns IS NULL",
+		tokenHash[:]).Scan(&event.ResourceID, &event.ActorID, &source)
 	if errors.Is(err, sql.ErrNoRows) {
 		return session.ErrInvalidSession
 	}
 	if err != nil {
 		return fmt.Errorf("find session for revocation: %w", err)
 	}
+	if source == string(session.SourceCognito) {
+		event.Source = AuditSourceCognito
+	} else if source != string(session.SourceLocal) {
+		return session.ErrInvalidSession
+	}
 	event.ResourceKind = "session"
 	if _, err := tx.ExecContext(ctx, "UPDATE console_sessions SET revoked_at_ns = ? WHERE token_hash = ? AND revoked_at_ns IS NULL",
 		now.UTC().UnixNano(), tokenHash[:]); err != nil {
 		return fmt.Errorf("revoke local session: %w", err)
+	}
+	if source == string(session.SourceCognito) {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM cognito_session_credentials WHERE session_id = ?", event.ResourceID); err != nil {
+			return fmt.Errorf("remove revoked Cognito credentials: %w", err)
+		}
 	}
 	if err := insertAuditEvent(ctx, tx, event); err != nil {
 		return err

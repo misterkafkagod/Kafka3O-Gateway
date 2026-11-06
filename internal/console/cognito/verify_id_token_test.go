@@ -198,6 +198,9 @@ func TestCognitoVerifyIDTokenRejectsUntrustedClaimsAndSignatures(t *testing.T) {
 		{"null nonce", func(c map[string]any) { c["nonce"] = nil }, key, "RS256"},
 		{"wrong token use", func(c map[string]any) { c["token_use"] = "access" }, key, "RS256"},
 		{"missing subject", func(c map[string]any) { delete(c, "sub") }, key, "RS256"},
+		{"oversized subject", func(c map[string]any) { c["sub"] = strings.Repeat("x", 256) }, key, "RS256"},
+		{"non-ASCII subject", func(c map[string]any) { c["sub"] = "subject-\u00e9" }, key, "RS256"},
+		{"control in subject", func(c map[string]any) { c["sub"] = "subject\n" }, key, "RS256"},
 		{"wrong group type", func(c map[string]any) { c["cognito:groups"] = "ADMIN" }, key, "RS256"},
 		{"null groups", func(c map[string]any) { c["cognito:groups"] = nil }, key, "RS256"},
 		{"null group member", func(c map[string]any) { c["cognito:groups"] = []any{"engineers", nil} }, key, "RS256"},
@@ -233,6 +236,12 @@ func TestCognitoVerifyIDTokenRejectsUntrustedClaimsAndSignatures(t *testing.T) {
 	identity, err := verifier.VerifyIDToken(context.Background(), signFixtureToken(t, key, "RS256", claims), nonce)
 	if err != nil || len(identity.Groups) != 0 {
 		t.Fatalf("valid multi-audience token without groups was rejected: %v", err)
+	}
+	claims = cognitoFixtureClaims(fixture.config, now)
+	claims["sub"] = strings.Repeat("x", 255)
+	identity, err = verifier.VerifyIDToken(context.Background(), signFixtureToken(t, key, "RS256", claims), nonce)
+	if err != nil || len(identity.Subject) != 255 {
+		t.Fatalf("maximum OIDC subject length was rejected: %v", err)
 	}
 	for _, raw := range []string{"", "not-a-token", strings.Repeat("a", maxIDTokenBytes+1)} {
 		identity, err := verifier.VerifyIDToken(context.Background(), raw, nonce)

@@ -35,13 +35,14 @@ func (v *Verifier) verifyIdentityToken(ctx context.Context, rawToken string) (Ve
 	}
 	now := v.now()
 	if err := token.Claims(&claims); err != nil || token.Issuer != v.issuer ||
-		claims.TokenUse != "id" || token.Subject == "" ||
+		claims.TokenUse != "id" || !validSubject(token.Subject) ||
 		now.IsZero() || token.IssuedAt.IsZero() || token.IssuedAt.After(now.Add(5*time.Minute)) ||
 		!token.IssuedAt.Before(token.Expiry) || !token.Expiry.After(now) ||
 		(claims.AuthorizedParty != "" && claims.AuthorizedParty != v.clientID) ||
 		(len(token.Audience) > 1 && claims.AuthorizedParty != v.clientID) {
 		return VerifiedIdentity{}, "", false, ErrInvalidIDToken
 	}
+
 	var groups []string
 	if claims.Groups != nil {
 		var values []json.RawMessage

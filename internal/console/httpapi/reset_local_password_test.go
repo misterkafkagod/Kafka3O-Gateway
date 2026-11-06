@@ -128,6 +128,10 @@ func (s resetTestSessions) Resolve(context.Context, string) (session.Principal, 
 	return s.principal, nil
 }
 
+func (s resetTestSessions) ResolveForLogout(context.Context, string) (session.Principal, error) {
+	return s.principal, nil
+}
+
 func (resetTestSessions) Revoke(context.Context, string) error { return errors.New("unexpected") }
 
 type capturedReset struct {

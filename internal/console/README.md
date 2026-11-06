@@ -136,8 +136,7 @@ is returned in memory, and audit failures withhold both. A lost or uncertain
 exchange is recorded as unknown where possible and must not be retried;
 investigate the operation ID and start a fresh login. The fixture tests both
 client modes, forged tokens, TLS, redirects and interrupted requests. No
-application session, encrypted refresh-token storage, browser route or live
-Cognito integration is provided by this primitive.
+browser route or live Cognito integration is provided by this primitive.
 
 The standalone refresh-token protector uses AES-256-GCM with fresh random
 nonces and a separate externally supplied 32-byte key. It refuses to use the
@@ -146,8 +145,39 @@ the exact provider/callback, session ID, identity ID and token generation;
 tampering or substitution fails closed. Changing the key or provider/callback
 invalidates protected tokens. The caller must use cryptographically secure
 randomness and protect both deployment keys outside SQLite. This primitive
-does not persist refresh tokens, prevent database rollback, serialize refresh
-or provide sessions; those require transactional storage and audit.
+does not itself persist refresh tokens, prevent database rollback or
+serialize refresh; those require transactional storage and audit.
+
+The Cognito session foundation consumes an in-process verified exchange proof
+once, with a durable reservation. It atomically creates or finds an enabled
+`(issuer, sub)` identity and stores an opaque session, a verified claim
+snapshot and the encrypted refresh token. It never links email addresses or
+creates role grants. The proof, provider/callback, nonce and token lifetimes
+are rechecked after queued work; audit or uncertain outcomes return no session
+credentials and must not be retried. Session use rechecks the account,
+authentication source, revocation and claim freshness. Without a provider
+refresh implementation, Cognito sessions fail closed at the earliest of
+five minutes after verification, five minutes after token issuance or token
+expiry. A local-only session manager refuses Cognito sessions; a Cognito
+manager requires a verified provider configuration and matching protector.
+Session use also authenticates the protected credential binding, so a changed
+provider, callback or encryption key and corrupted ciphertext fail closed
+without affecting local accounts. Each successful use opens the encrypted
+refresh token in server memory; it is never returned to the browser.
+
+Local logout requires the session-bound CSRF token and can revoke a Cognito
+session even if its claims are stale, its identity is disabled, its session
+has expired, or its provider or encryption key is unavailable, provided the
+browser still sends the session cookie. Local logout and administrator
+revocation atomically remove retained Cognito refresh-token material; audit
+failure prevents revocation and is reported. Ordinary session inspection
+clears invalid cookies, so an already-cleared cookie cannot be used to
+request logout. Expired and disabled sessions are not yet automatically
+purged; define and implement retention cleanup before deployment. The database
+and WAL may still contain encrypted historical bytes after logical deletion.
+Session issuance is not exposed through a browser route; refresh/rotation,
+group-role bindings, live Cognito and the secured deployment remain
+unimplemented.
 
 `cmd/console serve` composes local login, session inspection, password
 replacement, logout, administrator account listing, creation, state changes,
@@ -178,7 +208,7 @@ a new sign-in. If a password-change response is lost, its outcome may be
 unknown: do not automatically retry; sign in afresh and investigate audit
 records. Never log the raw session or CSRF token.
 
-The local session-administration foundation can revoke one active local
+The session-administration foundation can revoke one local or Cognito
 session by its separate opaque session ID. It requires an unrestricted
 current local global ADMIN and rechecks the actor's session, expiry and
 grant in the same transaction. The target revocation and its redacted audit
@@ -189,13 +219,16 @@ commit requires investigation by operation ID rather than an automatic
 retry. Invalid or unknown submitted IDs, session tokens, CSRF values and
 usernames are not recorded in the revocation audit.
 
-The accompanying local session-listing foundation requires the same current
+The accompanying session-listing foundation requires the same current
 unrestricted local global ADMIN and transactionally rechecks that authority.
-It returns only active local sessions for enabled accounts with current
-credential versions: the opaque session and account IDs, normalized
-username, creation/idle/absolute expiry times, and whether the session is the
-caller's. It never returns token or CSRF values or hashes, password hashes,
-or credential versions. Pages use an opaque session-ID cursor in ascending
+It returns non-revoked sessions for enabled accounts within their idle and
+absolute lifetimes; local sessions must also have current credential
+versions. Cognito sessions may be listed when their claims are stale, so an
+administrator can still revoke them; stale sessions cannot be used. Items
+include opaque session and account IDs, an authentication source, a normalized
+username (`cognito-user` for Cognito), creation/idle/absolute expiry times,
+and whether the session is the caller's. It never returns token or CSRF
+values or hashes, password hashes, or credential versions. Pages use an opaque session-ID cursor in ascending
 order, default to 50 entries, and are capped at 100. A well-formed cursor need
 not still exist, since sessions may expire or be revoked between pages; the
 listing is not a snapshot. Listing decisions are audited without usernames,
@@ -205,8 +238,9 @@ returns no session data.
 The loopback server mounts `GET /api/admin/sessions` for a current,
 unrestricted local global ADMIN. The `no-store` response contains an
 `operationId`, a `sessions` array, and a `nextCursor`. Each item has `id`,
-`accountId`, `username`, `createdAt`, `idleExpiresAt`, `absoluteExpiresAt`
-and `isCurrent`; it contains no credential material. `limit` defaults to 50
+`accountId`, `username`, `authSource`, `createdAt`, `idleExpiresAt`,
+`absoluteExpiresAt` and `isCurrent`; it contains no credential material.
+`authSource` is `local` or `cognito`. `limit` defaults to 50
 and is capped at 100; use a nonempty `nextCursor` as `after` for the next
 page. Malformed, duplicate or unknown query fields are rejected before the
 listing service is called. The read-only route does not require CSRF.

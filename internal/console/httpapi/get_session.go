@@ -13,7 +13,7 @@ func (a *SessionAPI) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.writeJSON(w, http.StatusOK, "application/json", sessionResponse{
-		AccountID: principal.AccountID, Username: principal.Username, MustChangePassword: principal.MustChangePassword,
+		AccountID: principal.AccountID, Username: principal.Username, Source: string(principal.Source), MustChangePassword: principal.MustChangePassword,
 		AbsoluteExpiresAt: principal.AbsoluteExpiresAt.UTC().Format(time.RFC3339),
 	})
 }

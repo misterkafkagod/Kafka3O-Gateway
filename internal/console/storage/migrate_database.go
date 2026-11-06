@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 7 {
+	if version > 8 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -172,6 +172,36 @@ CREATE INDEX cognito_authorization_attempts_expiry ON cognito_authorization_atte
 PRAGMA user_version = 7;`
 		if _, err := tx.ExecContext(ctx, cognitoAttempts); err != nil {
 			return fmt.Errorf("apply Cognito authorization attempt schema: %w", err)
+		}
+		version = 7
+	}
+	if version == 7 {
+		const cognitoSessions = `
+ALTER TABLE console_sessions ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'cognito'));
+CREATE TABLE cognito_identities (
+    identity_id TEXT PRIMARY KEY NOT NULL REFERENCES identities(id),
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    UNIQUE (issuer, subject)
+);
+CREATE TABLE cognito_session_credentials (
+    session_id TEXT PRIMARY KEY NOT NULL REFERENCES console_sessions(id),
+    identity_id TEXT NOT NULL REFERENCES cognito_identities(identity_id),
+    exchange_operation_id TEXT NOT NULL UNIQUE,
+    original_nonce_hash BLOB NOT NULL CHECK (length(original_nonce_hash) = 32),
+    audience_json TEXT NOT NULL,
+    groups_json TEXT NOT NULL,
+    issued_at_ns INTEGER NOT NULL,
+    token_expires_at_ns INTEGER NOT NULL,
+    claims_fresh_until_ns INTEGER NOT NULL,
+    refresh_generation INTEGER NOT NULL CHECK (refresh_generation > 0),
+    encrypted_refresh_token BLOB NOT NULL CHECK (length(encrypted_refresh_token) BETWEEN 29 AND 8220),
+    CHECK (issued_at_ns < token_expires_at_ns AND claims_fresh_until_ns <= token_expires_at_ns)
+);
+CREATE INDEX cognito_session_credentials_identity ON cognito_session_credentials(identity_id);
+PRAGMA user_version = 8;`
+		if _, err := tx.ExecContext(ctx, cognitoSessions); err != nil {
+			return fmt.Errorf("apply Cognito session schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

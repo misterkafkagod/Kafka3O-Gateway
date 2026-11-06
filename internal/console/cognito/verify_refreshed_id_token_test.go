@@ -68,6 +68,7 @@ func TestCognitoVerifyRefreshedIDToken(t *testing.T) {
 	}{
 		{"wrong issuer", func(c map[string]any) { c["iss"] = "https://other.invalid/pool" }, key},
 		{"wrong subject", func(c map[string]any) { c["sub"] = "another-subject" }, key},
+		{"oversized subject", func(c map[string]any) { c["sub"] = strings.Repeat("x", 256) }, key},
 		{"different audience", func(c map[string]any) { c["aud"] = []string{fixture.config.ClientID, "other-client"} }, key},
 		{"wrong client", func(c map[string]any) { c["aud"] = []string{"another-client", "other-client"} }, key},
 		{"wrong authorized party", func(c map[string]any) { c["azp"] = "other-client" }, key},

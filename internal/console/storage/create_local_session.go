@@ -11,12 +11,7 @@ import (
 )
 
 func (d *Database) CreateLocalSession(ctx context.Context, record session.Record) (principal session.Principal, result error) {
-	if strings.TrimSpace(record.SessionID) == "" || len(record.SessionID) > 128 ||
-		strings.TrimSpace(record.AccountID) == "" || len(record.AccountID) > 128 || record.CredentialVersion < 1 ||
-		record.TokenHash == ([32]byte{}) || record.CSRFHash == ([32]byte{}) || record.TokenHash == record.CSRFHash ||
-		record.CreatedAt.IsZero() || record.CreatedAt.Year() < 1970 || record.AbsoluteExpiresAt.Year() > 2261 ||
-		!record.CreatedAt.Before(record.IdleExpiresAt) || record.IdleExpiresAt.After(record.AbsoluteExpiresAt) ||
-		record.AbsoluteExpiresAt.Sub(record.CreatedAt) > session.MaxAbsoluteLifetime {
+	if strings.TrimSpace(record.AccountID) == "" || len(record.AccountID) > 128 || validateSessionRecord(record) != nil {
 		return session.Principal{}, session.ErrInvalidSessionConfig
 	}
 	event := AuditEvent{
@@ -71,7 +66,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, record.SessionID, record.AccountID, record.Cre
 		return session.Principal{}, fmt.Errorf("commit local session: %w", err)
 	}
 	return session.Principal{
-		SessionID: record.SessionID, AccountID: record.AccountID, Username: username, MustChangePassword: mustChange,
+		SessionID: record.SessionID, AccountID: record.AccountID, Username: username, Source: session.SourceLocal, MustChangePassword: mustChange,
 		CreatedAt: record.CreatedAt.UTC(), IdleExpiresAt: record.IdleExpiresAt.UTC(),
 		AbsoluteExpiresAt: record.AbsoluteExpiresAt.UTC(), CSRFHash: record.CSRFHash,
 	}, nil

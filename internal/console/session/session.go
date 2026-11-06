@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"time"
+
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 )
 
 const (
@@ -17,12 +19,20 @@ type Principal struct {
 	SessionID          string
 	AccountID          string
 	Username           string
+	Source             AuthenticationSource
 	MustChangePassword bool
 	CreatedAt          time.Time
 	IdleExpiresAt      time.Time
 	AbsoluteExpiresAt  time.Time
 	CSRFHash           [32]byte `json:"-"`
 }
+
+type AuthenticationSource string
+
+const (
+	SourceLocal   AuthenticationSource = "local"
+	SourceCognito AuthenticationSource = "cognito"
+)
 
 type Credentials struct {
 	Principal Principal
@@ -44,8 +54,20 @@ type Record struct {
 
 type Store interface {
 	CreateLocalSession(ctx context.Context, record Record) (Principal, error)
-	UseSession(ctx context.Context, tokenHash [32]byte, now func() time.Time, idleLifetime time.Duration) (Principal, error)
+	UseSession(ctx context.Context, tokenHash [32]byte, now func() time.Time, idleLifetime time.Duration, protector *cognito.RefreshTokenProtector) (Principal, error)
 	RevokeSession(ctx context.Context, tokenHash [32]byte, eventID string, now time.Time) error
+}
+
+type CognitoRecord struct {
+	Session          Record
+	CandidateAccount string
+	Exchange         cognito.VerifiedCodeExchange   `json:"-"`
+	Protector        *cognito.RefreshTokenProtector `json:"-"`
+}
+
+type CognitoSessionStore interface {
+	CreateCognitoSession(context.Context, CognitoRecord) (Principal, error)
+	FindCognitoSessionForLogout(context.Context, [32]byte) (Principal, error)
 }
 
 type Manager struct {
@@ -54,6 +76,7 @@ type Manager struct {
 	now              func() time.Time
 	idleLifetime     time.Duration
 	absoluteLifetime time.Duration
+	cognitoProtector *cognito.RefreshTokenProtector
 }
 
 type AccessPurpose string
@@ -66,11 +89,14 @@ const (
 )
 
 var (
-	ErrInvalidSessionConfig   = errors.New("invalid session configuration")
-	ErrInvalidSession         = errors.New("session is unavailable or expired")
-	ErrPasswordChangeRequired = errors.New("password change is required")
-	ErrInvalidAccessPurpose   = errors.New("invalid session access purpose")
-	ErrInvalidCSRF            = errors.New("request origin or CSRF token is invalid")
+	ErrInvalidSessionConfig      = errors.New("invalid session configuration")
+	ErrInvalidSession            = errors.New("session is unavailable or expired")
+	ErrPasswordChangeRequired    = errors.New("password change is required")
+	ErrInvalidAccessPurpose      = errors.New("invalid session access purpose")
+	ErrInvalidCSRF               = errors.New("request origin or CSRF token is invalid")
+	ErrCognitoSessionUnavailable = errors.New("Cognito session is unavailable or already used")
+	ErrCognitoSessionUnknown     = errors.New("Cognito session outcome is unknown")
+	ErrCognitoSessionAudit       = errors.New("Cognito session audit failed")
 )
 
 func NewManager(store Store, random io.Reader, now func() time.Time, idleLifetime, absoluteLifetime time.Duration) (*Manager, error) {

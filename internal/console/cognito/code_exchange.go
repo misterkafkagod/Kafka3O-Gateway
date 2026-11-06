@@ -47,6 +47,30 @@ type CodeExchangeResult struct {
 	OperationID  string
 	Identity     VerifiedIdentity `json:"-"`
 	RefreshToken string           `json:"-"`
+	proof        *verifiedExchangeProof
+}
+
+type verifiedExchangeProof struct {
+	operationID     string
+	identity        VerifiedIdentity
+	nonceHash       [32]byte
+	refreshToken    string
+	providerBinding [32]byte
+	verifiedAt      time.Time
+	attemptExpiry   time.Time
+}
+
+type VerifiedCodeExchange struct {
+	proof *verifiedExchangeProof
+}
+
+type SessionExchangeDetails struct {
+	OperationID      string
+	Identity         VerifiedIdentity `json:"-"`
+	NonceHash        [32]byte         `json:"-"`
+	RefreshToken     string           `json:"-"`
+	ValidUntil       time.Time
+	ClaimsFreshUntil time.Time
 }
 
 type CodeExchanger struct {

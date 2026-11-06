@@ -27,6 +27,7 @@ type adminSessionPage struct {
 		ID                string `json:"id"`
 		AccountID         string `json:"accountId"`
 		Username          string `json:"username"`
+		Source            string `json:"authSource"`
 		CreatedAt         string `json:"createdAt"`
 		IdleExpiresAt     string `json:"idleExpiresAt"`
 		AbsoluteExpiresAt string `json:"absoluteExpiresAt"`
@@ -98,7 +99,7 @@ func TestAdministratorSessionHTTPSFlow(t *testing.T) {
 	}
 	var currentID, otherID string
 	for _, item := range append(first.Sessions, second.Sessions...) {
-		if item.AccountID != adminID || item.Username != "admin" {
+		if item.AccountID != adminID || item.Username != "admin" || item.Source != "local" {
 			t.Fatal("session list returned an unexpected account")
 		}
 		created, errCreated := time.Parse(time.RFC3339Nano, item.CreatedAt)
@@ -328,7 +329,7 @@ func TestAdminSessionListingHTTPRejectsInvalidSuccessResults(t *testing.T) {
 	secondID := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{2}, 16))
 	now := time.Now().UTC()
 	valid := identity.AdminSessionSummary{
-		ID: id, AccountID: "user-1", Username: "user-a", CreatedAt: now,
+		ID: id, AccountID: "user-1", Username: "user-a", Source: "local", CreatedAt: now,
 		IdleExpiresAt: now.Add(time.Minute), AbsoluteExpiresAt: now.Add(time.Hour), Current: true,
 	}
 	invalidTime := valid
@@ -337,6 +338,8 @@ func TestAdminSessionListingHTTPRejectsInvalidSuccessResults(t *testing.T) {
 	invalidCurrent.Current = false
 	invalidUsername := valid
 	invalidUsername.Username = "User-A"
+	invalidSource := valid
+	invalidSource.Source = "other"
 	for _, tt := range []struct {
 		name   string
 		result identity.AdminSessionListResult
@@ -345,11 +348,12 @@ func TestAdminSessionListingHTTPRejectsInvalidSuccessResults(t *testing.T) {
 		{"nil sessions", identity.AdminSessionListResult{OperationID: "operation"}},
 		{"invalid ID", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{{ID: "invalid"}}}},
 		{"invalid username", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{invalidUsername}}},
+		{"invalid source", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{invalidSource}}},
 		{"invalid expiry", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{invalidTime}}},
 		{"incorrect current session", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{invalidCurrent}}},
 		{"duplicate ID", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{valid, valid}}},
 		{"unsorted IDs", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{
-			{ID: secondID, AccountID: "user-2", Username: "user-b", CreatedAt: now, IdleExpiresAt: now.Add(time.Minute), AbsoluteExpiresAt: now.Add(time.Hour)}, valid,
+			{ID: secondID, AccountID: "user-2", Username: "user-b", Source: "local", CreatedAt: now, IdleExpiresAt: now.Add(time.Minute), AbsoluteExpiresAt: now.Add(time.Hour)}, valid,
 		}}},
 		{"invalid next cursor", identity.AdminSessionListResult{OperationID: "operation", Sessions: []identity.AdminSessionSummary{valid}, NextCursor: "wrong"}},
 	} {

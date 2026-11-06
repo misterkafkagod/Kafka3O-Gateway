@@ -3,7 +3,9 @@ package cognito
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -27,6 +29,7 @@ func (e *CodeExchanger) ExchangeAuthorizationCode(ctx context.Context, attempt C
 	}
 	var identity VerifiedIdentity
 	var refresh string
+	var verifiedAt time.Time
 	var exchangeErr error
 	if code == "" || len(code) > 2048 || strings.IndexFunc(code, unicode.IsControl) >= 0 {
 		exchangeErr = ErrCodeExchangeUnavailable
@@ -42,6 +45,7 @@ func (e *CodeExchanger) ExchangeAuthorizationCode(ctx context.Context, attempt C
 				identity, exchangeErr = e.verifier.VerifyIDToken(ctx, rawID, proof.nonceHash)
 				if exchangeErr == nil {
 					refresh = token.RefreshToken
+					verifiedAt = e.attempts.now().UTC()
 				}
 			}
 		}
@@ -67,5 +71,13 @@ func (e *CodeExchanger) ExchangeAuthorizationCode(ctx context.Context, attempt C
 		return result, exchangeErr
 	}
 	result.Identity, result.RefreshToken = identity, refresh
+	provenIdentity := identity
+	provenIdentity.Audience = slices.Clone(identity.Audience)
+	provenIdentity.Groups = slices.Clone(identity.Groups)
+	result.proof = &verifiedExchangeProof{
+		operationID: proof.operationID, identity: provenIdentity, nonceHash: proof.nonceHash,
+		refreshToken: refresh, providerBinding: e.attempts.providerBinding,
+		verifiedAt: verifiedAt, attemptExpiry: proof.expiresAt,
+	}
 	return result, nil
 }

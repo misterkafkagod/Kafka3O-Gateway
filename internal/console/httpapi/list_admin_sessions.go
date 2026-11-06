@@ -60,6 +60,7 @@ func (a *SessionAPI) listAdminSessions(w http.ResponseWriter, r *http.Request) {
 		normalized, nameErr := identity.NormalizeLocalUsername(item.Username)
 		if identity.ValidateSessionID(item.ID) != nil || item.ID <= previousID || item.AccountID == "" ||
 			identity.ValidateLocalAccountCursor(item.AccountID) != nil || nameErr != nil || normalized != item.Username ||
+			(item.Source != "local" && item.Source != "cognito") ||
 			item.CreatedAt.Year() < 1970 || item.AbsoluteExpiresAt.Year() > 2261 ||
 			!item.CreatedAt.Before(item.IdleExpiresAt) || item.IdleExpiresAt.After(item.AbsoluteExpiresAt) ||
 			item.Current != (item.ID == principal.SessionID) {
@@ -67,7 +68,7 @@ func (a *SessionAPI) listAdminSessions(w http.ResponseWriter, r *http.Request) {
 		}
 		previousID = item.ID
 		items = append(items, adminSessionResponse{
-			ID: item.ID, AccountID: item.AccountID, Username: item.Username,
+			ID: item.ID, AccountID: item.AccountID, Username: item.Username, Source: item.Source,
 			CreatedAt: item.CreatedAt.UTC().Format(time.RFC3339Nano), IdleExpiresAt: item.IdleExpiresAt.UTC().Format(time.RFC3339Nano),
 			AbsoluteExpiresAt: item.AbsoluteExpiresAt.UTC().Format(time.RFC3339Nano), IsCurrent: item.Current,
 		})
