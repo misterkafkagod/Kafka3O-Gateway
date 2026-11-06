@@ -189,8 +189,19 @@ trusted actor and transactionally recheck the current binding alongside the
 local global-ADMIN grant and session state. Reservation and completion
 reauthorize separately. Existing handlers construct actors themselves and do
 not accept actor or marker values from request bodies; they do not supply a
-bound marker yet. Existing provider-refresh paths still reject bound sessions;
-future bound refresh must verify the same current binding transactionally.
+bound marker yet.
+
+Separate storage-only bound Cognito refresh inspection and reservation
+actions verify the session digest and current browser binding with identity,
+lifetime and encrypted-credential checks. A per-generation reservation
+remains durable across restart and blocks session use and replay. Bound
+actions reject observed backwards clocks, and an uncertain or expired
+post-commit reservation returns no credential material and must not be
+retried automatically. Existing unbound refresh actions still reject bound
+sessions and do not depend on the binding table. These primitives do not
+dispatch provider refresh; bound exchange, completion and waiter revalidation
+must carry and recheck the same marker before integration.
+
 Marker generation, cookie lifecycle and local/SSO integration remain
 unfinished. Binding rows for inactive markers are retained until that marker
 is reused; bounded retention and cleanup must be addressed before deployment.
