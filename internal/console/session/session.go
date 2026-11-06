@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
@@ -13,6 +14,8 @@ const (
 	DefaultIdleLifetime     = 30 * time.Minute
 	DefaultAbsoluteLifetime = 8 * time.Hour
 	MaxAbsoluteLifetime     = 24 * time.Hour
+	maxCognitoRefreshes     = 32
+	cognitoRefreshTimeout   = 15 * time.Second
 )
 
 type Principal struct {
@@ -52,6 +55,8 @@ type Record struct {
 	EventID           string
 }
 
+// Store returns ErrInvalidSession directly only when invalidity is certain.
+// Wrapped or joined errors must be treated as operational failures.
 type Store interface {
 	CreateLocalSession(ctx context.Context, record Record) (Principal, error)
 	UseSession(ctx context.Context, tokenHash [32]byte, now func() time.Time, idleLifetime time.Duration, protector *cognito.RefreshTokenProtector) (Principal, error)
@@ -70,6 +75,21 @@ type CognitoSessionStore interface {
 	FindCognitoSessionForLogout(context.Context, [32]byte) (Principal, error)
 }
 
+// CognitoRefreshStore follows the same exact ErrInvalidSession contract as Store.
+type CognitoRefreshStore interface {
+	cognito.RefreshStore
+	InspectCognitoRefresh(context.Context, [32]byte, time.Time) (CognitoRefreshState, error)
+	CompleteCognitoRefresh(context.Context, cognito.RefreshCompletionRequest) error
+}
+
+type CognitoRefreshState uint8
+
+const (
+	CognitoRefreshReady CognitoRefreshState = iota + 1
+	CognitoRefreshFresh
+	CognitoRefreshBlocked
+)
+
 type Manager struct {
 	store            Store
 	random           io.Reader
@@ -77,6 +97,19 @@ type Manager struct {
 	idleLifetime     time.Duration
 	absoluteLifetime time.Duration
 	cognitoProtector *cognito.RefreshTokenProtector
+	cognitoRefresh   *cognitoRefreshCoordinator
+}
+
+type cognitoRefreshCoordinator struct {
+	store     CognitoRefreshStore
+	exchanger *cognito.CodeExchanger
+	mu        sync.Mutex
+	active    map[[32]byte]*cognitoRefreshCall
+}
+
+type cognitoRefreshCall struct {
+	done chan struct{}
+	err  error
 }
 
 type AccessPurpose string
@@ -97,6 +130,7 @@ var (
 	ErrCognitoSessionUnavailable = errors.New("Cognito session is unavailable or already used")
 	ErrCognitoSessionUnknown     = errors.New("Cognito session outcome is unknown")
 	ErrCognitoSessionAudit       = errors.New("Cognito session audit failed")
+	ErrCognitoRefreshUnavailable = errors.New("Cognito session refresh is unavailable")
 )
 
 func NewManager(store Store, random io.Reader, now func() time.Time, idleLifetime, absoluteLifetime time.Duration) (*Manager, error) {

@@ -46,6 +46,8 @@ type cognitoCodeFixture struct {
 	auth             cognito.ClientAuthentication
 	mode             string
 	expectedRefresh  string
+	refreshEntered   chan struct{}
+	refreshRelease   chan struct{}
 	mu               sync.RWMutex
 	nonce            string
 	challenge        string

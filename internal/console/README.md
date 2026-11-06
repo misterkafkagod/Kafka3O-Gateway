@@ -199,7 +199,20 @@ the next generation's encrypted retained or rotated token, and a redacted
 success audit. A failed or uncertain completion does not retry the provider
 request or reuse the proof; an unresolved reservation remains blocked. If
 the proof is lost on restart before completion, a new sign-in is required.
-Session resolution does not yet invoke or coordinate this refresh flow.
+
+An opt-in `NewRefreshingCognitoManager` connects session resolution to that
+flow when the session store and exchanger use the same underlying store.
+It coalesces concurrent work by session-token digest, admits at most 32
+distinct refreshes per manager, and bounds shared work to 15 seconds.
+Cancellation of one waiting request does not cancel the shared refresh.
+Every successful waiter revalidates the session and claim deadlines. Different
+managers do not share the in-memory coordinator; the durable reservation
+still prevents another provider request. Pending or uncertain refreshes
+return service unavailable without clearing the browser's session cookie.
+Only a definite invalid-session result clears it; a joined operational error
+is not treated as definite invalidity or permission to replace a session.
+The existing local-only and non-refreshing Cognito managers do not coordinate
+refresh.
 
 Local logout requires the session-bound CSRF token and can revoke a Cognito
 session even if its claims are stale, its identity is disabled, its session
@@ -211,9 +224,12 @@ clears invalid cookies, so an already-cleared cookie cannot be used to
 request logout. Expired and disabled sessions are not yet automatically
 purged; define and implement retention cleanup before deployment. The database
 and WAL may still contain encrypted historical bytes after logical deletion.
-Session issuance is not exposed through a browser route; automatic refresh
-coordination, group-role bindings, live Cognito and the secured deployment
-remain unimplemented.
+Session issuance is not exposed through a browser route, and the standalone
+Console process does not yet enable the refreshing manager. Group-role
+bindings, live Cognito and the secured deployment remain unimplemented.
+The authentication-only preview offers explicit sign-out when session
+inspection is unavailable; a missing CSRF token or uncertain logout does not
+silently replace the session or automatically retry the mutation.
 
 `cmd/console serve` composes local login, session inspection, password
 replacement, logout, administrator account listing, creation, state changes,

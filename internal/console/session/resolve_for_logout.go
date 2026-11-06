@@ -1,9 +1,6 @@
 package session
 
-import (
-	"context"
-	"errors"
-)
+import "context"
 
 func (m *Manager) ResolveForLogout(ctx context.Context, token string) (Principal, error) {
 	hash, err := hashSessionToken(token)
@@ -12,7 +9,7 @@ func (m *Manager) ResolveForLogout(ctx context.Context, token string) (Principal
 	}
 	if store, ok := m.store.(CognitoSessionStore); ok {
 		principal, err := store.FindCognitoSessionForLogout(ctx, hash)
-		if !errors.Is(err, ErrInvalidSession) {
+		if err != ErrInvalidSession {
 			return principal, err
 		}
 	}

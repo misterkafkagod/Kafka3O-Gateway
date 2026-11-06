@@ -26,7 +26,7 @@ func (a *SessionAPI) localLogin(w http.ResponseWriter, r *http.Request) {
 			a.writeProblem(w, http.StatusConflict, "already_signed_in", "Sign out before signing in again")
 			return
 		}
-		if !errors.Is(err, session.ErrInvalidSession) {
+		if err != session.ErrInvalidSession {
 			a.writeUnavailable(w, "resolve_existing", err)
 			return
 		}

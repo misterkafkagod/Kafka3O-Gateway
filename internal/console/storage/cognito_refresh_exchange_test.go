@@ -24,13 +24,26 @@ import (
 func serveCognitoFixtureRefresh(t *testing.T, f *cognitoCodeFixture, w http.ResponseWriter, r *http.Request, mode, nonce string, authValid bool) {
 	t.Helper()
 	f.mu.RLock()
-	expectedRefresh := f.expectedRefresh
+	expectedRefresh, entered, release := f.expectedRefresh, f.refreshEntered, f.refreshRelease
 	f.mu.RUnlock()
 	if r.Method != http.MethodPost || !authValid || r.Form.Get("refresh_token") != expectedRefresh ||
 		r.Form.Get("code") != "" || r.Form.Get("code_verifier") != "" || r.Form.Get("redirect_uri") != "" {
 		f.invalidCalls.Add(1)
 		http.Error(w, "bad fixture refresh", http.StatusBadRequest)
 		return
+	}
+	if entered != nil {
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+	}
+	if release != nil {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
 	}
 	switch mode {
 	case "refresh outage":

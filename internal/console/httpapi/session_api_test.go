@@ -336,6 +336,18 @@ func (failedSessions) ResolveForLogout(context.Context, string) (session.Princip
 
 func (failedSessions) Revoke(context.Context, string) error { return errors.New("unexpected") }
 
+type uncertainSessions struct{}
+
+func (uncertainSessions) Resolve(context.Context, string) (session.Principal, error) {
+	return session.Principal{}, errors.Join(session.ErrInvalidSession, errors.New("rollback failed"))
+}
+
+func (s uncertainSessions) ResolveForLogout(ctx context.Context, token string) (session.Principal, error) {
+	return s.Resolve(ctx, token)
+}
+
+func (uncertainSessions) Revoke(context.Context, string) error { return errors.New("unexpected") }
+
 type unusedLogin struct{}
 
 func (unusedLogin) Execute(context.Context, string, string, netip.Addr) (session.Credentials, error) {
@@ -382,6 +394,34 @@ type unusedAdminSessionRevocation struct{}
 
 func (unusedAdminSessionRevocation) Execute(context.Context, identity.LocalAdminActor, string) (identity.AdminSessionRevocationResult, error) {
 	return identity.AdminSessionRevocationResult{}, errors.New("unexpected")
+}
+
+func TestSessionAPIKeepsCookiesOnUncertainValidation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, unusedAccountList{}, unusedAdminSessionList{}, unusedAdminSessionRevocation{}, uncertainSessions{}, "https://console.example", logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/session", ""},
+		{http.MethodPost, "/api/session/local", `{"username":"admin","password":"passphrase"}`},
+	} {
+		t.Run(tt.path, func(t *testing.T) {
+			request := httptest.NewRequest(tt.method, "https://console.example"+tt.path, strings.NewReader(tt.body))
+			request.Header.Set("Origin", "https://console.example")
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(&http.Cookie{Name: session.CookieName, Value: "opaque-cookie"})
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusServiceUnavailable || len(response.Result().Cookies()) != 0 {
+				t.Fatalf("uncertain validation cleared cookies or allowed login: status=%d", response.Code)
+			}
+		})
+	}
 }
 
 func TestSessionAPIReportsFailuresWithoutLoggingSecrets(t *testing.T) {

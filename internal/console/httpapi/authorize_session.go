@@ -26,7 +26,7 @@ func (a *SessionAPI) authorizeSession(w http.ResponseWriter, r *http.Request, pu
 	} else {
 		principal, err = a.sessions.Resolve(r.Context(), token)
 	}
-	if errors.Is(err, session.ErrInvalidSession) {
+	if err == session.ErrInvalidSession {
 		clearCookies(w)
 		a.writeProblem(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 		return session.Principal{}, "", false
