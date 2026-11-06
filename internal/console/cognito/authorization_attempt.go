@@ -28,6 +28,15 @@ type ConsumedAuthorization struct {
 	OperationID  string
 	NonceHash    [32]byte `json:"-"`
 	CodeVerifier string   `json:"-"`
+	proof        *consumedAttemptProof
+}
+
+type consumedAttemptProof struct {
+	manager      *AttemptManager
+	operationID  string
+	nonceHash    [32]byte
+	codeVerifier string
+	expiresAt    time.Time
 }
 
 type AttemptRecord struct {
@@ -61,11 +70,12 @@ type AttemptStore interface {
 }
 
 type AttemptManager struct {
-	store  AttemptStore
-	random io.Reader
-	aead   cipher.AEAD
-	now    func() time.Time
-	mu     sync.Mutex
+	store           AttemptStore
+	random          io.Reader
+	aead            cipher.AEAD
+	providerBinding [32]byte
+	now             func() time.Time
+	mu              sync.Mutex
 }
 
 type attemptSecrets struct {

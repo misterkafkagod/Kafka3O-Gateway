@@ -7,9 +7,14 @@ import (
 	"time"
 )
 
-func NewAttemptManager(store AttemptStore, random io.Reader, now func() time.Time, key []byte) (*AttemptManager, error) {
+func NewAttemptManager(store AttemptStore, random io.Reader, now func() time.Time, key []byte,
+	provider ProviderConfig, callbackURL string) (*AttemptManager, error) {
 	if store == nil || random == nil || now == nil || len(key) != 32 {
 		return nil, ErrInvalidAttemptConfig
+	}
+	binding, err := authorizationProviderBinding(provider, callbackURL)
+	if err != nil {
+		return nil, err
 	}
 	var nonzero byte
 	for _, value := range key {
@@ -26,5 +31,5 @@ func NewAttemptManager(store AttemptStore, random io.Reader, now func() time.Tim
 	if err != nil {
 		return nil, ErrInvalidAttemptConfig
 	}
-	return &AttemptManager{store: store, random: random, now: now, aead: aead}, nil
+	return &AttemptManager{store: store, random: random, now: now, aead: aead, providerBinding: binding}, nil
 }

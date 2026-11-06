@@ -1,6 +1,7 @@
 package cognito
 
 import (
+	"crypto/x509"
 	"errors"
 	"time"
 
@@ -29,8 +30,11 @@ type VerifiedIdentity struct {
 
 type Verifier struct {
 	verifier *oidc.IDTokenVerifier
+	config   ProviderConfig
 	issuer   string
 	clientID string
+	tokenURL string
+	roots    *x509.CertPool
 	now      func() time.Time
 }
 

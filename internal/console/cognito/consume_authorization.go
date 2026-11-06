@@ -24,7 +24,7 @@ func (m *AttemptManager) ConsumeAuthorization(ctx context.Context, state, browse
 	if err != nil {
 		return result, err
 	}
-	additional := attemptAdditionalData(stateHash, bindingHash, record.NonceHash)
+	additional := attemptAdditionalData(stateHash, bindingHash, record.NonceHash, m.providerBinding)
 	if len(record.EncryptedPKCE) >= m.aead.NonceSize()+m.aead.Overhead() {
 		plaintext, err := m.aead.Open(nil, record.EncryptedPKCE[:m.aead.NonceSize()],
 			record.EncryptedPKCE[m.aead.NonceSize():], additional[:])
@@ -32,6 +32,10 @@ func (m *AttemptManager) ConsumeAuthorization(ctx context.Context, state, browse
 			verifier := string(plaintext)
 			if _, validationErr := hashAttemptValue(verifier); validationErr == nil {
 				result.NonceHash, result.CodeVerifier = record.NonceHash, verifier
+				result.proof = &consumedAttemptProof{
+					manager: m, operationID: record.OperationID, nonceHash: record.NonceHash, codeVerifier: verifier,
+					expiresAt: record.ExpiresAt,
+				}
 				return result, nil
 			}
 		}

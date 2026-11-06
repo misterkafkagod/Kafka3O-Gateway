@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 )
@@ -36,11 +37,12 @@ func (d *Database) ConsumeCognitoAttempt(ctx context.Context, request cognito.At
 	record.OperationID = request.EventID
 	if request.Valid && request.StateHash != ([32]byte{}) && request.BindingHash != ([32]byte{}) {
 		var nonceHash []byte
+		var expiresAt int64
 		err = tx.QueryRowContext(ctx, `DELETE FROM cognito_authorization_attempts
 WHERE state_hash = ? AND binding_hash = ? AND created_at_ns <= ? AND expires_at_ns > ?
-RETURNING operation_id, nonce_hash, encrypted_pkce`,
+RETURNING operation_id, nonce_hash, encrypted_pkce, expires_at_ns`,
 			request.StateHash[:], request.BindingHash[:], now.UnixNano(), now.UnixNano()).Scan(
-			&record.OperationID, &nonceHash, &record.EncryptedPKCE)
+			&record.OperationID, &nonceHash, &record.EncryptedPKCE, &expiresAt)
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			record.OperationID = request.EventID
@@ -52,6 +54,8 @@ RETURNING operation_id, nonce_hash, encrypted_pkce`,
 				decision = cognito.ErrAttemptEncryption
 			} else {
 				copy(record.NonceHash[:], nonceHash)
+				record.ExpiresAt = time.Unix(0, expiresAt).UTC()
+				event.EventID = record.OperationID + ".callback"
 				event.Decision, event.Outcome, decision = "allowed", AuditAccepted, nil
 			}
 		}

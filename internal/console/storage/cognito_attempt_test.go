@@ -3,6 +3,8 @@ package storage
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -23,18 +25,22 @@ import (
 )
 
 type cognitoAttemptFixture struct {
-	db      *Database
-	manager *cognito.AttemptManager
-	current atomic.Int64
-	key     []byte
-	path    string
+	db       *Database
+	manager  *cognito.AttemptManager
+	current  atomic.Int64
+	key      []byte
+	path     string
+	provider cognito.ProviderConfig
+	callback string
 }
 
 func newCognitoAttemptFixture(t *testing.T) *cognitoAttemptFixture {
 	t.Helper()
 	f := &cognitoAttemptFixture{
-		path: filepath.Join(t.TempDir(), "cognito-attempts.sqlite"),
-		key:  bytes.Repeat([]byte{7}, 32),
+		path:     filepath.Join(t.TempDir(), "cognito-attempts.sqlite"),
+		key:      bytes.Repeat([]byte{7}, 32),
+		provider: cognito.ProviderConfig{Issuer: "https://issuer.example/pool", ClientID: "test-client", AuthorizationURL: "https://login.example/authorize", TokenURL: "https://login.example/token", JWKSURL: "https://issuer.example/jwks"},
+		callback: "https://console.example/callback",
 	}
 	f.current.Store(time.Now().UTC().Add(time.Second).UnixNano())
 	var err error
@@ -43,7 +49,7 @@ func newCognitoAttemptFixture(t *testing.T) *cognitoAttemptFixture {
 		t.Fatal(err)
 	}
 	f.db.now = f.clock
-	f.manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key)
+	f.manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key, f.provider, f.callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +76,7 @@ func (f *cognitoAttemptFixture) reopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.db.now = f.clock
-	f.manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key)
+	f.manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key, f.provider, f.callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +306,7 @@ func TestCognitoAttemptSerializesConcurrentConsumption(t *testing.T) {
 }
 
 func TestCognitoAttemptFailsClosedOnWrongKeyAndTampering(t *testing.T) {
-	for _, mode := range []string{"wrong key", "ciphertext", "nonce binding", "swapped ciphertext"} {
+	for _, mode := range []string{"wrong key", "provider binding", "callback binding", "ciphertext", "nonce binding", "swapped ciphertext"} {
 		t.Run(mode, func(t *testing.T) {
 			f := newCognitoAttemptFixture(t)
 			ctx := context.Background()
@@ -311,7 +317,13 @@ func TestCognitoAttemptFailsClosedOnWrongKeyAndTampering(t *testing.T) {
 			manager := f.manager
 			switch mode {
 			case "wrong key":
-				manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, bytes.Repeat([]byte{8}, 32))
+				manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, bytes.Repeat([]byte{8}, 32), f.provider, f.callback)
+			case "provider binding":
+				other := f.provider
+				other.TokenURL = "https://other.example/token"
+				manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key, other, f.callback)
+			case "callback binding":
+				manager, err = cognito.NewAttemptManager(f.db, rand.Reader, f.clock, f.key, f.provider, "https://console.example/other")
 			case "ciphertext":
 				var ciphertext []byte
 				err = f.db.db.QueryRowContext(ctx, "SELECT encrypted_pkce FROM cognito_authorization_attempts WHERE operation_id = ?", start.OperationID).Scan(&ciphertext)
@@ -346,6 +358,42 @@ func TestCognitoAttemptFailsClosedOnWrongKeyAndTampering(t *testing.T) {
 				t.Fatalf("decryption failure was not audited: count=%d err=%v", len(events), err)
 			}
 		})
+	}
+}
+
+func TestCognitoLegacyUnboundAttemptFailsClosedAfterUpgrade(t *testing.T) {
+	f := newCognitoAttemptFixture(t)
+	ctx := context.Background()
+	start, err := f.manager.StartAuthorization(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var state, binding, nonce []byte
+	if err := f.db.db.QueryRowContext(ctx, `SELECT state_hash, binding_hash, nonce_hash
+FROM cognito_authorization_attempts WHERE operation_id = ?`, start.OperationID).Scan(&state, &binding, &nonce); err != nil {
+		t.Fatal(err)
+	}
+	block, err := aes.NewCipher(f.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iv := bytes.Repeat([]byte{1}, aead.NonceSize())
+	additional := append(append(append([]byte{}, state...), binding...), nonce...)
+	verifier := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{2}, 32))
+	legacy := aead.Seal(append([]byte{}, iv...), iv, []byte(verifier), additional)
+	if _, err := f.db.db.ExecContext(ctx, "UPDATE cognito_authorization_attempts SET encrypted_pkce = ? WHERE operation_id = ?", legacy, start.OperationID); err != nil {
+		t.Fatal(err)
+	}
+	result, err := f.manager.ConsumeAuthorization(ctx, start.State, start.BrowserBinding)
+	if !errors.Is(err, cognito.ErrAttemptEncryption) || result.CodeVerifier != "" {
+		t.Fatalf("legacy unbound attempt was accepted: %v", err)
+	}
+	if _, err := f.manager.ConsumeAuthorization(ctx, start.State, start.BrowserBinding); !errors.Is(err, cognito.ErrInvalidAttempt) {
+		t.Fatalf("legacy attempt could be replayed: %v", err)
 	}
 }
 
@@ -444,18 +492,18 @@ func TestCognitoAttemptFailureAuditAndRandomnessErrors(t *testing.T) {
 	f := newCognitoAttemptFixture(t)
 	ctx := context.Background()
 	for _, key := range [][]byte{nil, bytes.Repeat([]byte{0}, 32), bytes.Repeat([]byte{1}, 31)} {
-		if _, err := cognito.NewAttemptManager(f.db, rand.Reader, f.clock, key); !errors.Is(err, cognito.ErrInvalidAttemptConfig) {
+		if _, err := cognito.NewAttemptManager(f.db, rand.Reader, f.clock, key, f.provider, f.callback); !errors.Is(err, cognito.ErrInvalidAttemptConfig) {
 			t.Fatalf("invalid encryption key accepted: %v", err)
 		}
 	}
-	manager, err := cognito.NewAttemptManager(f.db, io.LimitReader(rand.Reader, 0), f.clock, f.key)
+	manager, err := cognito.NewAttemptManager(f.db, io.LimitReader(rand.Reader, 0), f.clock, f.key, f.provider, f.callback)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := manager.StartAuthorization(ctx); err == nil {
 		t.Fatal("failed randomness was hidden")
 	}
-	repeated, err := cognito.NewAttemptManager(f.db, bytes.NewReader(make([]byte, 156)), f.clock, f.key)
+	repeated, err := cognito.NewAttemptManager(f.db, bytes.NewReader(make([]byte, 156)), f.clock, f.key, f.provider, f.callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +519,7 @@ WHEN NEW.action = 'console.cognito.callback' AND NEW.outcome = 'failed'
 BEGIN SELECT RAISE(FAIL, 'audit unavailable'); END;`); err != nil {
 		t.Fatal(err)
 	}
-	wrongKey, err := cognito.NewAttemptManager(f.db, rand.Reader, f.clock, bytes.Repeat([]byte{9}, 32))
+	wrongKey, err := cognito.NewAttemptManager(f.db, rand.Reader, f.clock, bytes.Repeat([]byte{9}, 32), f.provider, f.callback)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,21 +9,20 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 func NewVerifier(ctx context.Context, config ProviderConfig, roots *x509.CertPool, now func() time.Time) (*Verifier, error) {
-	if ctx == nil || now == nil || !validHTTPSURL(config.Issuer) || !validHTTPSURL(config.AuthorizationURL) ||
-		!validHTTPSURL(config.TokenURL) || !validHTTPSURL(config.JWKSURL) || config.ClientID == "" ||
-		strings.TrimSpace(config.ClientID) != config.ClientID || len(config.ClientID) > 256 ||
-		strings.IndexFunc(config.ClientID, unicode.IsControl) >= 0 {
+	if ctx == nil || now == nil || !validProviderConfig(config) {
 		return nil, ErrInvalidProviderConfig
 	}
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
 		return nil, ErrInvalidProviderConfig
+	}
+	if roots != nil {
+		roots = roots.Clone()
 	}
 	transport := base.Clone()
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}
@@ -61,5 +60,8 @@ func NewVerifier(ctx context.Context, config ProviderConfig, roots *x509.CertPoo
 	verifier := oidc.NewVerifier(config.Issuer, trackingKeySet{keys: keys}, &oidc.Config{
 		ClientID: config.ClientID, SupportedSigningAlgs: []string{oidc.RS256}, Now: now,
 	})
-	return &Verifier{verifier: verifier, issuer: config.Issuer, clientID: config.ClientID, now: now}, nil
+	return &Verifier{
+		verifier: verifier, config: config, issuer: config.Issuer, clientID: config.ClientID,
+		tokenURL: config.TokenURL, roots: roots, now: now,
+	}, nil
 }

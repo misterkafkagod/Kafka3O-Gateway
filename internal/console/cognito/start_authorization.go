@@ -21,7 +21,7 @@ func (m *AttemptManager) StartAuthorization(ctx context.Context) (AuthorizationS
 	bindingHash := sha256.Sum256([]byte(secrets.binding))
 	nonceHash := sha256.Sum256([]byte(secrets.nonce))
 	verifierHash := sha256.Sum256([]byte(secrets.verifier))
-	additional := attemptAdditionalData(stateHash, bindingHash, nonceHash)
+	additional := attemptAdditionalData(stateHash, bindingHash, nonceHash, m.providerBinding)
 	encrypted := m.aead.Seal(secrets.cryptoNonce[:], secrets.cryptoNonce[:], []byte(secrets.verifier), additional[:])
 	if err := m.store.CreateCognitoAttempt(ctx, AttemptRecord{
 		OperationID: secrets.operationID, StateHash: stateHash, BindingHash: bindingHash,

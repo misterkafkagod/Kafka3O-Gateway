@@ -93,10 +93,13 @@ refresh, real User Pool or secured deployment is implemented by it.
 The standalone Cognito authorization-attempt service creates independent
 random state, nonce, PKCE verifier and browser binding. Only state, nonce and
 browser-binding digests and an AES-256-GCM-encrypted verifier are stored;
-authenticated encryption binds the ciphertext to those digests. Supply a
-cryptographically random 32-byte encryption key from a deployment-managed
-secret outside SQLite. Replacing it invalidates pending attempts. Never log
-the attempt values, callback parameters, verifier or encryption key.
+authenticated encryption binds the ciphertext to those digests, the exact
+provider configuration and the callback URL. Supply a cryptographically random
+32-byte encryption key from a deployment-managed secret outside SQLite.
+Changing the key, provider or callback invalidates pending attempts. The
+upgrade that introduced provider binding also invalidates older unbound
+attempts; start a new login. Never log the attempt values, callback
+parameters, verifier or encryption key.
 
 At most 1,000 pending attempts are retained, each expiring five minutes after
 the request began. Expiry is rechecked after obtaining the database
@@ -106,7 +109,21 @@ attempt with a redacted audit event before returning the verifier. Malformed,
 expired, wrong-browser and replayed callbacks are denied and audited; an
 audit failure returns no verifier. If creation or consumption has an unknown
 commit outcome, investigate the operation ID and do not automatically retry.
-These primitives do not yet expose a browser callback or exchange a code.
+These attempt primitives do not expose a browser callback.
+
+The standalone code exchanger accepts only a successfully consumed attempt
+bound to its discovered provider and exact callback. It durably reserves each
+exchange once before dispatch and rechecks the attempt and verified-token
+expiry after queued work. The exact HTTPS token endpoint uses either an
+explicit public-client ID or explicit HTTP Basic client authentication; it
+never probes authentication styles or follows redirects. Token responses are
+limited to 1 MiB. The returned ID token is verified before the refresh token
+is returned in memory, and audit failures withhold both. A lost or uncertain
+exchange is recorded as unknown where possible and must not be retried;
+investigate the operation ID and start a fresh login. The fixture tests both
+client modes, forged tokens, TLS, redirects and interrupted requests. No
+application session, encrypted refresh-token storage, browser route or live
+Cognito integration is provided by this primitive.
 
 `cmd/console serve` composes local login, session inspection, password
 replacement, logout, administrator account listing, creation, state changes,
