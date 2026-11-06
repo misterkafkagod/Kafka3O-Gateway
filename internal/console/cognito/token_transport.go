@@ -28,6 +28,9 @@ func (t tokenTransport) RoundTrip(request *http.Request) (*http.Response, error)
 	if readErr != nil || closeErr != nil || len(body) > maxIDTokenBytes {
 		return nil, ErrProviderUnavailable
 	}
+	if response.StatusCode >= 200 && response.StatusCode < 300 && !validOptionalRefreshToken(response.Header.Get("Content-Type"), body) {
+		return nil, ErrProviderUnavailable
+	}
 	response.Body = io.NopCloser(bytes.NewReader(body))
 	return response, nil
 }

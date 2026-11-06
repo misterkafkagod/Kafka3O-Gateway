@@ -32,24 +32,27 @@ const (
 	fixtureCode         = "synthetic-authorization-code"
 	fixtureClientSecret = "synthetic-client-secret"
 	fixtureRefresh      = "synthetic-provider-refresh-token"
+	fixtureRotated      = "synthetic-provider-rotated-token"
 	fixtureAccess       = "synthetic-provider-access-token"
 )
 
 type cognitoCodeFixture struct {
 	*cognitoAttemptFixture
-	server        *httptest.Server
-	verifier      *cognito.Verifier
-	exchanger     *cognito.CodeExchanger
-	privateKey    *rsa.PrivateKey
-	forgedKey     *rsa.PrivateKey
-	auth          cognito.ClientAuthentication
-	mode          string
-	mu            sync.RWMutex
-	nonce         string
-	challenge     string
-	tokenCalls    atomic.Int64
-	redirectCalls atomic.Int64
-	invalidCalls  atomic.Int64
+	server           *httptest.Server
+	verifier         *cognito.Verifier
+	exchanger        *cognito.CodeExchanger
+	privateKey       *rsa.PrivateKey
+	forgedKey        *rsa.PrivateKey
+	auth             cognito.ClientAuthentication
+	mode             string
+	mu               sync.RWMutex
+	nonce            string
+	challenge        string
+	tokenCalls       atomic.Int64
+	refreshCalls     atomic.Int64
+	refreshAdvanceTo atomic.Int64
+	redirectCalls    atomic.Int64
+	invalidCalls     atomic.Int64
 }
 
 func newCognitoCodeFixture(t *testing.T, mode string, auth cognito.ClientAuthentication) *cognitoCodeFixture {
@@ -93,6 +96,11 @@ func newCognitoCodeFixture(t *testing.T, mode string, auth cognito.ClientAuthent
 			authValid := !basic && r.Form.Get("client_id") == f.provider.ClientID && r.Form.Get("client_secret") == ""
 			if f.auth == cognito.ClientAuthenticationBasic {
 				authValid = basic && user == f.provider.ClientID && secret == fixtureClientSecret && r.Form.Get("client_secret") == ""
+			}
+			if r.Form.Get("grant_type") == "refresh_token" {
+				f.refreshCalls.Add(1)
+				serveCognitoFixtureRefresh(t, f, w, r, mode, nonce, authValid)
+				return
 			}
 			if r.Method != http.MethodPost || r.Form.Get("grant_type") != "authorization_code" ||
 				r.Form.Get("code") != fixtureCode || r.Form.Get("redirect_uri") != f.callback ||

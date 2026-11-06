@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
@@ -114,7 +113,7 @@ WHERE console_sessions.token_hash = ? AND console_sessions.auth_source = 'cognit
 	if !reservation.IdleExpiresAt.After(event.OccurredAt) || !reservation.AbsoluteExpiresAt.After(event.OccurredAt) {
 		return deny(cognito.ErrRefreshUnavailable)
 	}
-	reservationEventID := reservation.SessionID + ".refresh." + strconv.FormatInt(reservation.Generation, 10)
+	reservationEventID := cognitoRefreshEventID(reservation.SessionID, reservation.Generation)
 	var reserved bool
 	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM audit_events WHERE event_id = ?)", reservationEventID).Scan(&reserved); err != nil {
 		return cognito.RefreshReservation{}, fmt.Errorf("inspect previous Cognito refresh: %w", err)

@@ -1,9 +1,15 @@
 package cognito
 
 import (
+	"context"
 	"errors"
 	"time"
 )
+
+type RefreshStore interface {
+	ReserveCognitoRefresh(context.Context, RefreshReservationRequest) (RefreshReservation, error)
+	RecordCognitoRefreshFailure(context.Context, RefreshFailure) error
+}
 
 type RefreshReservationRequest struct {
 	OperationID string
@@ -22,6 +28,56 @@ type RefreshReservation struct {
 	EncryptedRefreshToken []byte           `json:"-"`
 	IdleExpiresAt         time.Time
 	AbsoluteExpiresAt     time.Time
+}
+
+type RefreshFailureStatus string
+
+const (
+	RefreshFailedBeforeSend RefreshFailureStatus = "failed_before_send"
+	RefreshOutcomeUnknown   RefreshFailureStatus = "unknown"
+)
+
+type RefreshFailure struct {
+	OperationID string
+	SessionID   string
+	Generation  int64
+	OccurredAt  time.Time
+	Status      RefreshFailureStatus
+}
+
+type RefreshExchangeResult struct {
+	OperationID string
+	proof       *verifiedRefreshProof
+}
+
+type verifiedRefreshProof struct {
+	operationID           string
+	sessionID             string
+	identityID            string
+	previousGeneration    int64
+	identity              VerifiedIdentity
+	nonceHash             [32]byte
+	encryptedRefreshToken []byte
+	providerBinding       [32]byte
+	verifiedAt            time.Time
+	claimsFreshUntil      time.Time
+	sessionDeadline       time.Time
+}
+
+type VerifiedRefresh struct {
+	proof *verifiedRefreshProof
+}
+
+type RefreshCompletionDetails struct {
+	OperationID           string
+	SessionID             string
+	IdentityID            string
+	PreviousGeneration    int64
+	Identity              VerifiedIdentity `json:"-"`
+	OriginalNonceHash     [32]byte         `json:"-"`
+	EncryptedRefreshToken []byte           `json:"-"`
+	ClaimsFreshUntil      time.Time
+	ValidUntil            time.Time
 }
 
 var (
