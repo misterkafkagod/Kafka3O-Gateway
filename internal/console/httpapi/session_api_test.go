@@ -66,6 +66,10 @@ func newTestConsole(t *testing.T) testConsole {
 	if err != nil {
 		t.Fatal(err)
 	}
+	create, err := identity.NewCreateLocalAccount(db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	reset, err := identity.NewResetLocalPassword(db, rand.Reader, time.Now)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +77,7 @@ func newTestConsole(t *testing.T) testConsole {
 	server := httptest.NewUnstartedServer(nil)
 	origin := "https://" + server.Listener.Addr().String()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, change, reset, manager, origin, logger)
+	handler, err := consoleapi.NewSessionAPI(login, change, create, reset, manager, origin, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,6 +115,38 @@ func (c testConsole) request(t *testing.T, method, path, body, origin string, co
 		t.Fatal(err)
 	}
 	return response, data
+}
+
+func (c testConsole) login(t *testing.T, username, password string) (string, []*http.Cookie, string, bool) {
+	t.Helper()
+	body, err := json.Marshal(struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{Username: username, Password: password})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, data := c.request(t, http.MethodPost, "/api/session/local", string(body), c.origin, nil, "")
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("local login status=%d", response.StatusCode)
+	}
+	var value struct {
+		AccountID          string `json:"accountId"`
+		MustChangePassword bool   `json:"mustChangePassword"`
+	}
+	if err := json.Unmarshal(data, &value); err != nil || value.AccountID == "" {
+		t.Fatal("local login response was invalid")
+	}
+	var csrf string
+	for _, cookie := range response.Cookies() {
+		if cookie.Name == session.CSRFCookieName {
+			csrf = cookie.Value
+		}
+	}
+	if csrf == "" {
+		t.Fatal("local login did not provide a CSRF cookie")
+	}
+	return value.AccountID, response.Cookies(), csrf, value.MustChangePassword
 }
 
 func TestLocalSessionHTTPFlow(t *testing.T) {
@@ -296,10 +332,16 @@ func (unusedPasswordReset) Execute(context.Context, identity.LocalAdminActor, st
 	return identity.PasswordResetResult{}, errors.New("unexpected")
 }
 
+type unusedAccountCreation struct{}
+
+func (unusedAccountCreation) Execute(context.Context, identity.LocalAdminActor, string, string) (identity.LocalAccountCreationResult, error) {
+	return identity.LocalAccountCreationResult{}, errors.New("unexpected")
+}
+
 func TestSessionAPIReportsFailuresWithoutLoggingSecrets(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
-	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +373,7 @@ func (l *throttledLogin) Execute(_ context.Context, _, _ string, client netip.Ad
 func TestLoginThrottleUsesDirectPeerRatherThanForwardedHeaders(t *testing.T) {
 	login := &throttledLogin{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -74,9 +74,10 @@ Strict session cookie, a separate script-readable Secure CSRF cookie, and an
 exact HTTPS Origin and session-bound CSRF-header check.
 
 `cmd/console serve` composes local login, session inspection, password
-replacement, logout and administrator password reset into a TLS-only server.
-It refuses to start without an enabled local global administrator and exposes
-no Kafka routes or other account-management routes. Configure it with:
+replacement, logout, administrator account creation and password reset into
+a TLS-only server. It refuses to start without an enabled local global
+administrator and exposes no Kafka routes or other account-management routes.
+Configure it with:
 
 - `KAFKA3O_CONSOLE_DB_PATH`: the absolute path to the bootstrapped database.
 - `KAFKA3O_CONSOLE_ORIGIN`: the exact browser HTTPS origin, with no path.
@@ -108,8 +109,8 @@ also revokes any remaining old sessions. This operation is not mounted in the
 HTTP server. Future handlers must derive its actor from an authenticated,
 CSRF-checked session, never from client-supplied identity or session IDs.
 
-The standalone local-account creation service is also restricted to a current
-local global ADMIN session without a pending password change. It reserves an
+The local-account creation service is also restricted to a current local
+global ADMIN session without a pending password change. It reserves an
 audited, single-use operation bound to that session, rechecks authorization
 after hashing, and atomically creates the enabled account with a temporary
 password and no role grants. The new user must replace the password before
@@ -118,8 +119,18 @@ duplicate usernames are rejected. Each service admits at most four concurrent
 hashes. Passwords and submitted usernames are excluded from creation audit,
 and an audit failure prevents account creation. A lost or uncertain commit
 must be investigated using the operation ID, when available, before retrying.
-This service is not mounted in the HTTP server and does not provide public
-self-registration or grant assignment.
+This service does not provide public self-registration or grant assignment.
+The loopback server mounts `POST /api/admin/local-accounts` with JSON
+`{ "username": "...", "temporaryPassword": "..." }`. It derives the actor and
+session from the session cookie and requires the exact HTTPS Origin and
+session-bound `X-Kafka3O-CSRF` header; role, actor and session fields in the
+body are rejected. A successful response contains the `operationId` and
+created account's ID, normalized username, enabled state and mandatory-change
+flag; it contains neither the password nor its hash. Validation, permission
+and duplicate-username errors are explicit. `account_creation_audit_unavailable`
+and `account_creation_outcome_unknown` are service errors, not success. A
+lost response can also have an unknown outcome without an operation ID:
+investigate the account and audit before any retry.
 
 The administrator password-reset service requires a current local global
 ADMIN session without a pending password change. It rechecks that session and

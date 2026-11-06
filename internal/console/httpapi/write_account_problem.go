@@ -2,7 +2,7 @@ package httpapi
 
 import "net/http"
 
-func (a *SessionAPI) writePasswordResetProblem(w http.ResponseWriter, status int, code, title, operationID string) {
+func (a *SessionAPI) writeAccountProblem(w http.ResponseWriter, status int, code, title, operationID string) {
 	a.writeJSON(w, status, "application/problem+json", struct {
 		Title       string `json:"title"`
 		Status      int    `json:"status"`

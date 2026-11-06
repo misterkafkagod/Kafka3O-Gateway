@@ -29,9 +29,13 @@ func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger)
 	if err != nil {
 		return nil, err
 	}
+	create, err := identity.NewCreateLocalAccount(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
 	reset, err := identity.NewResetLocalPassword(db, rand.Reader, time.Now)
 	if err != nil {
 		return nil, err
 	}
-	return consoleapi.NewSessionAPI(login, change, reset, manager, origin, logger)
+	return consoleapi.NewSessionAPI(login, change, create, reset, manager, origin, logger)
 }

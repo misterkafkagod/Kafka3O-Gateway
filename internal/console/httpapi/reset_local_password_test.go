@@ -23,39 +23,7 @@ import (
 
 func TestAdministratorPasswordResetHTTPSFlow(t *testing.T) {
 	c := newTestConsole(t)
-	login := func(password string) (string, []*http.Cookie, string, bool) {
-		t.Helper()
-		body, err := json.Marshal(struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		}{Username: "admin", Password: password})
-		if err != nil {
-			t.Fatal(err)
-		}
-		response, data := c.request(t, http.MethodPost, "/api/session/local", string(body), c.origin, nil, "")
-		if response.StatusCode != http.StatusOK {
-			t.Fatalf("administrator login status=%d", response.StatusCode)
-		}
-		var value struct {
-			AccountID          string `json:"accountId"`
-			MustChangePassword bool   `json:"mustChangePassword"`
-		}
-		if err := json.Unmarshal(data, &value); err != nil || value.AccountID == "" {
-			t.Fatal("administrator login response was invalid")
-		}
-		var csrf string
-		for _, cookie := range response.Cookies() {
-			if cookie.Name == session.CSRFCookieName {
-				csrf = cookie.Value
-			}
-		}
-		if csrf == "" {
-			t.Fatal("administrator login did not provide a CSRF cookie")
-		}
-		return value.AccountID, response.Cookies(), csrf, value.MustChangePassword
-	}
-
-	adminID, cookies, csrf, restricted := login("initial passphrase")
+	adminID, cookies, csrf, restricted := c.login(t, "admin", "initial passphrase")
 	if !restricted {
 		t.Fatal("bootstrap credential was not restricted")
 	}
@@ -70,7 +38,7 @@ func TestAdministratorPasswordResetHTTPSFlow(t *testing.T) {
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("administrator password change status=%d", response.StatusCode)
 	}
-	adminID, cookies, csrf, restricted = login("replacement passphrase")
+	adminID, cookies, csrf, restricted = c.login(t, "admin", "replacement passphrase")
 	if restricted {
 		t.Fatal("changed administrator credential remained restricted")
 	}
@@ -131,7 +99,7 @@ func TestAdministratorPasswordResetHTTPSFlow(t *testing.T) {
 	if response.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("self-reset session remained valid: %d", response.StatusCode)
 	}
-	_, newCookies, newCSRF, restricted := login("new temporary passphrase")
+	_, newCookies, newCSRF, restricted := c.login(t, "admin", "new temporary passphrase")
 	if !restricted {
 		t.Fatal("reset password did not require a change")
 	}
@@ -210,7 +178,7 @@ func TestPasswordResetHTTPErrorSemanticsAndServerDerivedActor(t *testing.T) {
 				AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes),
 			}
 			reset := &capturedReset{err: tt.err}
-			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, reset,
+			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset,
 				resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
@@ -253,7 +221,7 @@ func TestPasswordResetHTTPRejectsSuccessWithoutOperationID(t *testing.T) {
 	csrf := base64.RawURLEncoding.EncodeToString(csrfBytes)
 	principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 	reset := &capturedReset{emptyID: true}
-	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, reset,
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset,
 		resetTestSessions{principal: principal}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
@@ -274,7 +242,7 @@ func TestPasswordResetHTTPRejectsSuccessWithoutOperationID(t *testing.T) {
 
 func TestSessionAPIRequiresPasswordResetService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, nil, failedSessions{}, "https://console.example", logger)
+	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, nil, failedSessions{}, "https://console.example", logger)
 	if !errors.Is(err, consoleapi.ErrInvalidAPIConfig) {
 		t.Fatalf("missing reset service was accepted: %v", err)
 	}

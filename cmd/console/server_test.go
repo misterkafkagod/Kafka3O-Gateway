@@ -178,6 +178,7 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	secret := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
 	const initialPassword, replacement = "initial passphrase", "replacement passphrase"
 	const resetTemporary, finalPassword = "reset temporary passphrase", "final replacement passphrase"
+	const userTemporary, userReplacement = "user temporary passphrase", "user replacement passphrase"
 	if err := runBootstrap(context.Background(), path, secret, strings.NewReader(secret+"\nadmin\n"+initialPassword)); err != nil {
 		t.Fatal(err)
 	}
@@ -379,6 +380,57 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 			csrf = cookie.Value
 		}
 	}
+	resp, data = request(http.MethodPost, "/api/admin/local-accounts",
+		`{"username":"Example-User","temporaryPassword":"user temporary passphrase"}`, origin, cookies, csrf)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("local account creation status=%d", resp.StatusCode)
+	}
+	var created struct {
+		OperationID string `json:"operationId"`
+		Account     struct {
+			ID                 string `json:"id"`
+			Username           string `json:"username"`
+			MustChangePassword bool   `json:"mustChangePassword"`
+		} `json:"account"`
+	}
+	if err := json.Unmarshal(data, &created); err != nil || created.OperationID == "" || created.Account.ID == "" ||
+		created.Account.Username != "example-user" || !created.Account.MustChangePassword {
+		t.Fatal("account creation response was invalid")
+	}
+	adminCookies, adminCSRF := cookies, csrf
+	resp, data = request(http.MethodPost, "/api/session/local",
+		`{"username":"example-user","password":"user temporary passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"mustChangePassword":true`)) {
+		t.Fatalf("created user login status=%d", resp.StatusCode)
+	}
+	userCookies, userCSRF := resp.Cookies(), ""
+	for _, cookie := range userCookies {
+		if cookie.Name == session.CSRFCookieName {
+			userCSRF = cookie.Value
+		}
+	}
+	resp, _ = request(http.MethodPost, "/api/session/password",
+		`{"currentPassword":"user temporary passphrase","newPassword":"user replacement passphrase"}`, origin, userCookies, userCSRF)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("created user password replacement status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodPost, "/api/session/local",
+		`{"username":"example-user","password":"user replacement passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"mustChangePassword":false`)) {
+		t.Fatalf("created user final login status=%d", resp.StatusCode)
+	}
+	userCookies, userCSRF = resp.Cookies(), ""
+	for _, cookie := range userCookies {
+		if cookie.Name == session.CSRFCookieName {
+			userCSRF = cookie.Value
+		}
+	}
+	resp, data = request(http.MethodPost, "/api/admin/local-accounts",
+		`{"username":"forbidden","temporaryPassword":"other temporary passphrase"}`, origin, userCookies, userCSRF)
+	if resp.StatusCode != http.StatusForbidden || !bytes.Contains(data, []byte(`"code":"global_admin_required"`)) {
+		t.Fatalf("role-free user account creation status=%d", resp.StatusCode)
+	}
+	cookies, csrf = adminCookies, adminCSRF
 	resp, _ = request(http.MethodPost, "/api/session/logout", "", origin, cookies, csrf)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("logout status=%d", resp.StatusCode)
@@ -431,10 +483,28 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	if err != nil || len(events) != 2 || events[1].Outcome != storage.AuditSucceeded || events[1].ResourceID != login.AccountID {
 		t.Fatalf("administrator reset audit count=%d err=%v", len(events), err)
 	}
+	user, err := db.FindLocalAccount(context.Background(), "example-user")
+	if err != nil || user.ID != created.Account.ID || user.MustChangePassword {
+		t.Fatalf("created account was not preserved: %v", err)
+	}
+	matches, err = identity.VerifyLocalPassword(userReplacement, user.PasswordHash)
+	if err != nil || !matches {
+		t.Fatalf("created user's replacement password was not persisted: %v", err)
+	}
+	grants, err := db.ListAccountGrants(context.Background(), created.Account.ID)
+	if err != nil || len(grants) != 0 {
+		t.Fatalf("created account gained implicit roles: count=%d err=%v", len(grants), err)
+	}
+	creationEvents, err := db.ListAuditEvents(context.Background(), storage.AuditFilter{Global: true, Action: "console.local_account.create", Limit: 10})
+	if err != nil || len(creationEvents) != 3 || creationEvents[1].Outcome != storage.AuditSucceeded ||
+		creationEvents[1].OperationID != created.OperationID || creationEvents[1].ResourceID != created.Account.ID ||
+		creationEvents[2].Outcome != storage.AuditDenied {
+		t.Fatalf("account creation audit count=%d err=%v", len(creationEvents), err)
+	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range []string{secret, initialPassword, replacement, resetTemporary, finalPassword, rawSession, csrf, forgedBearer} {
+	for _, value := range []string{secret, initialPassword, replacement, resetTemporary, finalPassword, userTemporary, userReplacement, rawSession, csrf, userCSRF, forgedBearer} {
 		if strings.Contains(logs.String(), value) {
 			t.Fatal("session server logged a credential")
 		}
