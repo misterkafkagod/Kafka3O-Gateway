@@ -108,6 +108,19 @@ also revokes any remaining old sessions. This operation is not mounted in the
 HTTP server. Future handlers must derive its actor from an authenticated,
 CSRF-checked session, never from client-supplied identity or session IDs.
 
+The standalone local-account creation service is also restricted to a current
+local global ADMIN session without a pending password change. It reserves an
+audited, single-use operation bound to that session, rechecks authorization
+after hashing, and atomically creates the enabled account with a temporary
+password and no role grants. The new user must replace the password before
+normal access. Usernames are normalized case-insensitively; concurrent
+duplicate usernames are rejected. Each service admits at most four concurrent
+hashes. Passwords and submitted usernames are excluded from creation audit,
+and an audit failure prevents account creation. A lost or uncertain commit
+must be investigated using the operation ID, when available, before retrying.
+This service is not mounted in the HTTP server and does not provide public
+self-registration or grant assignment.
+
 The administrator password-reset service requires a current local global
 ADMIN session without a pending password change. It rechecks that session and
 grant after hashing, then atomically replaces the password, requires a further

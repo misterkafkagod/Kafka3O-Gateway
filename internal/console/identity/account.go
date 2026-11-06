@@ -128,6 +128,41 @@ type PasswordResetResult struct {
 	OperationID string
 }
 
+type LocalAccountCreationAttempt struct {
+	Actor       LocalAdminActor
+	AccountID   string
+	OperationID string
+	OccurredAt  time.Time
+}
+
+type LocalAccountCreationFailure struct {
+	Actor       LocalAdminActor
+	AccountID   string
+	OperationID string
+	EventID     string
+	OccurredAt  time.Time
+	Rejected    bool
+}
+
+type LocalAccountCreationCompletion struct {
+	Actor       LocalAdminActor
+	Account     LocalAccount
+	OperationID string
+	EventID     string
+	OccurredAt  time.Time
+}
+
+type LocalAccountCreationStore interface {
+	ReserveLocalAccountCreation(ctx context.Context, attempt LocalAccountCreationAttempt) error
+	FailLocalAccountCreation(ctx context.Context, failure LocalAccountCreationFailure) error
+	CompleteLocalAccountCreation(ctx context.Context, completion LocalAccountCreationCompletion) error
+}
+
+type LocalAccountCreationResult struct {
+	OperationID string
+	Account     LocalAccount
+}
+
 var (
 	ErrInvalidUsername         = errors.New("invalid local username")
 	ErrInvalidBootstrapConfig  = errors.New("a strong bootstrap secret and dependencies are required")
@@ -152,4 +187,9 @@ var (
 	ErrLocalAccountChanged     = errors.New("local account changed during password reset")
 	ErrPasswordResetUnknown    = errors.New("password reset outcome is unknown")
 	ErrPasswordResetAudit      = errors.New("password reset failure could not be audited")
+	ErrUsernameTaken           = errors.New("local username is already in use")
+	ErrInvalidAccountCreation  = errors.New("local account creation attempt is unavailable or already used")
+	ErrAccountCreationExpired  = errors.New("local account creation attempt has expired")
+	ErrAccountCreationUnknown  = errors.New("local account creation outcome is unknown")
+	ErrAccountCreationAudit    = errors.New("local account creation failure could not be audited")
 )

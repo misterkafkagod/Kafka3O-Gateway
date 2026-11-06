@@ -621,6 +621,35 @@ BEGIN SELECT RAISE(FAIL, 'audit unavailable'); END;`)
 	}
 }
 
+func TestExpiredPasswordResetFailureIsAuditedWithoutReportingAuditOutage(t *testing.T) {
+	f := newAccountAdministrationFixture(t)
+	ctx := context.Background()
+	target, _ := f.addAccount(t, "subject-1", "other-user", "", "")
+	start := time.Now().Add(time.Second)
+	calls := 0
+	clock := func() time.Time {
+		calls++
+		if calls == 1 {
+			return start
+		}
+		return start.Add(passwordResetWindow)
+	}
+	reset, err := identity.NewResetLocalPassword(f.db, rand.Reader, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
+	result, err := reset.Execute(ctx, actor, target.ID, "short")
+	if !errors.Is(err, identity.ErrInvalidPassword) || !errors.Is(err, identity.ErrPasswordResetExpired) ||
+		errors.Is(err, identity.ErrPasswordResetAudit) {
+		t.Fatalf("expired rejected reset had an incorrect error: %v", err)
+	}
+	events, err := f.db.ListAuditEvents(ctx, AuditFilter{Global: true, Action: "console.local_password_reset", Limit: 10})
+	if err != nil || len(events) != 2 || events[1].Outcome != AuditDenied || events[1].OperationID != result.OperationID {
+		t.Fatalf("expired reset was not audited: count=%d err=%v", len(events), err)
+	}
+}
+
 func TestPasswordResetRejectsExpiryReplayAndConcurrentCredentialChanges(t *testing.T) {
 	f := newAccountAdministrationFixture(t)
 	ctx := context.Background()
@@ -725,7 +754,7 @@ func TestVersionFourMigrationPreservesAccountsAndSessions(t *testing.T) {
 	f := newAccountAdministrationFixture(t)
 	ctx := context.Background()
 	path := f.db.path
-	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE password_reset_attempts; PRAGMA user_version = 4"); err != nil {
+	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE local_account_creation_attempts; DROP TABLE password_reset_attempts; PRAGMA user_version = 4"); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.db.Close(); err != nil {

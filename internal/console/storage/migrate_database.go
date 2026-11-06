@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 5 {
+	if version > 6 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -136,6 +136,23 @@ CREATE INDEX password_reset_attempts_time ON password_reset_attempts(occurred_at
 PRAGMA user_version = 5;`
 		if _, err := tx.ExecContext(ctx, passwordResetAttempts); err != nil {
 			return fmt.Errorf("apply password reset attempt schema: %w", err)
+		}
+		version = 5
+	}
+	if version == 5 {
+		const accountCreationAttempts = `
+CREATE TABLE local_account_creation_attempts (
+    operation_id TEXT PRIMARY KEY NOT NULL,
+    actor_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    occurred_at_ns INTEGER NOT NULL,
+    completed INTEGER NOT NULL CHECK (completed IN (0, 1))
+);
+CREATE INDEX local_account_creation_attempts_time ON local_account_creation_attempts(occurred_at_ns);
+PRAGMA user_version = 6;`
+		if _, err := tx.ExecContext(ctx, accountCreationAttempts); err != nil {
+			return fmt.Errorf("apply local account creation attempt schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

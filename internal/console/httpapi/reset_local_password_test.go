@@ -198,6 +198,7 @@ func TestPasswordResetHTTPErrorSemanticsAndServerDerivedActor(t *testing.T) {
 		{"unknown target", "account_not_found", identity.ErrAccountNotFound, http.StatusNotFound},
 		{"changed target", "account_changed", identity.ErrLocalAccountChanged, http.StatusConflict},
 		{"expired", "password_reset_expired", identity.ErrPasswordResetExpired, http.StatusConflict},
+		{"expired validation", "password_reset_expired", errors.Join(identity.ErrInvalidPassword, identity.ErrPasswordResetExpired), http.StatusConflict},
 		{"used", "password_reset_expired", identity.ErrInvalidPasswordReset, http.StatusConflict},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

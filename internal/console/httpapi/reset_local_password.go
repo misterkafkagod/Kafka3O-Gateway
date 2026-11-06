@@ -48,6 +48,9 @@ func (a *SessionAPI) resetLocalPassword(w http.ResponseWriter, r *http.Request) 
 		w.Header().Set("Retry-After", "900")
 		a.writePasswordResetProblem(w, http.StatusTooManyRequests, "password_reset_throttled", "Password reset temporarily unavailable", result.OperationID)
 		return
+	case errors.Is(err, identity.ErrInvalidPasswordReset), errors.Is(err, identity.ErrPasswordResetExpired):
+		a.writePasswordResetProblem(w, http.StatusConflict, "password_reset_expired", "Password reset expired or was already used", result.OperationID)
+		return
 	case errors.Is(err, identity.ErrInvalidPassword):
 		a.writePasswordResetProblem(w, http.StatusBadRequest, "invalid_password", "Choose a password meeting the password policy", result.OperationID)
 		return
@@ -59,9 +62,6 @@ func (a *SessionAPI) resetLocalPassword(w http.ResponseWriter, r *http.Request) 
 		return
 	case errors.Is(err, identity.ErrLocalAccountChanged):
 		a.writePasswordResetProblem(w, http.StatusConflict, "account_changed", "Local account changed; inspect its current state", result.OperationID)
-		return
-	case errors.Is(err, identity.ErrInvalidPasswordReset), errors.Is(err, identity.ErrPasswordResetExpired):
-		a.writePasswordResetProblem(w, http.StatusConflict, "password_reset_expired", "Password reset expired or was already used", result.OperationID)
 		return
 	case err != nil:
 		a.logger.Error("Console password reset unavailable", "error_type", fmt.Sprintf("%T", err))
