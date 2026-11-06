@@ -43,7 +43,7 @@ func TestPasswordResetHTTPEnforcesLiveAdministratorAndRevokesTarget(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler, err := httpapi.NewSessionAPI(login, change, create, reset, f.manager, "https://console.example",
+	handler, err := httpapi.NewSessionAPI(login, change, create, reset, f.change, f.manager, "https://console.example",
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)

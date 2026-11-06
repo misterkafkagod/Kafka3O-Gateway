@@ -7,7 +7,7 @@ import (
 )
 
 type SetLocalAccountEnabled interface {
-	Execute(ctx context.Context, actor LocalAdminActor, targetID string, enabled bool) error
+	Execute(ctx context.Context, actor LocalAdminActor, targetID string, enabled bool) (LocalAccountStateResult, error)
 }
 
 type setLocalAccountEnabled struct {
@@ -23,21 +23,23 @@ func NewSetLocalAccountEnabled(store LocalAccountStateStore, random io.Reader, n
 	return setLocalAccountEnabled{store: store, random: random, now: now}, nil
 }
 
-func (s setLocalAccountEnabled) Execute(ctx context.Context, actor LocalAdminActor, targetID string, enabled bool) error {
+func (s setLocalAccountEnabled) Execute(ctx context.Context, actor LocalAdminActor, targetID string, enabled bool) (LocalAccountStateResult, error) {
 	operationID, err := newOpaqueID(s.random)
 	if err != nil {
-		return err
+		return LocalAccountStateResult{}, err
 	}
 	eventID, err := newOpaqueID(s.random)
 	if err != nil {
-		return err
+		return LocalAccountStateResult{}, err
 	}
 	revocationID, err := newOpaqueID(s.random)
 	if err != nil {
-		return err
+		return LocalAccountStateResult{}, err
 	}
-	return s.store.SetLocalAccountEnabled(ctx, LocalAccountStateChange{
+	result := LocalAccountStateResult{OperationID: operationID}
+	err = s.store.SetLocalAccountEnabled(ctx, LocalAccountStateChange{
 		Actor: actor, TargetID: targetID, Enabled: enabled, OperationID: operationID,
 		EventID: eventID, RevocationEventID: revocationID, OccurredAt: s.now(),
 	})
+	return result, err
 }

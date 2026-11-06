@@ -74,10 +74,14 @@ func newTestConsole(t *testing.T) testConsole {
 	if err != nil {
 		t.Fatal(err)
 	}
+	setEnabled, err := identity.NewSetLocalAccountEnabled(db, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewUnstartedServer(nil)
 	origin := "https://" + server.Listener.Addr().String()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, change, create, reset, manager, origin, logger)
+	handler, err := consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, manager, origin, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,10 +342,16 @@ func (unusedAccountCreation) Execute(context.Context, identity.LocalAdminActor, 
 	return identity.LocalAccountCreationResult{}, errors.New("unexpected")
 }
 
+type unusedAccountState struct{}
+
+func (unusedAccountState) Execute(context.Context, identity.LocalAdminActor, string, bool) (identity.LocalAccountStateResult, error) {
+	return identity.LocalAccountStateResult{}, errors.New("unexpected")
+}
+
 func TestSessionAPIReportsFailuresWithoutLoggingSecrets(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
-	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -373,7 +383,7 @@ func (l *throttledLogin) Execute(_ context.Context, _, _ string, client netip.Ad
 func TestLoginThrottleUsesDirectPeerRatherThanForwardedHeaders(t *testing.T) {
 	login := &throttledLogin{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, failedSessions{}, "https://console.example", logger)
+	handler, err := consoleapi.NewSessionAPI(login, unusedPasswordChange{}, unusedAccountCreation{}, unusedPasswordReset{}, unusedAccountState{}, failedSessions{}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
 	}

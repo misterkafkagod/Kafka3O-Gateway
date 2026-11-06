@@ -178,7 +178,7 @@ func TestPasswordResetHTTPErrorSemanticsAndServerDerivedActor(t *testing.T) {
 				AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes),
 			}
 			reset := &capturedReset{err: tt.err}
-			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset,
+			handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset, unusedAccountState{},
 				resetTestSessions{principal: principal}, "https://console.example", logger)
 			if err != nil {
 				t.Fatal(err)
@@ -221,7 +221,7 @@ func TestPasswordResetHTTPRejectsSuccessWithoutOperationID(t *testing.T) {
 	csrf := base64.RawURLEncoding.EncodeToString(csrfBytes)
 	principal := session.Principal{AccountID: "server-admin", SessionID: "server-session", CSRFHash: sha256.Sum256(csrfBytes)}
 	reset := &capturedReset{emptyID: true}
-	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset,
+	handler, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, reset, unusedAccountState{},
 		resetTestSessions{principal: principal}, "https://console.example", logger)
 	if err != nil {
 		t.Fatal(err)
@@ -242,7 +242,7 @@ func TestPasswordResetHTTPRejectsSuccessWithoutOperationID(t *testing.T) {
 
 func TestSessionAPIRequiresPasswordResetService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, nil, failedSessions{}, "https://console.example", logger)
+	_, err := consoleapi.NewSessionAPI(unusedLogin{}, unusedPasswordChange{}, unusedAccountCreation{}, nil, unusedAccountState{}, failedSessions{}, "https://console.example", logger)
 	if !errors.Is(err, consoleapi.ErrInvalidAPIConfig) {
 		t.Fatalf("missing reset service was accepted: %v", err)
 	}

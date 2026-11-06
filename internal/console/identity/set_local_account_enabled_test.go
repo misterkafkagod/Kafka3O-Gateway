@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"io"
 	"testing"
@@ -9,12 +10,15 @@ import (
 )
 
 type fakeAccountStateStore struct {
-	calls int
+	calls  int
+	change LocalAccountStateChange
+	err    error
 }
 
-func (s *fakeAccountStateStore) SetLocalAccountEnabled(context.Context, LocalAccountStateChange) error {
+func (s *fakeAccountStateStore) SetLocalAccountEnabled(_ context.Context, change LocalAccountStateChange) error {
 	s.calls++
-	return nil
+	s.change = change
+	return s.err
 }
 
 func TestSetLocalAccountEnabledRejectsMissingDependenciesAndEntropy(t *testing.T) {
@@ -32,7 +36,22 @@ func TestSetLocalAccountEnabledRejectsMissingDependenciesAndEntropy(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := change.Execute(context.Background(), LocalAdminActor{}, "subject", false); !errors.Is(err, io.ErrUnexpectedEOF) || store.calls != 0 {
+	if _, err := change.Execute(context.Background(), LocalAdminActor{}, "subject", false); !errors.Is(err, io.ErrUnexpectedEOF) || store.calls != 0 {
 		t.Fatalf("entropy failure: err=%v store calls=%d", err, store.calls)
+	}
+}
+
+func TestSetLocalAccountEnabledCorrelatesStoreResult(t *testing.T) {
+	store := &fakeAccountStateStore{err: ErrAccountStateUnknown}
+	change, err := NewSetLocalAccountEnabled(store, rand.Reader, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor := LocalAdminActor{AccountID: "admin", SessionID: "session"}
+	result, err := change.Execute(context.Background(), actor, "subject", false)
+	if !errors.Is(err, ErrAccountStateUnknown) || result.OperationID == "" ||
+		result.OperationID != store.change.OperationID || store.change.Actor != actor ||
+		store.change.TargetID != "subject" || store.change.Enabled {
+		t.Fatalf("state change did not correlate its store result: %v", err)
 	}
 }

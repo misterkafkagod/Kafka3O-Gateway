@@ -77,9 +77,10 @@ Strict session cookie, a separate script-readable Secure CSRF cookie, and an
 exact HTTPS Origin and session-bound CSRF-header check.
 
 `cmd/console serve` composes local login, session inspection, password
-replacement, logout, administrator account creation and password reset into
-a TLS-only server. It refuses to start without an enabled local global
-administrator and exposes no Kafka routes or other account-management routes.
+replacement, logout, administrator account creation, state changes and
+password reset into a TLS-only server. It refuses to start without an enabled
+local global administrator and exposes no Kafka routes or other
+account-management routes.
 Configure it with:
 
 - `KAFKA3O_CONSOLE_DB_PATH`: the absolute path to the bootstrapped database.
@@ -104,13 +105,27 @@ a new sign-in. If a password-change response is lost, its outcome may be
 unknown: do not automatically retry; sign in afresh and investigate audit
 records. Never log the raw session or CSRF token.
 
-The account-disable foundation atomically updates the account state and
+The account-state service atomically updates the account state and
 credential version, revokes its sessions, and records the change. It rechecks
 the current local session and global ADMIN grant in the same transaction and
 will not disable the last enabled local global ADMIN. Re-enabling an account
-also revokes any remaining old sessions. This operation is not mounted in the
-HTTP server. Future handlers must derive its actor from an authenticated,
-CSRF-checked session, never from client-supplied identity or session IDs.
+also revokes any remaining old sessions. Setting the existing state records an
+audited success without revoking sessions or incrementing the credential
+version.
+
+The loopback server mounts `PUT /api/admin/local-accounts/{accountID}/enabled`
+with JSON `{ "enabled": false }` or `{ "enabled": true }`. It derives the actor
+and session from the authenticated cookie and requires the exact HTTPS Origin
+and session-bound `X-Kafka3O-CSRF` header; unknown fields, duplicate `enabled`
+fields, and missing, null or non-boolean values are rejected. The response
+includes the `operationId`, resulting `enabled` state and `signInRequired`;
+a successful self-disable clears both cookies and requires sign-in after an
+administrator re-enables the account. The last-enabled-administrator guard
+returns a conflict. An audit failure returns `account_state_audit_unavailable`;
+an uncertain commit or rollback returns `account_state_outcome_unknown`.
+An unknown self-disable outcome also clears browser cookies. A lost response
+may lack an operation ID: investigate the account and audit before retrying,
+and never automatically replay the operation.
 
 The local-account creation service is also restricted to a current local
 global ADMIN session without a pending password change. It reserves an

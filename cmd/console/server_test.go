@@ -430,6 +430,53 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden || !bytes.Contains(data, []byte(`"code":"global_admin_required"`)) {
 		t.Fatalf("role-free user account creation status=%d", resp.StatusCode)
 	}
+	adminStatePath := "/api/admin/local-accounts/" + login.AccountID + "/enabled"
+	resp, data = request(http.MethodPut, adminStatePath, `{"enabled":false}`, origin, adminCookies, adminCSRF)
+	if resp.StatusCode != http.StatusConflict || !bytes.Contains(data, []byte(`"code":"last_local_global_admin"`)) {
+		t.Fatalf("last administrator disable status=%d", resp.StatusCode)
+	}
+	userStatePath := "/api/admin/local-accounts/" + created.Account.ID + "/enabled"
+	resp, data = request(http.MethodPut, userStatePath, `{"enabled":false}`, origin, userCookies, userCSRF)
+	if resp.StatusCode != http.StatusForbidden || !bytes.Contains(data, []byte(`"code":"global_admin_required"`)) {
+		t.Fatalf("role-free user account disable status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodPut, userStatePath, `{"enabled":false}`, origin, adminCookies, adminCSRF)
+	var disabled struct {
+		OperationID    string `json:"operationId"`
+		Enabled        bool   `json:"enabled"`
+		SignInRequired bool   `json:"signInRequired"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &disabled) != nil ||
+		disabled.OperationID == "" || disabled.Enabled || disabled.SignInRequired {
+		t.Fatalf("administrator account disable status=%d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodGet, "/api/session", "", "", userCookies, "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("disabled user session remained valid: %d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodPost, "/api/session/local",
+		`{"username":"example-user","password":"user replacement passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("disabled user login status=%d", resp.StatusCode)
+	}
+	resp, data = request(http.MethodPut, userStatePath, `{"enabled":true}`, origin, adminCookies, adminCSRF)
+	var enabled struct {
+		OperationID string `json:"operationId"`
+		Enabled     bool   `json:"enabled"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &enabled) != nil ||
+		enabled.OperationID == "" || !enabled.Enabled || enabled.OperationID == disabled.OperationID {
+		t.Fatalf("administrator account re-enable status=%d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodGet, "/api/session", "", "", userCookies, "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("re-enabling revived a user session: %d", resp.StatusCode)
+	}
+	resp, _ = request(http.MethodPost, "/api/session/local",
+		`{"username":"example-user","password":"user replacement passphrase"}`, origin, nil, "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("re-enabled user login status=%d", resp.StatusCode)
+	}
 	cookies, csrf = adminCookies, adminCSRF
 	resp, _ = request(http.MethodPost, "/api/session/logout", "", origin, cookies, csrf)
 	if resp.StatusCode != http.StatusNoContent {
@@ -500,6 +547,16 @@ func TestTLSSessionServerEndToEnd(t *testing.T) {
 		creationEvents[1].OperationID != created.OperationID || creationEvents[1].ResourceID != created.Account.ID ||
 		creationEvents[2].Outcome != storage.AuditDenied {
 		t.Fatalf("account creation audit count=%d err=%v", len(creationEvents), err)
+	}
+	disableEvents, err := db.ListAuditEvents(context.Background(), storage.AuditFilter{Global: true, Action: "console.local_account.disable", Limit: 10})
+	if err != nil || len(disableEvents) != 6 || disableEvents[5].OperationID != disabled.OperationID ||
+		disableEvents[5].Outcome != storage.AuditSucceeded || disableEvents[5].ResourceID != created.Account.ID {
+		t.Fatalf("account disable audit count=%d err=%v", len(disableEvents), err)
+	}
+	enableEvents, err := db.ListAuditEvents(context.Background(), storage.AuditFilter{Global: true, Action: "console.local_account.enable", Limit: 10})
+	if err != nil || len(enableEvents) != 2 || enableEvents[1].OperationID != enabled.OperationID ||
+		enableEvents[1].Outcome != storage.AuditSucceeded || enableEvents[1].ResourceID != created.Account.ID {
+		t.Fatalf("account enable audit count=%d err=%v", len(enableEvents), err)
 	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)

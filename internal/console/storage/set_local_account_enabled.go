@@ -24,7 +24,7 @@ func (d *Database) SetLocalAccountEnabled(ctx context.Context, change identity.L
 		return ErrInvalidAuditEvent
 	}
 	if err := d.AppendAuditEvent(ctx, attempt); err != nil {
-		return err
+		return errors.Join(identity.ErrAccountStateAudit, fmt.Errorf("record account state attempt: %w", err))
 	}
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -32,7 +32,7 @@ func (d *Database) SetLocalAccountEnabled(ctx context.Context, change identity.L
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-			result = errors.Join(result, fmt.Errorf("roll back local account state change: %w", err))
+			result = errors.Join(identity.ErrAccountStateUnknown, result, fmt.Errorf("roll back local account state change: %w", err))
 		}
 	}()
 	change.OccurredAt, err = d.transactionTime(change.OccurredAt)
@@ -112,16 +112,16 @@ WHERE identity_id = ? AND revoked_at_ns IS NULL`, change.OccurredAt.UTC().UnixNa
 					ResourceID: change.TargetID, Decision: "allowed", Outcome: AuditSucceeded,
 				}
 				if err := insertAuditEvent(ctx, tx, revocation); err != nil {
-					return err
+					return errors.Join(identity.ErrAccountStateAudit, fmt.Errorf("record account state session revocation: %w", err))
 				}
 			}
 		}
 	}
 	if err := insertAuditEvent(ctx, tx, event); err != nil {
-		return err
+		return errors.Join(identity.ErrAccountStateAudit, fmt.Errorf("record account state outcome: %w", err))
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit local account state change: %w", err)
+		return errors.Join(identity.ErrAccountStateUnknown, fmt.Errorf("commit local account state change: %w", err))
 	}
 	return decisionErr
 }

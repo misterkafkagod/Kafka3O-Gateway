@@ -92,6 +92,10 @@ type LocalAccountStateStore interface {
 	SetLocalAccountEnabled(ctx context.Context, change LocalAccountStateChange) error
 }
 
+type LocalAccountStateResult struct {
+	OperationID string
+}
+
 type LocalPasswordResetAttempt struct {
 	Actor       LocalAdminActor
 	TargetID    string
@@ -181,6 +185,8 @@ var (
 	ErrAdminPasswordChange     = errors.New("administrator must change the temporary password")
 	ErrLastLocalGlobalAdmin    = errors.New("the last enabled local global administrator cannot be disabled")
 	ErrAccountAdminConfig      = errors.New("account administration dependencies are required")
+	ErrAccountStateUnknown     = errors.New("local account state change outcome is unknown")
+	ErrAccountStateAudit       = errors.New("local account state change could not be audited")
 	ErrPasswordResetThrottled  = errors.New("password reset temporarily throttled")
 	ErrInvalidPasswordReset    = errors.New("password reset attempt is unavailable or already used")
 	ErrPasswordResetExpired    = errors.New("password reset attempt has expired")

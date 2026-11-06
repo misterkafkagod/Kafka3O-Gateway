@@ -390,7 +390,7 @@ func TestPasswordResetRechecksAuthorizationAfterReservation(t *testing.T) {
 			switch tt.name {
 			case "disabled":
 				other := identity.LocalAdminActor{AccountID: secondAdmin.ID, SessionID: secondSession.Principal.SessionID}
-				if err := f.change.Execute(ctx, other, f.admin.ID, false); err != nil {
+				if _, err := f.change.Execute(ctx, other, f.admin.ID, false); err != nil {
 					t.Fatal(err)
 				}
 			case "expired":
@@ -466,7 +466,7 @@ func TestPasswordResetDoesNotEnableDisabledAccount(t *testing.T) {
 	ctx := context.Background()
 	target, _ := f.addAccount(t, "subject-1", "other-user", "", "")
 	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
-	if err := f.change.Execute(ctx, actor, target.ID, false); err != nil {
+	if _, err := f.change.Execute(ctx, actor, target.ID, false); err != nil {
 		t.Fatal(err)
 	}
 	reset, err := identity.NewResetLocalPassword(f.db, rand.Reader, time.Now)
@@ -488,7 +488,7 @@ func TestPasswordResetDoesNotEnableDisabledAccount(t *testing.T) {
 	if _, err := authenticator.Execute(ctx, target.Username, "temporary reset passphrase", client); !errors.Is(err, identity.ErrAuthenticationFailed) {
 		t.Fatalf("disabled reset account authenticated: %v", err)
 	}
-	if err := f.change.Execute(ctx, actor, target.ID, true); err != nil {
+	if _, err := f.change.Execute(ctx, actor, target.ID, true); err != nil {
 		t.Fatal(err)
 	}
 	account, err := authenticator.Execute(ctx, target.Username, "temporary reset passphrase", client)
@@ -508,7 +508,7 @@ func TestPasswordResetDoesNotOverwriteConcurrentAccountStateChange(t *testing.T)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.change.Execute(ctx, actor, target.ID, false); err != nil {
+	if _, err := f.change.Execute(ctx, actor, target.ID, false); err != nil {
 		t.Fatal(err)
 	}
 	hash, err := identity.HashLocalPassword(rand.Reader, "temporary reset passphrase")

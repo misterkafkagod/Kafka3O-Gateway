@@ -25,6 +25,7 @@ type SessionAPI struct {
 	change       identity.ChangeLocalPassword
 	create       identity.CreateLocalAccount
 	reset        identity.ResetLocalPassword
+	setEnabled   identity.SetLocalAccountEnabled
 	sessions     Sessions
 	csrf         *session.CSRFVerifier
 	expectedHost string
@@ -55,6 +56,15 @@ type resetPasswordBody struct {
 type createLocalAccountBody struct {
 	Username          string `json:"username"`
 	TemporaryPassword string `json:"temporaryPassword"`
+}
+
+type requiredBoolean struct {
+	Value   bool
+	Present bool
+}
+
+type setLocalAccountEnabledBody struct {
+	Enabled requiredBoolean `json:"enabled"`
 }
 
 type createdLocalAccount struct {

@@ -263,7 +263,7 @@ func TestLocalAccountCreationRechecksAuthorizationAfterReservation(t *testing.T)
 			switch tt.name {
 			case "disabled":
 				other := identity.LocalAdminActor{AccountID: secondAdmin.ID, SessionID: secondSession.Principal.SessionID}
-				if err := f.change.Execute(ctx, other, f.admin.ID, false); err != nil {
+				if _, err := f.change.Execute(ctx, other, f.admin.ID, false); err != nil {
 					t.Fatal(err)
 				}
 			case "expired":

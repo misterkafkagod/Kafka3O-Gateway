@@ -109,7 +109,7 @@ func TestAccountDisableAndEnableRevokeSessionsAndAudit(t *testing.T) {
 	ctx := context.Background()
 	account, credentials := f.addAccount(t, "subject-1", "other-user", "", "")
 	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
-	if err := f.change.Execute(ctx, actor, account.ID, false); err != nil {
+	if _, err := f.change.Execute(ctx, actor, account.ID, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.manager.Resolve(ctx, credentials.Token); !errors.Is(err, session.ErrInvalidSession) {
@@ -126,7 +126,7 @@ func TestAccountDisableAndEnableRevokeSessionsAndAudit(t *testing.T) {
 	if _, err := authenticator.Execute(ctx, account.Username, "other strong passphrase", netip.MustParseAddr("192.0.2.2")); !errors.Is(err, identity.ErrAuthenticationFailed) {
 		t.Fatalf("disabled account authenticated: %v", err)
 	}
-	if err := f.change.Execute(ctx, actor, account.ID, true); err != nil {
+	if _, err := f.change.Execute(ctx, actor, account.ID, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.manager.Resolve(ctx, credentials.Token); !errors.Is(err, session.ErrInvalidSession) {
@@ -168,7 +168,7 @@ func TestReenablingAccountRevokesUnrevokedOldSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
-	if err := f.change.Execute(ctx, actor, account.ID, true); err != nil {
+	if _, err := f.change.Execute(ctx, actor, account.ID, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.manager.Resolve(ctx, credentials.Token); !errors.Is(err, session.ErrInvalidSession) {
@@ -186,7 +186,7 @@ func TestAccountStateChangeRechecksGlobalAdminAndSession(t *testing.T) {
 	clusterAdmin, clusterSession := f.addAccount(t, "cluster-admin-id", "cluster-admin", "cluster-a", "ADMIN")
 	target, _ := f.addAccount(t, "subject-1", "other-user", "", "")
 	actor := identity.LocalAdminActor{AccountID: clusterAdmin.ID, SessionID: clusterSession.Principal.SessionID}
-	if err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrGlobalAdminRequired) {
+	if _, err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrGlobalAdminRequired) {
 		t.Fatalf("cluster administrator changed a global account: %v", err)
 	}
 	if _, err := f.db.db.ExecContext(ctx, "INSERT INTO role_grants (account_id, cluster_id, role) VALUES (?, '', 'ADMIN')", clusterAdmin.ID); err != nil {
@@ -195,13 +195,13 @@ func TestAccountStateChangeRechecksGlobalAdminAndSession(t *testing.T) {
 	if _, err := f.db.db.ExecContext(ctx, "DELETE FROM role_grants WHERE account_id = ? AND cluster_id = ''", clusterAdmin.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrGlobalAdminRequired) {
+	if _, err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrGlobalAdminRequired) {
 		t.Fatalf("stale global grant was accepted: %v", err)
 	}
 	if err := f.manager.Revoke(ctx, clusterSession.Token); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrInvalidAdminSession) {
+	if _, err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrInvalidAdminSession) {
 		t.Fatalf("revoked administrator session was accepted: %v", err)
 	}
 	expiredManager, err := session.NewManager(f.db, rand.Reader, func() time.Time { return time.Now().Add(-time.Hour) }, time.Minute, 2*time.Minute)
@@ -213,7 +213,7 @@ func TestAccountStateChangeRechecksGlobalAdminAndSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	expiredActor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: expired.Principal.SessionID}
-	if err := f.change.Execute(ctx, expiredActor, target.ID, false); !errors.Is(err, identity.ErrInvalidAdminSession) {
+	if _, err := f.change.Execute(ctx, expiredActor, target.ID, false); !errors.Is(err, identity.ErrInvalidAdminSession) {
 		t.Fatalf("expired administrator session was accepted: %v", err)
 	}
 	stored, err := f.db.FindLocalAccount(ctx, target.Username)
@@ -257,7 +257,7 @@ func TestTemporaryPasswordSessionCannotAdministerAccounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	actor := identity.LocalAdminActor{AccountID: account.ID, SessionID: credentials.Principal.SessionID}
-	if err := change.Execute(ctx, actor, account.ID, false); !errors.Is(err, identity.ErrAdminPasswordChange) {
+	if _, err := change.Execute(ctx, actor, account.ID, false); !errors.Is(err, identity.ErrAdminPasswordChange) {
 		t.Fatalf("temporary-password session was allowed to administer accounts: %v", err)
 	}
 	events, err := db.ListAuditEvents(ctx, AuditFilter{Global: true, Action: "console.local_account.disable", Limit: 10})
@@ -271,10 +271,10 @@ func TestAccountStateChangeDoesNotAuditUntrustedTargetInput(t *testing.T) {
 	ctx := context.Background()
 	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
 	const input = "not-a-stored-account"
-	if err := f.change.Execute(ctx, actor, input, false); !errors.Is(err, identity.ErrAccountNotFound) {
+	if _, err := f.change.Execute(ctx, actor, input, false); !errors.Is(err, identity.ErrAccountNotFound) {
 		t.Fatalf("unknown account: %v", err)
 	}
-	if err := f.change.Execute(ctx, actor, "", false); !errors.Is(err, identity.ErrInvalidLocalAccount) {
+	if _, err := f.change.Execute(ctx, actor, "", false); !errors.Is(err, identity.ErrInvalidLocalAccount) {
 		t.Fatalf("empty account ID: %v", err)
 	}
 	events, err := f.db.ListAuditEvents(ctx, AuditFilter{Global: true, Action: "console.local_account.disable", Limit: 10})
@@ -288,21 +288,21 @@ func TestAccountStateChangeProtectsLastLocalGlobalAdmin(t *testing.T) {
 	f := newAccountAdministrationFixture(t)
 	ctx := context.Background()
 	firstActor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
-	if err := f.change.Execute(ctx, firstActor, f.admin.ID, false); !errors.Is(err, identity.ErrLastLocalGlobalAdmin) {
+	if _, err := f.change.Execute(ctx, firstActor, f.admin.ID, false); !errors.Is(err, identity.ErrLastLocalGlobalAdmin) {
 		t.Fatalf("disabled the last local global administrator: %v", err)
 	}
 	second, secondSession := f.addAccount(t, "second-admin-id", "second-admin", "", "ADMIN")
 	secondActor := identity.LocalAdminActor{AccountID: second.ID, SessionID: secondSession.Principal.SessionID}
-	if err := f.change.Execute(ctx, secondActor, f.admin.ID, false); err != nil {
+	if _, err := f.change.Execute(ctx, secondActor, f.admin.ID, false); err != nil {
 		t.Fatalf("could not disable an administrator while another remains: %v", err)
 	}
 	if _, err := f.manager.Resolve(ctx, f.adminRun.Token); !errors.Is(err, session.ErrInvalidSession) {
 		t.Fatalf("disabled administrator session remained active: %v", err)
 	}
-	if err := f.change.Execute(ctx, secondActor, second.ID, false); !errors.Is(err, identity.ErrLastLocalGlobalAdmin) {
+	if _, err := f.change.Execute(ctx, secondActor, second.ID, false); !errors.Is(err, identity.ErrLastLocalGlobalAdmin) {
 		t.Fatalf("disabled the remaining administrator: %v", err)
 	}
-	if err := f.change.Execute(ctx, secondActor, f.admin.ID, true); err != nil {
+	if _, err := f.change.Execute(ctx, secondActor, f.admin.ID, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.manager.Resolve(ctx, f.adminRun.Token); !errors.Is(err, session.ErrInvalidSession) {
@@ -325,7 +325,8 @@ func TestConcurrentAdminDisablesCannotRemoveAllLocalGlobalAdmins(t *testing.T) {
 		group.Add(1)
 		go func(i int) {
 			defer group.Done()
-			results <- f.change.Execute(ctx, actors[i], targets[i], false)
+			_, err := f.change.Execute(ctx, actors[i], targets[i], false)
+			results <- err
 		}(i)
 	}
 	group.Wait()
@@ -362,7 +363,7 @@ BEGIN SELECT RAISE(FAIL, 'audit unavailable'); END;`)
 				t.Fatal(err)
 			}
 			actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
-			if err := f.change.Execute(ctx, actor, target.ID, false); err == nil {
+			if _, err := f.change.Execute(ctx, actor, target.ID, false); !errors.Is(err, identity.ErrAccountStateAudit) {
 				t.Fatal("account state changed without durable audit")
 			}
 			stored, err := f.db.FindLocalAccount(ctx, target.Username)
@@ -373,5 +374,53 @@ BEGIN SELECT RAISE(FAIL, 'audit unavailable'); END;`)
 				t.Fatalf("session revocation was not rolled back: %v", err)
 			}
 		})
+	}
+}
+
+func TestAccountStateCommitFailureReportsCorrelatedUnknownOutcome(t *testing.T) {
+	f := newAccountAdministrationFixture(t)
+	ctx := context.Background()
+	target, targetSession := f.addAccount(t, "subject-1", "other-user", "", "")
+	_, err := f.db.db.ExecContext(ctx, `CREATE TABLE state_commit_failure (
+identity_id TEXT REFERENCES identities(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE TRIGGER fail_state_commit AFTER UPDATE OF enabled ON identities
+WHEN NEW.id = 'subject-1'
+BEGIN INSERT INTO state_commit_failure (identity_id) VALUES ('missing-identity'); END;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
+	result, err := f.change.Execute(ctx, actor, target.ID, false)
+	if !errors.Is(err, identity.ErrAccountStateUnknown) || result.OperationID == "" {
+		t.Fatalf("commit failure was not reported as unknown: %v", err)
+	}
+	stored, err := f.db.FindLocalAccount(ctx, target.Username)
+	if err != nil || !stored.Enabled || stored.CredentialVersion != target.CredentialVersion {
+		t.Fatalf("failed commit exposed a partial account change before reopening: %v", err)
+	}
+	path := f.db.path
+	if err := f.db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := OpenDatabase(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	stored, err = db.FindLocalAccount(ctx, target.Username)
+	if err != nil || !stored.Enabled || stored.CredentialVersion != target.CredentialVersion {
+		t.Fatalf("failed commit left a partial account change: %v", err)
+	}
+	manager, err := session.NewManager(db, rand.Reader, time.Now, session.DefaultIdleLifetime, session.DefaultAbsoluteLifetime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Resolve(ctx, targetSession.Token); err != nil {
+		t.Fatalf("failed commit left a partial session revocation: %v", err)
+	}
+	events, err := db.ListAuditEvents(ctx, AuditFilter{Global: true, Action: "console.local_account.disable", Limit: 10})
+	if err != nil || len(events) != 1 || events[0].Outcome != AuditAttempted || events[0].OperationID != result.OperationID {
+		t.Fatalf("failed commit audit count=%d err=%v", len(events), err)
 	}
 }
