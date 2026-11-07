@@ -505,6 +505,30 @@ provider in the background with retries from 1 second up to 1 minute. Until
 discovery succeeds, SSO reports unavailable and local login keeps serving.
 Logs carry only attempt counts, a provider-mismatch flag and error types.
 
+Once discovery succeeds, two more routes complete sign-in. Both verify the
+HTTPS `Origin`, require exactly one valid stable marker and reject a request
+whose session cookie still resolves (local or bound) with 409
+`already_signed_in`:
+
+- `POST /api/session/cognito/start` creates a marker-bound attempt, sets the
+  short-lived Lax `__Host-kafka3o_sso` cookie and returns
+  `{"authorizationUrl": …}` for a top-level navigation. Too many open attempts
+  return 429.
+- `POST /api/session/cognito/callback` takes `{"query": "<raw callback
+  query>"}` from the SPA page at `/auth/cognito/callback`, because the
+  cross-site redirect itself does not carry the Strict marker. It always
+  clears the transient cookie, parses the query strictly (unknown parameters
+  return 400 `invalid_callback`), consumes the attempt exactly once (also for
+  provider denial, `sign_in_denied`, and for forged state or a missing or
+  foreign transient cookie, `sign_in_failed`), exchanges the code once, and
+  issues a role-free Strict session bound to the marker. Provider, nonce or
+  exchange failures and replays return a generic 401 `sign_in_failed`; the
+  exchange is never retried, so the user must start again. Audit and storage
+  uncertainty returns 503.
+
+These handlers never log the request body, callback query, code, state,
+cookies, tokens or marker.
+
 Bootstrap sessions may inspect their session, change the temporary password or
 log out. A successful password change revokes all local sessions and requires
 a new sign-in. If a password-change response is lost, its outcome may be
