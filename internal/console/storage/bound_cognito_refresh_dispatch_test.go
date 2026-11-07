@@ -193,10 +193,10 @@ func TestBoundCognitoRefreshDispatchRejectsChangedState(t *testing.T) {
 				}
 				want = cognito.ErrRefreshState
 			case "outcome":
-				if err := f.db.RecordCognitoRefreshFailure(ctx, cognito.RefreshFailure{
+				if err := f.db.RecordBoundCognitoRefreshFailure(ctx, cognito.RefreshFailure{
 					OperationID: request.Reservation.OperationID, SessionID: request.Reservation.SessionID,
 					Generation: request.Reservation.Generation, OccurredAt: f.clock(), Status: cognito.RefreshOutcomeUnknown,
-				}); err != nil {
+				}, f.binding); err != nil {
 					t.Fatal(err)
 				}
 			case "missing-reservation":

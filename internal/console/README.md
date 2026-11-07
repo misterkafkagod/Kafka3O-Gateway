@@ -208,6 +208,11 @@ snapshot, session deadlines and non-regressing time. It does not contact the
 provider or make the reserved session usable. A binding can still change
 after this check or while a provider request is in flight; future bound
 completion must recheck the binding and never retry an uncertain request.
+Bound failure auditing matches the original session's marker digest and
+durable reservation, not the current browser mapping. It can therefore
+record a failed-before-send or unknown outcome after replacement, revocation
+or expiry without changing the replacement. Unbound failure auditing rejects
+an existing bound session. Audit and uncertain commit failures are explicit.
 
 Marker generation, cookie lifecycle and local/SSO integration remain
 unfinished. Binding rows for inactive markers are retained until that marker
