@@ -172,9 +172,12 @@ marker's current session and records the new binding in the same transaction
 as creation and its audit. A competing active session is denied and audited;
 only the exact `ErrBrowserSessionConflict` confirms that denial was recorded.
 A revoked, disabled, idle-expired or absolutely expired session can be
-replaced. The old session retains its marker digest when the current binding
-changes. Bound issuance rechecks a non-regressing clock and session deadlines
-before and after commit; Cognito issuance also rechecks exchange freshness.
+replaced. The replacement transaction revokes the old session, removes any
+retained provider credentials and writes a redacted retirement audit before
+switching the binding. The old session retains its marker digest when the
+current binding changes. Bound issuance rechecks a non-regressing clock and
+session deadlines before and after commit; Cognito issuance also rechecks
+exchange freshness.
 Audit, commit and uncertain outcomes must not be treated as a confirmed
 denial or retried automatically. An outcome that may have committed is not
 reported as an ordinary invalid session.
@@ -256,10 +259,11 @@ restart, failures and redaction; real Cognito remains unverified.
 Marker generation, cookie lifecycle and local/SSO integration remain
 unfinished. Binding rows for inactive markers are retained until that marker
 is reused; bounded retention and cleanup must be addressed before deployment.
-If a disabled Cognito session is replaced and re-enabled between cleanup
-ticks, its old encrypted credential may remain until expiry. The future
-identity-disable or replacement path must revoke it atomically, or cleanup
-must otherwise guarantee its timely removal, before deployment.
+Replacement atomically revokes an inactive session and removes its retained
+credential even if its identity is re-enabled before a cleanup tick. A future
+Cognito identity-disable administration path must also revoke its sessions
+and credentials atomically; toggling an identity without replacement or
+cleanup is not a safe disable-and-re-enable workflow.
 
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each

@@ -31,6 +31,9 @@ func (d *Database) CreateCognitoSession(ctx context.Context, record session.Cogn
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			result = errors.Join(session.ErrCognitoSessionUnknown, result, fmt.Errorf("roll back Cognito session creation: %w", err))
+			if record.Session.BrowserBindingHash != ([32]byte{}) {
+				result = browserSessionOutcomeUnknown(result)
+			}
 		}
 	}()
 	now, err := d.transactionTime(record.Session.CreatedAt)
@@ -80,19 +83,27 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 		event.ActorID, event.Source = accountID, AuditSourceCognito
 		return deny(session.ErrCognitoSessionUnavailable, AuditDenied)
 	}
-	if err := d.checkBrowserSession(ctx, tx, record.Session.BrowserBindingHash, now); err != nil {
+	previous, err := d.checkBrowserSession(ctx, tx, record.Session.BrowserBindingHash, now)
+	if err != nil {
 		if err == session.ErrBrowserSessionConflict {
+			event.OccurredAt = previous.checkedAt
 			return deny(err, AuditDenied)
 		}
 		return session.Principal{}, err
 	}
+	now = previous.checkedAt
+	event.OccurredAt = now
 	encrypted, err := record.Protector.Seal(cognito.RefreshTokenBinding{
 		SessionID: record.Session.SessionID, IdentityID: accountID, Generation: 1,
 	}, details.RefreshToken)
 	if err != nil {
 		return deny(errors.Join(session.ErrCognitoSessionUnavailable, err), AuditFailed)
 	}
-	now, err = d.transactionTime(now)
+	transactionTime := d.transactionTime
+	if record.Session.BrowserBindingHash != ([32]byte{}) {
+		transactionTime = d.strictTransactionTime
+	}
+	now, err = transactionTime(now)
 	if err != nil {
 		return session.Principal{}, err
 	}
@@ -120,6 +131,9 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 	groupJSON, err := json.Marshal(groups)
 	if err != nil {
 		return session.Principal{}, fmt.Errorf("encode Cognito groups: %w", err)
+	}
+	if err := retireBrowserSession(ctx, tx, previous, now, details.OperationID); err != nil {
+		return session.Principal{}, err
 	}
 	if newIdentity {
 		if _, err := tx.ExecContext(ctx, "INSERT INTO identities (id, enabled) VALUES (?, 1)", accountID); err != nil {

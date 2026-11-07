@@ -173,6 +173,10 @@ func TestBoundCognitoRefreshExchangeDeniesReplacementDuringProviderCall(t *testi
 				if err != nil || len(events) != 2 || events[1].Outcome != AuditUnknown {
 					t.Fatal("provider failure after replacement was not audited")
 				}
+				var retained int
+				if err := f.db.db.QueryRow("SELECT COUNT(*) FROM cognito_session_credentials WHERE session_id = ?", f.credentials.Principal.SessionID).Scan(&retained); err != nil || retained != 0 {
+					t.Fatal("replacement retained the old provider credentials")
+				}
 				principal, err := f.db.UseBoundSession(ctx, replacement.TokenHash, f.binding, f.clock, session.DefaultIdleLifetime, nil)
 				if err != nil || principal.SessionID != replacement.SessionID {
 					t.Fatalf("provider failure affected the replacement: %v", err)
@@ -192,9 +196,9 @@ func TestBoundCognitoRefreshExchangeDeniesReplacementDuringProviderCall(t *testi
 			}
 			var generation int64
 			err = f.db.db.QueryRow("SELECT refresh_generation FROM cognito_session_credentials WHERE session_id = ?", f.credentials.Principal.SessionID).Scan(&generation)
-			if mode == "revoked" {
+			if mode == "revoked" || mode == "replaced" {
 				if !errors.Is(err, sql.ErrNoRows) {
-					t.Fatal("revocation retained provider credentials")
+					t.Fatal("revocation or replacement retained provider credentials")
 				}
 			} else if err != nil || generation != 1 {
 				t.Fatal("denied completion stored a rotated provider credential")

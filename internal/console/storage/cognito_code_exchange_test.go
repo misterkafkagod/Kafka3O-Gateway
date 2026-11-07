@@ -154,6 +154,8 @@ func newCognitoCodeFixture(t *testing.T, mode string, auth cognito.ClientAuthent
 				key = f.forgedKey
 			case "stale":
 				claims["iat"] = f.clock().Add(-6 * time.Minute).Unix()
+			case "other identity":
+				claims["sub"] = "opaque|other-synthetic-subject"
 			}
 			idToken := signCognitoCodeFixtureToken(t, key, claims)
 			payload := map[string]any{

@@ -169,6 +169,7 @@ var (
 	// Only the exact conflict sentinel confirms a durably audited denial.
 	ErrBrowserSessionConflict = errors.New("browser already has an active session")
 	ErrBrowserSessionUnknown  = errors.New("browser session outcome is unavailable")
+	ErrBrowserSessionAudit    = errors.New("browser session audit failed")
 )
 
 func NewManager(store Store, random io.Reader, now func() time.Time, idleLifetime, absoluteLifetime time.Duration) (*Manager, error) {

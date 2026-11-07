@@ -29,6 +29,9 @@ func (d *Database) CreateLocalSession(ctx context.Context, record session.Record
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			result = errors.Join(result, fmt.Errorf("roll back session creation: %w", err))
+			if record.BrowserBindingHash != ([32]byte{}) {
+				result = browserSessionOutcomeUnknown(result)
+			}
 		}
 	}()
 	var username string
@@ -67,10 +70,12 @@ WHERE identities.id = ? AND identities.enabled = 1 AND local_accounts.credential
 		return session.Principal{}, session.ErrInvalidSession
 	}
 	event.OccurredAt = checkedAt
-	if err := d.checkBrowserSession(ctx, tx, record.BrowserBindingHash, record.CreatedAt); err != nil {
+	previous, err := d.checkBrowserSession(ctx, tx, record.BrowserBindingHash, checkedAt)
+	if err != nil {
 		if err != session.ErrBrowserSessionConflict {
 			return session.Principal{}, err
 		}
+		event.OccurredAt = previous.checkedAt
 		event.Decision, event.Outcome = "denied", AuditDenied
 		event.ResourceKind, event.ResourceID = "", ""
 		if err := insertAuditEvent(ctx, tx, event); err != nil {
@@ -80,6 +85,11 @@ WHERE identities.id = ? AND identities.enabled = 1 AND local_accounts.credential
 			return session.Principal{}, fmt.Errorf("commit browser session denial: %w", err)
 		}
 		return session.Principal{}, session.ErrBrowserSessionConflict
+	}
+	checkedAt = previous.checkedAt
+	event.OccurredAt = checkedAt
+	if err := retireBrowserSession(ctx, tx, previous, checkedAt, event.OperationID); err != nil {
+		return session.Principal{}, err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO console_sessions
 (id, identity_id, credential_version, token_hash, csrf_hash, created_at_ns, idle_expires_at_ns, absolute_expires_at_ns, browser_binding_hash)
