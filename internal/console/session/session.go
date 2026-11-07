@@ -100,6 +100,10 @@ type SessionGrantStore interface {
 	ResolveSessionGrants(context.Context, [32]byte, string, time.Time, *cognito.RefreshTokenProtector) ([]authorization.Grant, error)
 }
 
+type BoundSessionGrantStore interface {
+	ResolveBoundSessionGrants(context.Context, [32]byte, [32]byte, string, time.Time, *cognito.RefreshTokenProtector) ([]authorization.Grant, error)
+}
+
 type CognitoRefreshState uint8
 
 const (

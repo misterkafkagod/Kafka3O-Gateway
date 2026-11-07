@@ -162,8 +162,8 @@ Audit, commit and uncertain outcomes must not be treated as a confirmed
 denial or retried automatically. An outcome that may have committed is not
 reported as an ordinary invalid session.
 
-Separate storage-only bound session-use and grant-resolution actions require
-the marker digest and transactionally verify both the session's digest and
+Separate bound session-use and grant-resolution storage actions require the
+marker digest and transactionally verify both the session's digest and
 the current marker-to-session binding. They recheck identity, revocation,
 deadlines and current direct or verified-group grants; an old session cannot
 revive after replacement. Bound Cognito claims must be fresh and cannot
@@ -328,8 +328,8 @@ invalid; it does not prove that the browser has no competing session or
 permit replacement. A joined operational error is not definite invalidity.
 The existing
 local-only and non-refreshing Cognito managers do not coordinate refresh.
-No HTTP route supplies a stable marker, and bound issuance, grant resolution
-and logout remain storage-only.
+No HTTP route supplies a stable marker, and bound issuance and logout remain
+storage-only.
 
 The standalone session-grant resolver combines direct grants with an
 initially empty, server-owned table of exact issuer and case-sensitive
@@ -344,6 +344,12 @@ closed. Every authorization decision must resolve current grants again; a
 returned snapshot is not a durable authorization or delegation. Group
 mapping administration and independent Gateway enforcement remain P54/P55;
 no mapping-management or Kafka route is exposed by this foundation.
+The manager's separate `ResolveBoundGrants` action uses a trusted marker
+digest, refreshes the same bound session when needed, and rechecks the
+current binding and grants transactionally before returning a decision
+snapshot. A changed binding, revoked session, password restriction or
+storage failure cannot return stale grants. This action is not exposed by a
+route.
 
 Local logout requires the session-bound CSRF token and can revoke a Cognito
 session even if its claims are stale, its identity is disabled, its session
