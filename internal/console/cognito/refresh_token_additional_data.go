@@ -2,9 +2,6 @@ package cognito
 
 import (
 	"encoding/binary"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 )
 
 func refreshTokenAdditionalData(providerBinding [32]byte, binding RefreshTokenBinding) ([]byte, error) {
@@ -20,9 +17,4 @@ func refreshTokenAdditionalData(providerBinding [32]byte, binding RefreshTokenBi
 	additional = binary.BigEndian.AppendUint16(additional, uint16(len(binding.IdentityID)))
 	additional = append(additional, binding.IdentityID...)
 	return additional, nil
-}
-
-func validRefreshBindingID(id string) bool {
-	return id != "" && len(id) <= 128 && utf8.ValidString(id) &&
-		strings.TrimSpace(id) == id && strings.IndexFunc(id, unicode.IsControl) < 0
 }
