@@ -14,8 +14,8 @@ import (
 
 type protectionFixtureStore struct{}
 
-func (protectionFixtureStore) CreateCognitoAttempt(context.Context, AttemptRecord) error {
-	return ErrAttemptUnknown
+func (protectionFixtureStore) CreateCognitoAttempt(context.Context, AttemptRecord) (time.Time, error) {
+	return time.Time{}, ErrAttemptUnknown
 }
 
 func (protectionFixtureStore) ConsumeCognitoAttempt(context.Context, AttemptConsumption) (AttemptRecord, error) {

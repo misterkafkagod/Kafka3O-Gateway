@@ -11,7 +11,7 @@ import (
 )
 
 func (e *CodeExchanger) ExchangeAuthorizationCode(ctx context.Context, attempt ConsumedAuthorization, code string) (CodeExchangeResult, error) {
-	if attempt.proof == nil || attempt.proof.manager != e.attempts {
+	if attempt.proof == nil || attempt.proof.manager != e.attempts || attempt.proof.browserBindingHash != ([32]byte{}) {
 		return CodeExchangeResult{}, ErrCodeExchangeUnavailable
 	}
 	proof := attempt.proof

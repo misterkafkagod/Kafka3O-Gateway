@@ -41,11 +41,12 @@ type ConsumedAuthorization struct {
 }
 
 type consumedAttemptProof struct {
-	manager      *AttemptManager
-	operationID  string
-	nonceHash    [32]byte
-	codeVerifier string
-	expiresAt    time.Time
+	manager            *AttemptManager
+	operationID        string
+	nonceHash          [32]byte
+	browserBindingHash [32]byte
+	codeVerifier       string
+	expiresAt          time.Time
 }
 
 type AttemptRecord struct {
@@ -54,6 +55,7 @@ type AttemptRecord struct {
 	BindingHash   [32]byte `json:"-"`
 	NonceHash     [32]byte `json:"-"`
 	EncryptedPKCE []byte   `json:"-"`
+	Bound         bool     `json:"-"`
 	OccurredAt    time.Time
 	ExpiresAt     time.Time
 }
@@ -63,6 +65,7 @@ type AttemptConsumption struct {
 	StateHash   [32]byte `json:"-"`
 	BindingHash [32]byte `json:"-"`
 	Valid       bool
+	Bound       bool `json:"-"`
 	OccurredAt  time.Time
 }
 
@@ -73,7 +76,7 @@ type AttemptFailure struct {
 }
 
 type AttemptStore interface {
-	CreateCognitoAttempt(context.Context, AttemptRecord) error
+	CreateCognitoAttempt(context.Context, AttemptRecord) (time.Time, error)
 	ConsumeCognitoAttempt(context.Context, AttemptConsumption) (AttemptRecord, error)
 	FailCognitoAttempt(context.Context, AttemptFailure) error
 }

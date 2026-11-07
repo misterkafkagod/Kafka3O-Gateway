@@ -5,16 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 )
 
-func (d *Database) CreateCognitoAttempt(ctx context.Context, attempt cognito.AttemptRecord) (result error) {
+func (d *Database) CreateCognitoAttempt(ctx context.Context, attempt cognito.AttemptRecord) (createdAt time.Time, result error) {
 	if attempt.StateHash == ([32]byte{}) || attempt.BindingHash == ([32]byte{}) ||
 		attempt.NonceHash == ([32]byte{}) || len(attempt.EncryptedPKCE) != cognito.EncryptedVerifierSize ||
 		!attempt.ExpiresAt.Equal(attempt.OccurredAt.Add(cognito.AttemptLifetime)) ||
 		attempt.ExpiresAt.Year() > 2261 {
-		return cognito.ErrInvalidAttemptConfig
+		return time.Time{}, cognito.ErrInvalidAttemptConfig
 	}
 	event := AuditEvent{
 		EventID: attempt.OperationID, OperationID: attempt.OperationID, OccurredAt: attempt.OccurredAt,
@@ -22,28 +23,32 @@ func (d *Database) CreateCognitoAttempt(ctx context.Context, attempt cognito.Att
 		Decision: "allowed", Outcome: AuditAttempted,
 	}
 	if err := validateAuditEvent(event); err != nil {
-		return err
+		return time.Time{}, err
 	}
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin Cognito authorization attempt: %w", err)
+		return time.Time{}, fmt.Errorf("begin Cognito authorization attempt: %w", err)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			result = errors.Join(result, fmt.Errorf("roll back Cognito authorization attempt: %w", err))
 		}
 	}()
-	now, err := d.transactionTime(attempt.OccurredAt)
+	transactionTime := d.transactionTime
+	if attempt.Bound {
+		transactionTime = d.strictTransactionTime
+	}
+	now, err := transactionTime(attempt.OccurredAt)
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
 	event.OccurredAt = now
 	if _, err := tx.ExecContext(ctx, "DELETE FROM cognito_authorization_attempts WHERE expires_at_ns <= ?", now.UnixNano()); err != nil {
-		return fmt.Errorf("expire Cognito authorization attempts: %w", err)
+		return time.Time{}, fmt.Errorf("expire Cognito authorization attempts: %w", err)
 	}
 	var count int
 	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM cognito_authorization_attempts").Scan(&count); err != nil {
-		return fmt.Errorf("inspect Cognito authorization attempt limit: %w", err)
+		return time.Time{}, fmt.Errorf("inspect Cognito authorization attempt limit: %w", err)
 	}
 	var denied error
 	switch {
@@ -57,17 +62,17 @@ func (d *Database) CreateCognitoAttempt(ctx context.Context, attempt cognito.Att
 VALUES (?, ?, ?, ?, ?, ?, ?)`, attempt.OperationID, attempt.StateHash[:], attempt.BindingHash[:],
 			attempt.NonceHash[:], attempt.EncryptedPKCE, now.UnixNano(), attempt.ExpiresAt.UTC().UnixNano())
 		if err != nil {
-			return fmt.Errorf("persist Cognito authorization attempt: %w", err)
+			return time.Time{}, fmt.Errorf("persist Cognito authorization attempt: %w", err)
 		}
 	}
 	if denied != nil {
 		event.Decision, event.Outcome = "denied", AuditDenied
 	}
 	if err := insertAuditEvent(ctx, tx, event); err != nil {
-		return err
+		return time.Time{}, err
 	}
 	if err := tx.Commit(); err != nil {
-		return errors.Join(cognito.ErrAttemptUnknown, fmt.Errorf("commit Cognito authorization attempt: %w", err))
+		return time.Time{}, errors.Join(cognito.ErrAttemptUnknown, fmt.Errorf("commit Cognito authorization attempt: %w", err))
 	}
-	return denied
+	return now, denied
 }

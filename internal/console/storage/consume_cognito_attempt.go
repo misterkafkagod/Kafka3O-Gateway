@@ -28,7 +28,11 @@ func (d *Database) ConsumeCognitoAttempt(ctx context.Context, request cognito.At
 			result = errors.Join(result, fmt.Errorf("roll back Cognito callback consumption: %w", err))
 		}
 	}()
-	now, err := d.transactionTime(request.OccurredAt)
+	transactionTime := d.transactionTime
+	if request.Bound {
+		transactionTime = d.strictTransactionTime
+	}
+	now, err := transactionTime(request.OccurredAt)
 	if err != nil {
 		return cognito.AttemptRecord{}, err
 	}
@@ -54,6 +58,7 @@ RETURNING operation_id, nonce_hash, encrypted_pkce, expires_at_ns`,
 				decision = cognito.ErrAttemptEncryption
 			} else {
 				copy(record.NonceHash[:], nonceHash)
+				record.OccurredAt = now
 				record.ExpiresAt = time.Unix(0, expiresAt).UTC()
 				event.EventID = record.OperationID + ".callback"
 				event.Decision, event.Outcome, decision = "allowed", AuditAccepted, nil

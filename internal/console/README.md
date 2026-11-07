@@ -125,6 +125,21 @@ audit failure returns no verifier. If creation or consumption has an unknown
 commit outcome, investigate the operation ID and do not automatically retry.
 These attempt primitives do not expose a browser callback.
 
+Separate trusted-marker start and consumption actions bind the transient
+cookie digest to the digest of a stable browser marker using a
+domain-separated hash. For these attempts, verifier authentication also
+covers the operation ID and absolute expiry. A wrong or missing marker, or
+an unbound consumer, cannot consume a matching bound attempt. Bound actions
+recheck the transaction decision time and expiry before releasing values;
+clock regression or an expired post-commit result returns an unknown outcome
+without credentials. Existing unbound attempts retain their original format.
+The consumed proof privately retains the marker digest, and the unbound code
+exchanger rejects it before reservation or provider contact. Bound code
+exchange and proof-to-session binding are not implemented yet: the current
+bound session-issuance action can still accept an unbound exchange proof.
+No browser route may use these primitives until that gap and stable-marker
+initialization, cookie lifecycle and replacement concurrency are resolved.
+
 The standalone browser-authorization helpers build an `openid`
 authorization-code URL with state, nonce and PKCE S256 only from the same
 in-process attempt manager and verified provider/callback used by the code
