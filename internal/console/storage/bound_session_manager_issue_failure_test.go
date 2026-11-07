@@ -57,7 +57,7 @@ BEGIN INSERT INTO manager_issue_commit_failure (identity_id) VALUES ('missing-id
 func TestBoundSessionManagerIssuePreservesCognitoConflictAuditFailure(t *testing.T) {
 	f, binding, _ := newBrowserSessionFixture(t)
 	ctx := context.Background()
-	_, exchange := cognitoSessionExchange(t, f)
+	_, exchange := boundCognitoSessionExchange(t, f, binding)
 	manager, _ := cognitoSessionTools(t, f)
 	local, err := manager.IssueBoundLocal(ctx, identity.LocalAccount{ID: "browser-local-a", Enabled: true, CredentialVersion: 1}, binding)
 	if err != nil {

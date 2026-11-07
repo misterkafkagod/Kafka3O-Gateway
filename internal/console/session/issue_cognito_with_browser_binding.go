@@ -11,7 +11,13 @@ func (m *Manager) issueCognitoWithBrowserBinding(ctx context.Context, exchange c
 	if !ok || m.cognitoProtector == nil {
 		return Credentials{}, ErrInvalidSessionConfig
 	}
-	proof, err := exchange.ForSession(m.cognitoProtector, m.now().UTC())
+	var proof cognito.VerifiedCodeExchange
+	var err error
+	if browserHash == ([32]byte{}) {
+		proof, err = exchange.ForSession(m.cognitoProtector, m.now().UTC())
+	} else {
+		proof, err = exchange.ForBoundSession(m.cognitoProtector, m.now().UTC(), browserHash)
+	}
 	if err != nil {
 		return Credentials{}, err
 	}

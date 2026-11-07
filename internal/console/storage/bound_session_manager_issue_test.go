@@ -88,7 +88,7 @@ func TestBoundSessionManagerIssueLocalConflictAndReplacement(t *testing.T) {
 func TestBoundSessionManagerIssueCognitoOneShotAndRestart(t *testing.T) {
 	f, binding, marker := newBrowserSessionFixture(t)
 	ctx := context.Background()
-	_, exchange := cognitoSessionExchange(t, f)
+	_, exchange := boundCognitoSessionExchange(t, f, binding)
 	manager, protector := cognitoSessionTools(t, f)
 	if credentials, err := manager.IssueBoundCognito(ctx, exchange, [32]byte{}); err != session.ErrInvalidSessionConfig ||
 		credentials.Token != "" || credentials.CSRFToken != "" {
@@ -105,7 +105,11 @@ func TestBoundSessionManagerIssueCognitoOneShotAndRestart(t *testing.T) {
 	if _, err := manager.Resolve(ctx, credentials.Token); err != session.ErrInvalidSession {
 		t.Fatalf("unbound manager accepted an issued bound Cognito session: %v", err)
 	}
-	if denied, err := manager.IssueBoundCognito(ctx, exchange, wrong); !errors.Is(err, session.ErrCognitoSessionUnavailable) ||
+	if denied, err := manager.IssueBoundCognito(ctx, exchange, wrong); !errors.Is(err, cognito.ErrCodeExchangeUnavailable) ||
+		denied.Token != "" || denied.CSRFToken != "" {
+		t.Fatalf("bound Cognito exchange proof accepted another marker: %v", err)
+	}
+	if denied, err := manager.IssueBoundCognito(ctx, exchange, binding); !errors.Is(err, session.ErrCognitoSessionUnavailable) ||
 		denied.Token != "" || denied.CSRFToken != "" {
 		t.Fatalf("bound Cognito exchange proof was replayed: %v", err)
 	}
@@ -184,7 +188,7 @@ func TestBoundSessionManagerIssueRejectsInvalidCognitoProof(t *testing.T) {
 func TestBoundSessionManagerIssueCognitoConflictConsumesProof(t *testing.T) {
 	f, binding, _ := newBrowserSessionFixture(t)
 	ctx := context.Background()
-	_, exchange := cognitoSessionExchange(t, f)
+	_, exchange := boundCognitoSessionExchange(t, f, binding)
 	manager, _ := cognitoSessionTools(t, f)
 	local, err := manager.IssueBoundLocal(ctx, identity.LocalAccount{ID: "browser-local-a", Enabled: true, CredentialVersion: 1}, binding)
 	if err != nil {

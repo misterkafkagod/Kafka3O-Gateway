@@ -17,15 +17,17 @@ const (
 )
 
 type CodeExchangeStore interface {
-	ReserveCognitoCodeExchange(context.Context, CodeExchangeReservation) error
-	FinishCognitoCodeExchange(context.Context, CodeExchangeOutcome) error
+	ReserveCognitoCodeExchange(context.Context, CodeExchangeReservation) (time.Time, error)
+	FinishCognitoCodeExchange(context.Context, CodeExchangeOutcome) (time.Time, error)
 }
 
 type CodeExchangeReservation struct {
-	OperationID string
-	DenialID    string
-	OccurredAt  time.Time
-	ExpiresAt   time.Time
+	OperationID        string
+	DenialID           string
+	Attempt            ConsumedAuthorization `json:"-"`
+	BrowserBindingHash [32]byte              `json:"-"`
+	OccurredAt         time.Time
+	ExpiresAt          time.Time
 }
 
 type CodeExchangeOutcome struct {
@@ -33,6 +35,7 @@ type CodeExchangeOutcome struct {
 	OccurredAt  time.Time
 	ValidUntil  time.Time
 	Status      CodeExchangeStatus
+	Bound       bool `json:"-"`
 }
 
 type CodeExchangeStatus string
@@ -51,13 +54,14 @@ type CodeExchangeResult struct {
 }
 
 type verifiedExchangeProof struct {
-	operationID     string
-	identity        VerifiedIdentity
-	nonceHash       [32]byte
-	refreshToken    string
-	providerBinding [32]byte
-	verifiedAt      time.Time
-	attemptExpiry   time.Time
+	operationID        string
+	identity           VerifiedIdentity
+	nonceHash          [32]byte
+	refreshToken       string
+	providerBinding    [32]byte
+	browserBindingHash [32]byte
+	verifiedAt         time.Time
+	attemptExpiry      time.Time
 }
 
 type VerifiedCodeExchange struct {

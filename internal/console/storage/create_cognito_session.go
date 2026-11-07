@@ -17,7 +17,7 @@ func (d *Database) CreateCognitoSession(ctx context.Context, record session.Cogn
 		strings.TrimSpace(record.CandidateAccount) == "" || len(record.CandidateAccount) > 128 {
 		return session.Principal{}, session.ErrInvalidSessionConfig
 	}
-	details, err := record.Exchange.Details(record.Protector, record.Session.CreatedAt)
+	details, err := cognitoSessionExchangeDetails(record, record.Session.CreatedAt)
 	if err != nil {
 		return session.Principal{}, err
 	}
@@ -61,7 +61,7 @@ func (d *Database) CreateCognitoSession(ctx context.Context, record session.Cogn
 		return session.Principal{}, err
 	}
 	event.OccurredAt = now
-	details, err = record.Exchange.Details(record.Protector, now)
+	details, err = cognitoSessionExchangeDetails(record, now)
 	if err != nil || !record.Session.IdleExpiresAt.After(now) {
 		return deny(errors.Join(session.ErrCognitoSessionUnavailable, err), AuditValidationRejected)
 	}
@@ -105,7 +105,7 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 		return session.Principal{}, err
 	}
 	event.OccurredAt = now
-	details, err = record.Exchange.Details(record.Protector, now)
+	details, err = cognitoSessionExchangeDetails(record, now)
 	if err != nil || !record.Session.IdleExpiresAt.After(now) {
 		return deny(errors.Join(session.ErrCognitoSessionUnavailable, err), AuditValidationRejected)
 	}
@@ -155,7 +155,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`, record.Session.SessionID, accountID,
 		if err != nil {
 			return session.Principal{}, browserSessionOutcomeUnknown(err)
 		}
-		if _, err := record.Exchange.Details(record.Protector, now); err != nil {
+		if _, err := cognitoSessionExchangeDetails(record, now); err != nil {
 			return session.Principal{}, browserSessionOutcomeUnknown(errors.Join(session.ErrCognitoSessionUnavailable, err))
 		}
 		event.OccurredAt = now
@@ -182,7 +182,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`, record.Session.SessionID, accountID,
 	if err != nil {
 		return session.Principal{}, browserSessionOutcomeUnknown(err)
 	}
-	_, err = record.Exchange.Details(record.Protector, completedAt)
+	_, err = cognitoSessionExchangeDetails(record, completedAt)
 	if err != nil || !record.Session.IdleExpiresAt.After(completedAt) {
 		if record.Session.BrowserBindingHash != ([32]byte{}) {
 			return session.Principal{}, browserSessionOutcomeUnknown(errors.Join(session.ErrCognitoSessionUnavailable, err))

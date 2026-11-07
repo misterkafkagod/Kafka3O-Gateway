@@ -134,11 +134,13 @@ recheck the transaction decision time and expiry before releasing values;
 clock regression or an expired post-commit result returns an unknown outcome
 without credentials. Existing unbound attempts retain their original format.
 The consumed proof privately retains the marker digest, and the unbound code
-exchanger rejects it before reservation or provider contact. Bound code
-exchange and proof-to-session binding are not implemented yet: the current
-bound session-issuance action can still accept an unbound exchange proof.
-No browser route may use these primitives until that gap and stable-marker
-initialization, cookie lifecycle and replacement concurrency are resolved.
+exchanger rejects it before reservation or provider contact. A separate
+bound code exchanger requires the same marker and carries it privately into
+the verified session proof. Session issuance and every storage proof check
+require that exact marker; unbound issuance rejects bound proofs and vice
+versa. A wrong marker cannot reserve or consume the correct proof. No browser
+route may use these primitives until stable-marker initialization, cookie
+lifecycle, replacement concurrency and credential retention are resolved.
 
 The standalone browser-authorization helpers build an `openid`
 authorization-code URL with state, nonce and PKCE S256 only from the same
@@ -271,6 +273,11 @@ exchange is recorded as unknown where possible and must not be retried;
 investigate the operation ID and start a fresh login. The fixture tests both
 client modes, forged tokens, TLS, redirects and interrupted requests. No
 browser route or live Cognito integration is provided by this primitive.
+For bound exchanges the reservation also verifies the private consumed
+attempt, and non-regressing transaction times and claim freshness are checked
+before provider dispatch and after the audited result. Clock changes or expiry
+after a reservation may leave a consumed or uncertain operation; no token or
+session proof is returned and the provider request is never retried.
 
 The standalone refresh-token protector uses AES-256-GCM with fresh random
 nonces and a separate externally supplied 32-byte key. It refuses to use the

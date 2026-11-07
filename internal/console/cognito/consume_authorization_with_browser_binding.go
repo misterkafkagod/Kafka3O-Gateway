@@ -51,16 +51,18 @@ func (m *AttemptManager) consumeAuthorizationWithBrowserBinding(ctx context.Cont
 		if err == nil {
 			verifier := string(plaintext)
 			if _, validationErr := hashAttemptValue(verifier); validationErr == nil {
+				proofAt := record.OccurredAt
 				if bound {
 					completedAt := m.now().UTC()
 					if completedAt.Before(checkedAt) || completedAt.Year() > 2261 || !record.ExpiresAt.After(completedAt) {
 						return result, ErrAttemptUnknown
 					}
+					proofAt = completedAt
 				}
 				result.NonceHash, result.CodeVerifier = record.NonceHash, verifier
 				result.proof = &consumedAttemptProof{
 					manager: m, operationID: record.OperationID, nonceHash: record.NonceHash, browserBindingHash: browserHash,
-					codeVerifier: verifier, expiresAt: record.ExpiresAt,
+					codeVerifier: verifier, consumedAt: proofAt, expiresAt: record.ExpiresAt,
 				}
 				return result, nil
 			}

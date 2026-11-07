@@ -152,6 +152,8 @@ func newCognitoCodeFixture(t *testing.T, mode string, auth cognito.ClientAuthent
 				claims["exp"] = f.clock().Unix()
 			case "forged":
 				key = f.forgedKey
+			case "stale":
+				claims["iat"] = f.clock().Add(-6 * time.Minute).Unix()
 			}
 			idToken := signCognitoCodeFixtureToken(t, key, claims)
 			payload := map[string]any{
@@ -322,8 +324,8 @@ func TestCognitoCodeExchangeUsesExplicitAuthenticationAndCannotReplay(t *testing
 				}
 			}
 			f.reopen(t)
-			err = f.db.ReserveCognitoCodeExchange(ctx, cognito.CodeExchangeReservation{
-				OperationID: start.OperationID, DenialID: "post-restart-denial", OccurredAt: f.clock(), ExpiresAt: start.ExpiresAt,
+			_, err = f.db.ReserveCognitoCodeExchange(ctx, cognito.CodeExchangeReservation{
+				OperationID: start.OperationID, DenialID: "post-restart-denial", Attempt: consumed, OccurredAt: f.clock(), ExpiresAt: start.ExpiresAt,
 			})
 			if !errors.Is(err, cognito.ErrCodeExchangeUnavailable) || f.tokenCalls.Load() != 1 {
 				t.Fatalf("exchange claim was not durable after restart: %v", err)
@@ -587,10 +589,10 @@ func TestCognitoCodeExchangeRechecksExpiryAfterQueueing(t *testing.T) {
 
 func TestCognitoCodeExchangeRechecksResultExpiryAfterQueueing(t *testing.T) {
 	f := newCognitoCodeFixture(t, "success", cognito.ClientAuthenticationPublic)
-	start, _ := f.consumeAttempt(t)
+	start, consumed := f.consumeAttempt(t)
 	initial := f.clock()
-	err := f.db.ReserveCognitoCodeExchange(context.Background(), cognito.CodeExchangeReservation{
-		OperationID: start.OperationID, DenialID: "unused-denial", OccurredAt: initial, ExpiresAt: start.ExpiresAt,
+	_, err := f.db.ReserveCognitoCodeExchange(context.Background(), cognito.CodeExchangeReservation{
+		OperationID: start.OperationID, DenialID: "unused-denial", Attempt: consumed, OccurredAt: initial, ExpiresAt: start.ExpiresAt,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -598,9 +600,10 @@ func TestCognitoCodeExchangeRechecksResultExpiryAfterQueueing(t *testing.T) {
 	err = runQueuedDatabaseOperation(t, f.db, func() {
 		f.current.Store(start.ExpiresAt.UnixNano())
 	}, func() error {
-		return f.db.FinishCognitoCodeExchange(context.Background(), cognito.CodeExchangeOutcome{
+		_, err := f.db.FinishCognitoCodeExchange(context.Background(), cognito.CodeExchangeOutcome{
 			OperationID: start.OperationID, OccurredAt: initial, ValidUntil: start.ExpiresAt, Status: cognito.CodeExchangeSucceeded,
 		})
+		return err
 	})
 	if !errors.Is(err, cognito.ErrCodeExchangeExpired) {
 		t.Fatalf("expired exchange outcome was accepted: %v", err)

@@ -31,7 +31,11 @@ func (d *Database) reserveCognitoSession(ctx context.Context, record session.Cog
 			result = errors.Join(session.ErrCognitoSessionUnknown, result, fmt.Errorf("roll back Cognito session reservation: %w", err))
 		}
 	}()
-	event.OccurredAt, err = d.transactionTime(record.Session.CreatedAt)
+	transactionTime := d.transactionTime
+	if record.Session.BrowserBindingHash != ([32]byte{}) {
+		transactionTime = d.strictTransactionTime
+	}
+	event.OccurredAt, err = transactionTime(record.Session.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -43,7 +47,10 @@ EXISTS(SELECT 1 FROM audit_events WHERE event_id = ?)`,
 		details.OperationID+".exchange.outcome", details.OperationID, event.EventID).Scan(&exchangeSucceeded, &reserved); err != nil {
 		return fmt.Errorf("inspect Cognito session reservation: %w", err)
 	}
-	_, proofErr := record.Exchange.Details(record.Protector, event.OccurredAt)
+	currentDetails, proofErr := cognitoSessionExchangeDetails(record, event.OccurredAt)
+	if proofErr == nil && currentDetails.OperationID != details.OperationID {
+		proofErr = cognito.ErrCodeExchangeUnavailable
+	}
 	var denied error
 	if !exchangeSucceeded || reserved || proofErr != nil || !record.Session.IdleExpiresAt.After(event.OccurredAt) {
 		event.EventID, event.Decision, event.Outcome = record.Session.EventID, "denied", AuditDenied

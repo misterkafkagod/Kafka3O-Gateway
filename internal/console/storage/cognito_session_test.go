@@ -44,6 +44,33 @@ func cognitoSessionExchange(t *testing.T, f *cognitoCodeFixture) (cognito.Author
 	return start, result
 }
 
+func boundCognitoSessionAttempt(t *testing.T, f *cognitoCodeFixture, browserHash [32]byte) (cognito.AuthorizationStart, cognito.ConsumedAuthorization) {
+	t.Helper()
+	ctx := context.Background()
+	start, err := f.manager.StartBoundAuthorization(ctx, browserHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	f.nonce, f.challenge = start.Nonce, start.CodeChallenge
+	f.mu.Unlock()
+	consumed, err := f.manager.ConsumeBoundAuthorization(ctx, start.State, start.BrowserBinding, browserHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return start, consumed
+}
+
+func boundCognitoSessionExchange(t *testing.T, f *cognitoCodeFixture, browserHash [32]byte) (cognito.AuthorizationStart, cognito.CodeExchangeResult) {
+	t.Helper()
+	start, consumed := boundCognitoSessionAttempt(t, f, browserHash)
+	result, err := f.exchanger.ExchangeBoundAuthorizationCode(context.Background(), consumed, fixtureCode, browserHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return start, result
+}
+
 func TestCognitoSessionPersistsEncryptedAndFailsClosedWhenStale(t *testing.T) {
 	f := newCognitoCodeFixture(t, "success", cognito.ClientAuthenticationPublic)
 	ctx := context.Background()

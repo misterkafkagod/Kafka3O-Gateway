@@ -46,6 +46,7 @@ type consumedAttemptProof struct {
 	nonceHash          [32]byte
 	browserBindingHash [32]byte
 	codeVerifier       string
+	consumedAt         time.Time
 	expiresAt          time.Time
 }
 

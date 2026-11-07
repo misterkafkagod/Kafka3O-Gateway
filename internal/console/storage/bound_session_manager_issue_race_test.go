@@ -12,7 +12,7 @@ import (
 func TestBoundSessionManagerIssueSerializesLocalAndCognito(t *testing.T) {
 	f, binding, _ := newBrowserSessionFixture(t)
 	ctx := context.Background()
-	_, exchange := cognitoSessionExchange(t, f)
+	_, exchange := boundCognitoSessionExchange(t, f, binding)
 	manager, _ := cognitoSessionTools(t, f)
 	account := identity.LocalAccount{ID: "browser-local-a", Enabled: true, CredentialVersion: 1}
 	type issued struct {

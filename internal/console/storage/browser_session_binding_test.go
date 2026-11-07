@@ -50,9 +50,20 @@ VALUES ('browser-local-a', 'browser-local-a', 'synthetic-hash', 0, 1),
 
 func browserCognitoRecord(t *testing.T, f *cognitoCodeFixture, name string, binding [32]byte) (session.CognitoRecord, string, *cognito.RefreshTokenProtector) {
 	t.Helper()
-	_, exchange := cognitoSessionExchange(t, f)
+	var exchange cognito.CodeExchangeResult
+	if binding == ([32]byte{}) {
+		_, exchange = cognitoSessionExchange(t, f)
+	} else {
+		_, exchange = boundCognitoSessionExchange(t, f, binding)
+	}
 	_, protector := cognitoSessionTools(t, f)
-	proof, err := exchange.ForSession(protector, f.clock())
+	var proof cognito.VerifiedCodeExchange
+	var err error
+	if binding == ([32]byte{}) {
+		proof, err = exchange.ForSession(protector, f.clock())
+	} else {
+		proof, err = exchange.ForBoundSession(protector, f.clock(), binding)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
