@@ -154,6 +154,13 @@ These helpers do not set a cookie or expose a route. Concurrent first-time
 initialization, cookie lifetime, delayed responses and real-browser behavior
 remain unresolved; a marker helper alone does not make SSO safe to enable.
 
+An exploratory Chromium probe with intercepted synthetic origins observed that
+a cross-site top-level callback omitted a Strict session cookie, while a
+subsequent same-origin fetch included it. A separate delayed response
+overwrote a newer HttpOnly cookie. Neither observation establishes a safe
+initialization protocol: actual provider redirects, network interruptions,
+other browsers and concurrent login/callback flows still require verification.
+
 The standalone browser-authorization helpers build an `openid`
 authorization-code URL with state, nonce and PKCE S256 only from the same
 in-process attempt manager and verified provider/callback used by the code
