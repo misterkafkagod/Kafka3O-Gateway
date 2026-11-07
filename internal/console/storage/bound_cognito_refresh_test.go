@@ -30,7 +30,12 @@ type boundCognitoRefreshFixture struct {
 
 func newBoundCognitoRefreshFixture(t *testing.T) *boundCognitoRefreshFixture {
 	t.Helper()
-	fixture, binding, marker := newBrowserSessionFixture(t)
+	return newBoundCognitoRefreshFixtureWithAuthentication(t, cognito.ClientAuthenticationPublic)
+}
+
+func newBoundCognitoRefreshFixtureWithAuthentication(t *testing.T, authentication cognito.ClientAuthentication) *boundCognitoRefreshFixture {
+	t.Helper()
+	fixture, binding, marker := newBrowserSessionFixtureWithAuthentication(t, authentication)
 	f := &boundCognitoRefreshFixture{cognitoCodeFixture: fixture, binding: binding, marker: marker}
 	record, token, protector := browserCognitoRecord(t, fixture, "bound-refresh", binding)
 	record.Session.SessionID = base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{80}, 16))

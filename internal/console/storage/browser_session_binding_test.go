@@ -32,7 +32,12 @@ func browserSessionRecord(name, account string, binding [32]byte, now time.Time)
 
 func newBrowserSessionFixture(t *testing.T) (*cognitoCodeFixture, [32]byte, string) {
 	t.Helper()
-	f := newCognitoCodeFixture(t, "success", cognito.ClientAuthenticationPublic)
+	return newBrowserSessionFixtureWithAuthentication(t, cognito.ClientAuthenticationPublic)
+}
+
+func newBrowserSessionFixtureWithAuthentication(t *testing.T, authentication cognito.ClientAuthentication) (*cognitoCodeFixture, [32]byte, string) {
+	t.Helper()
+	f := newCognitoCodeFixture(t, "success", authentication)
 	if _, err := f.db.db.Exec(`INSERT INTO identities (id, enabled) VALUES ('browser-local-a', 1), ('browser-local-b', 1);
 INSERT INTO local_accounts (identity_id, username, password_hash, must_change_password, credential_version)
 VALUES ('browser-local-a', 'browser-local-a', 'synthetic-hash', 0, 1),

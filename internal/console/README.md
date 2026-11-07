@@ -198,25 +198,42 @@ remains durable across restart and blocks session use and replay. Bound
 actions reject observed backwards clocks, and an uncertain or expired
 post-commit reservation returns no credential material and must not be
 retried automatically. Existing unbound refresh actions still reject bound
-sessions and do not depend on the binding table. These primitives do not
-dispatch provider refresh; bound exchange, completion and waiter revalidation
-must carry and recheck the same marker before integration.
+sessions and do not depend on the binding table. The refreshing manager and
+its waiter revalidation do not yet carry the marker.
 
 A separate read-only bound refresh dispatch guard rechecks the exact durable
 reservation, current session and browser mapping, credential and verified
 snapshot, session deadlines and non-regressing time. It does not contact the
 provider or make the reserved session usable. A binding can still change
-after this check or while a provider request is in flight; future bound
-completion must recheck the binding and never retry an uncertain request.
+after this check or while a provider request is in flight; bound completion
+therefore rechecks the binding and never retries an uncertain request.
 Bound failure auditing matches the original session's marker digest and
 durable reservation, not the current browser mapping. It can therefore
 record a failed-before-send or unknown outcome after replacement, revocation
 or expiry without changing the replacement. Unbound failure auditing rejects
 an existing bound session. Audit and uncertain commit failures are explicit.
 
+The standalone bound provider exchange carries the same marker through
+reservation, pre-dispatch validation and failure audit, and returns a
+private marker-bound completion proof after at most one provider request.
+A missing, different or unbound marker cannot consume that proof. A valid
+marker consumes it on the first completion attempt, even if subsequent
+validation fails. Completion transactionally rechecks the current binding,
+durable reservation, unchanged identity and credential snapshot, and
+deadlines before storing the next encrypted credential generation and
+redacted success audit. Replacement, revocation or disablement during the
+provider request cannot restore the old session or change the replacement.
+An uncertain request or completion must not be retried. Synthetic tests
+cover both client modes, retained and rotated tokens, in-flight changes,
+restart, failures and redaction; real Cognito remains unverified.
+
 Marker generation, cookie lifecycle and local/SSO integration remain
 unfinished. Binding rows for inactive markers are retained until that marker
 is reused; bounded retention and cleanup must be addressed before deployment.
+If a disabled Cognito session is replaced and re-enabled between cleanup
+ticks, its old encrypted credential may remain until expiry. The future
+identity-disable or replacement path must revoke it atomically, or cleanup
+must otherwise guarantee its timely removal, before deployment.
 
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each

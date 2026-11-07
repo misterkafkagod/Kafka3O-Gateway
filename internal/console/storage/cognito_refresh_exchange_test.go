@@ -101,6 +101,8 @@ func serveCognitoFixtureRefresh(t *testing.T, f *cognitoCodeFixture, w http.Resp
 		claims["exp"] = now.Unix()
 	case "refresh stale issuance":
 		claims["iat"] = now.Add(-time.Minute).Unix()
+	case "refresh future issuance":
+		claims["iat"] = now.Add(2 * time.Minute).Unix()
 	case "refresh malformed groups":
 		claims["cognito:groups"] = "ADMIN"
 	case "refresh forged":

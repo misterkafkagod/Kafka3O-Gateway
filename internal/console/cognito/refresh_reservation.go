@@ -12,6 +12,13 @@ type RefreshStore interface {
 	RecordCognitoRefreshFailure(context.Context, RefreshFailure) error
 }
 
+type BoundRefreshStore interface {
+	RefreshStore
+	ReserveBoundCognitoRefresh(context.Context, RefreshReservationRequest, [32]byte) (RefreshReservation, error)
+	ValidateBoundCognitoRefreshDispatch(context.Context, BoundRefreshDispatchRequest) error
+	RecordBoundCognitoRefreshFailure(context.Context, RefreshFailure, [32]byte) error
+}
+
 type RefreshReservationRequest struct {
 	OperationID string
 	TokenHash   [32]byte               `json:"-"`
@@ -71,6 +78,7 @@ type verifiedRefreshProof struct {
 	nonceHash                [32]byte
 	encryptedRefreshToken    []byte
 	providerBinding          [32]byte
+	browserBindingHash       [32]byte
 	verifiedAt               time.Time
 	claimsFreshUntil         time.Time
 	sessionDeadline          time.Time
