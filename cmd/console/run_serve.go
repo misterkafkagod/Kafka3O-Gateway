@@ -50,15 +50,23 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	}
 	cleanupContext, stopCleanup := context.WithCancel(ctx)
 	cleanupTicker := time.NewTicker(time.Minute)
+	browserCleanupTicker := time.NewTicker(time.Minute)
 	cleanupDone := make(chan struct{})
+	browserCleanupDone := make(chan struct{})
 	go func() {
 		defer close(cleanupDone)
 		maintainCognitoCredentials(cleanupContext, db, rand.Reader, time.Now, cleanupTicker.C, logger)
 	}()
+	go func() {
+		defer close(browserCleanupDone)
+		maintainBrowserBindings(cleanupContext, db, rand.Reader, time.Now, browserCleanupTicker.C, logger)
+	}()
 	defer func() {
 		stopCleanup()
 		cleanupTicker.Stop()
+		browserCleanupTicker.Stop()
 		<-cleanupDone
+		<-browserCleanupDone
 	}()
 	logger.Info("Console session API listening", "address", listener.Addr().String())
 	return serveConsole(ctx, server, listener)

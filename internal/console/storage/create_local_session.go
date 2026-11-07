@@ -88,7 +88,7 @@ WHERE identities.id = ? AND identities.enabled = 1 AND local_accounts.credential
 	}
 	checkedAt = previous.checkedAt
 	event.OccurredAt = checkedAt
-	if err := retireBrowserSession(ctx, tx, previous, checkedAt, event.OperationID); err != nil {
+	if err := retireBrowserSession(ctx, tx, previous, checkedAt, event.OperationID, browserSessionRetirementAction); err != nil {
 		return session.Principal{}, err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO console_sessions

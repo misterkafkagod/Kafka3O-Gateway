@@ -257,13 +257,12 @@ cover both client modes, retained and rotated tokens, in-flight changes,
 restart, failures and redaction; real Cognito remains unverified.
 
 Marker generation, cookie lifecycle and local/SSO integration remain
-unfinished. Binding rows for inactive markers are retained until that marker
-is reused; bounded retention and cleanup must be addressed before deployment.
-Replacement atomically revokes an inactive session and removes its retained
-credential even if its identity is re-enabled before a cleanup tick. A future
-Cognito identity-disable administration path must also revoke its sessions
-and credentials atomically; toggling an identity without replacement or
-cleanup is not a safe disable-and-re-enable workflow.
+unfinished. Replacement atomically revokes an inactive session and removes
+its retained credential even if its identity is re-enabled before a cleanup
+tick. Inactive current bindings are also removed by the audited background
+cleanup described below. A future Cognito identity-disable administration
+path must revoke its sessions and credentials atomically; toggling an identity
+without replacement or cleanup is not a safe disable-and-re-enable workflow.
 
 The standalone code exchanger accepts only a successfully consumed attempt
 bound to its discovered provider and exact callback. It durably reserves each
@@ -395,23 +394,32 @@ failure prevents revocation and is reported. Ordinary session inspection
 clears invalid cookies, so an already-cleared cookie cannot be used to
 request logout.
 
-The Console process runs one cleanup batch at startup and every minute. Each
-batch transactionally revokes and removes up to 100 Cognito credentials whose
+The Console process runs separate Cognito-credential and browser-binding
+cleanup batches at startup and every minute. The credential batch
+transactionally revokes and removes up to 100 Cognito credentials whose
 sessions are revoked, whose identities are disabled, or whose idle or absolute
-lifetime has expired. Stale claims and unresolved refreshes alone are not
-eligible. Every removed session receives a redacted audit event in the same
-transaction, and refresh-reservation audit events are retained. Cleanup of a
-disabled identity prevents that session from reviving if the identity is
-later re-enabled; the future identity-disable operation must itself revoke
-sessions atomically rather than wait for this worker.
+lifetime has expired. The browser batch independently rechecks up to 100
+inactive local or Cognito bindings, revokes each old session, removes any
+retained provider credential, records `console.browser.binding.cleanup` and
+removes the current mapping in the same transaction. Active bindings are
+preserved. Stale claims and unresolved refreshes alone are not eligible.
+Each removal has a redacted audit, refresh-reservation audit events are
+retained, and the historical binding digest remains on the session. Cleanup
+of a disabled identity prevents that session from reviving if the identity
+is later re-enabled; the future identity-disable operation must itself revoke
+sessions atomically rather than wait for a worker.
 
-Cleanup work has a 10-second deadline. Errors and a full batch are logged
-without credential or identity values; a failure does not stop local login,
-and the next scheduled batch rechecks current state. More than 100 eligible
-sessions take multiple batches, and no cleanup occurs while the process is
-stopped. Operators must monitor errors and backlog. The database, WAL and
-backups may retain encrypted historical bytes after logical deletion; their
-retention, secure disposal and deployed-volume behavior remain unverified.
+Each cleanup batch has a 10-second deadline. Errors, uncertain outcomes and a
+full batch are logged without credential or identity values; a failure does
+not stop local login, and the next scheduled batch rechecks current state.
+Corrupt candidate state aborts the whole batch and may block later candidates
+until an operator investigates. More than 100 eligible bindings or credentials
+take multiple batches, and no cleanup occurs while the process is stopped.
+The batch limit is not a hard bound on total backlog or on historical session
+and audit rows. Operators must monitor errors and backlog. The database, WAL
+and backups may retain encrypted historical bytes after logical deletion;
+their retention, secure disposal and deployed-volume behavior remain
+unverified.
 Session issuance is not exposed through a browser route, and the standalone
 Console process does not yet enable the refreshing manager. Group-binding
 administration, live Cognito and the secured deployment remain unimplemented.

@@ -132,7 +132,7 @@ WHERE cognito_identities.issuer = ? AND cognito_identities.subject = ?`,
 	if err != nil {
 		return session.Principal{}, fmt.Errorf("encode Cognito groups: %w", err)
 	}
-	if err := retireBrowserSession(ctx, tx, previous, now, details.OperationID); err != nil {
+	if err := retireBrowserSession(ctx, tx, previous, now, details.OperationID, browserSessionRetirementAction); err != nil {
 		return session.Principal{}, err
 	}
 	if newIdentity {
