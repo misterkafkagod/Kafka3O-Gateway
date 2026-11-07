@@ -179,6 +179,10 @@ func TestCognitoDiscoveryReportsProviderMismatch(t *testing.T) {
 	if err := waitForDiscoveryAttempt(t, f.attempts); !errors.Is(err, cognito.ErrInvalidProvider) {
 		t.Fatalf("issuer mismatch was not rejected: %v", err)
 	}
+	// The warning is written after the attempt returns; wait for it before cancelling.
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline) && !strings.Contains(f.logs.String(), "provider_mismatch=true"); {
+		time.Sleep(10 * time.Millisecond)
+	}
 	cancel()
 	<-done
 	if f.available(t) || !strings.Contains(f.logs.String(), "provider_mismatch=true") {
