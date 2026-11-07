@@ -84,6 +84,16 @@ type CognitoRefreshStore interface {
 	CompleteCognitoRefresh(context.Context, cognito.RefreshCompletionRequest) error
 }
 
+type BoundSessionStore interface {
+	UseBoundSession(context.Context, [32]byte, [32]byte, func() time.Time, time.Duration, *cognito.RefreshTokenProtector) (Principal, error)
+}
+
+type BoundCognitoRefreshStore interface {
+	cognito.BoundRefreshStore
+	InspectBoundCognitoRefresh(context.Context, [32]byte, [32]byte, time.Time) (CognitoRefreshState, error)
+	CompleteBoundCognitoRefresh(context.Context, cognito.RefreshCompletionRequest, [32]byte) error
+}
+
 // SessionGrantStore revalidates the session and returns only grants for the
 // requested scope. ErrInvalidSession has the same exact contract as Store.
 type SessionGrantStore interface {
@@ -112,7 +122,12 @@ type cognitoRefreshCoordinator struct {
 	store     CognitoRefreshStore
 	exchanger *cognito.CodeExchanger
 	mu        sync.Mutex
-	active    map[[32]byte]*cognitoRefreshCall
+	active    map[cognitoRefreshKey]*cognitoRefreshCall
+}
+
+type cognitoRefreshKey struct {
+	tokenHash   [32]byte
+	browserHash [32]byte
 }
 
 type cognitoRefreshCall struct {

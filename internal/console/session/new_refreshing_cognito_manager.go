@@ -18,7 +18,7 @@ func NewRefreshingCognitoManager(store Store, random io.Reader, now func() time.
 		return nil, err
 	}
 	manager.cognitoRefresh = &cognitoRefreshCoordinator{
-		store: refreshStore, exchanger: exchanger, active: make(map[[32]byte]*cognitoRefreshCall),
+		store: refreshStore, exchanger: exchanger, active: make(map[cognitoRefreshKey]*cognitoRefreshCall),
 	}
 	return manager, nil
 }

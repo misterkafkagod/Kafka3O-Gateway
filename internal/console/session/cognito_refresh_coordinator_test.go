@@ -53,7 +53,7 @@ func TestCognitoRefreshInspectionFailurePreservesCause(t *testing.T) {
 			store: store,
 		},
 	}
-	err := manager.runCognitoRefresh([32]byte{1})
+	err := manager.runCognitoRefreshWithBrowserBinding([32]byte{1}, [32]byte{})
 	if err == ErrInvalidSession || !errors.Is(err, ErrCognitoRefreshUnavailable) || !errors.Is(err, rollbackFailure) {
 		t.Fatalf("inspection failure was mistaken for a definite invalid session: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestCognitoRefreshDoesNotStartAfterUncertainSessionUse(t *testing.T) {
 		now:          time.Now,
 		idleLifetime: time.Minute,
 		cognitoRefresh: &cognitoRefreshCoordinator{
-			store: inspection, active: make(map[[32]byte]*cognitoRefreshCall),
+			store: inspection, active: make(map[cognitoRefreshKey]*cognitoRefreshCall),
 		},
 	}
 	token := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
@@ -82,27 +82,27 @@ func TestCognitoRefreshCoordinatorBoundsWorkAndWaiters(t *testing.T) {
 		t.Fatal("refresh coordination limits differ from the documented limits")
 	}
 	store := &deadlineRefreshStore{}
-	coordinator := &cognitoRefreshCoordinator{store: store, active: make(map[[32]byte]*cognitoRefreshCall)}
+	coordinator := &cognitoRefreshCoordinator{store: store, active: make(map[cognitoRefreshKey]*cognitoRefreshCall)}
 	manager := &Manager{now: time.Now, cognitoRefresh: coordinator}
 	for i := 1; i <= 32; i++ {
 		var hash [32]byte
 		hash[0] = byte(i)
-		coordinator.active[hash] = &cognitoRefreshCall{done: make(chan struct{})}
+		coordinator.active[cognitoRefreshKey{tokenHash: hash}] = &cognitoRefreshCall{done: make(chan struct{})}
 	}
 	var next [32]byte
 	next[0] = 33
-	if _, err := manager.resolveCognitoRefresh(context.Background(), next); !errors.Is(err, ErrCognitoRefreshUnavailable) ||
+	if _, err := manager.resolveCognitoRefreshWithBrowserBinding(context.Background(), next, [32]byte{}); !errors.Is(err, ErrCognitoRefreshUnavailable) ||
 		len(coordinator.active) != 32 {
 		t.Fatalf("concurrent refresh limit did not reject excess work: %v", err)
 	}
 	waiting, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := manager.resolveCognitoRefresh(waiting, [32]byte{1}); !errors.Is(err, context.Canceled) {
+	if _, err := manager.resolveCognitoRefreshWithBrowserBinding(waiting, [32]byte{1}, [32]byte{}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("existing refresh waiter did not observe cancellation: %v", err)
 	}
-	delete(coordinator.active, [32]byte{32})
+	delete(coordinator.active, cognitoRefreshKey{tokenHash: [32]byte{32}})
 	started := time.Now()
-	if _, err := manager.resolveCognitoRefresh(context.Background(), next); !errors.Is(err, ErrInvalidSession) {
+	if _, err := manager.resolveCognitoRefreshWithBrowserBinding(context.Background(), next, [32]byte{}); !errors.Is(err, ErrInvalidSession) {
 		t.Fatalf("available refresh slot did not run inspection: %v", err)
 	}
 	if store.deadline.Before(started.Add(14*time.Second)) || store.deadline.After(started.Add(16*time.Second)) {

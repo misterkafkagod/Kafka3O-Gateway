@@ -173,8 +173,8 @@ is an operational failure, not an ordinary invalid session.
 The existing unbound paths do not depend on the binding table and continue
 to reject bound sessions.
 
-This is not yet a browser session implementation: issuing and resolving
-managers and HTTP routes do not supply a marker. Separate storage-only
+This is not yet a browser session implementation: issuing managers and HTTP
+routes do not supply a marker. Separate storage-only
 bound logout lookup and revocation actions check the current binding; the
 revocation transaction also removes any retained Cognito credentials and
 audits the result. A current Cognito session can be locally logged out even
@@ -198,8 +198,7 @@ remains durable across restart and blocks session use and replay. Bound
 actions reject observed backwards clocks, and an uncertain or expired
 post-commit reservation returns no credential material and must not be
 retried automatically. Existing unbound refresh actions still reject bound
-sessions and do not depend on the binding table. The refreshing manager and
-its waiter revalidation do not yet carry the marker.
+sessions and do not depend on the binding table.
 
 A separate read-only bound refresh dispatch guard rechecks the exact durable
 reservation, current session and browser mapping, credential and verified
@@ -312,17 +311,25 @@ the proof is lost on restart before completion, a new sign-in is required.
 
 An opt-in `NewRefreshingCognitoManager` connects session resolution to that
 flow when the session store and exchanger use the same underlying store.
-It coalesces concurrent work by session-token digest, admits at most 32
-distinct refreshes per manager, and bounds shared work to 15 seconds.
+Its separate `ResolveBound` action accepts only a trusted browser-marker
+digest and carries it through inspection, reservation, dispatch and
+completion. Refreshes are coalesced only for the same session-token and
+marker digests; unbound work cannot join bound work. It admits at most 32
+distinct refreshes per manager across both paths and bounds shared work to
+15 seconds.
 Cancellation of one waiting request does not cancel the shared refresh.
-Every successful waiter revalidates the session and claim deadlines. Different
-managers do not share the in-memory coordinator; the durable reservation
-still prevents another provider request. Pending or uncertain refreshes
-return service unavailable without clearing the browser's session cookie.
-Only a definite invalid-session result clears it; a joined operational error
-is not treated as definite invalidity or permission to replace a session.
-The existing local-only and non-refreshing Cognito managers do not coordinate
-refresh.
+Every successful waiter revalidates the session and claim deadlines; bound
+waiters also recheck the current marker mapping. Different managers do not
+share the in-memory coordinator; the durable reservation still prevents
+another provider request. Pending or uncertain refreshes return service
+unavailable without clearing the browser's session cookie. Only the exact
+invalid-session result denotes that the supplied token and binding are
+invalid; it does not prove that the browser has no competing session or
+permit replacement. A joined operational error is not definite invalidity.
+The existing
+local-only and non-refreshing Cognito managers do not coordinate refresh.
+No HTTP route supplies a stable marker, and bound issuance, grant resolution
+and logout remain storage-only.
 
 The standalone session-grant resolver combines direct grants with an
 initially empty, server-owned table of exact issuer and case-sensitive
