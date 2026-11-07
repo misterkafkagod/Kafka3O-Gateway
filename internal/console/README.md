@@ -174,12 +174,13 @@ The existing unbound paths do not depend on the binding table and continue
 to reject bound sessions.
 
 This is not yet a browser session implementation: issuing managers and HTTP
-routes do not supply a marker. Separate storage-only
-bound logout lookup and revocation actions check the current binding; the
-revocation transaction also removes any retained Cognito credentials and
-audits the result. A current Cognito session can be locally logged out even
-when its claims, identity, lifetime or retained provider credential are
-unavailable. The HTTP handler must still validate Origin and CSRF before
+routes do not supply a marker. Separate bound logout lookup and revocation
+storage actions check the current binding; the revocation transaction also
+removes any retained Cognito credentials and audits the result. Manager
+actions accept a trusted marker digest and never refresh during bound
+logout. A current Cognito session can be locally logged out even when its
+claims, identity, lifetime or retained provider credential are unavailable.
+The eventual HTTP handler must still validate Origin and CSRF before
 revocation. The existing unbound HTTP logout clears cookies for an exact
 invalid-session result, but retains them for wrapped operational or
 uncertain failures. Unbound logout and revocation reject bound sessions.
@@ -328,7 +329,7 @@ invalid; it does not prove that the browser has no competing session or
 permit replacement. A joined operational error is not definite invalidity.
 The existing
 local-only and non-refreshing Cognito managers do not coordinate refresh.
-No HTTP route supplies a stable marker, and bound issuance and logout remain
+No HTTP route supplies a stable marker, and bound issuance remains
 storage-only.
 
 The standalone session-grant resolver combines direct grants with an

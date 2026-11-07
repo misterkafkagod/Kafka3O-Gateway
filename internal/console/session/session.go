@@ -77,6 +77,14 @@ type CognitoSessionStore interface {
 	FindCognitoSessionForLogout(context.Context, [32]byte) (Principal, error)
 }
 
+type BoundCognitoLogoutStore interface {
+	FindBoundCognitoSessionForLogout(context.Context, [32]byte, [32]byte) (Principal, error)
+}
+
+type BoundSessionRevokeStore interface {
+	RevokeBoundSession(context.Context, [32]byte, [32]byte, string, time.Time) error
+}
+
 // CognitoRefreshStore follows the same exact ErrInvalidSession contract as Store.
 type CognitoRefreshStore interface {
 	cognito.RefreshStore

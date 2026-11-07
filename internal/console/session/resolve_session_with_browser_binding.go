@@ -10,20 +10,7 @@ func (m *Manager) resolveSessionWithBrowserBinding(ctx context.Context, token st
 	if err != nil {
 		return Principal{}, err
 	}
-	now := m.now().UTC()
-	if now.IsZero() || now.Year() < 1970 || now.Add(m.idleLifetime).Year() > 2261 {
-		return Principal{}, ErrInvalidSessionConfig
-	}
-	var principal Principal
-	if browserHash != ([32]byte{}) {
-		store, ok := m.store.(BoundSessionStore)
-		if !ok {
-			return Principal{}, ErrInvalidSessionConfig
-		}
-		principal, err = store.UseBoundSession(ctx, hash, browserHash, m.now, m.idleLifetime, m.cognitoProtector)
-	} else {
-		principal, err = m.store.UseSession(ctx, hash, m.now, m.idleLifetime, m.cognitoProtector)
-	}
+	principal, err := m.useSessionWithBrowserBinding(ctx, hash, browserHash)
 	if err == ErrInvalidSession && m.cognitoRefresh != nil {
 		return m.resolveCognitoRefreshWithBrowserBinding(ctx, hash, browserHash)
 	}
