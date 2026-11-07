@@ -173,17 +173,26 @@ is an operational failure, not an ordinary invalid session.
 The existing unbound paths do not depend on the binding table and continue
 to reject bound sessions.
 
-This is not yet a browser session implementation: issuing managers and HTTP
-routes do not supply a marker. Separate bound logout lookup and revocation
-storage actions check the current binding; the revocation transaction also
-removes any retained Cognito credentials and audits the result. Manager
-actions accept a trusted marker digest and never refresh during bound
-logout. A current Cognito session can be locally logged out even when its
-claims, identity, lifetime or retained provider credential are unavailable.
-The eventual HTTP handler must still validate Origin and CSRF before
-revocation. The existing unbound HTTP logout clears cookies for an exact
-invalid-session result, but retains them for wrapped operational or
-uncertain failures. Unbound logout and revocation reject bound sessions.
+This is not yet a browser session implementation: HTTP routes do not supply
+a marker. Bound local and Cognito issuance managers accept a trusted marker
+digest and use the audited transactional conflict checks. A missing marker
+is rejected before a Cognito proof is consumed; conflict or uncertain
+failure returns no session credentials. The caller must independently
+establish that the marker belongs to the authorization attempt's browser:
+the existing transient authorization attempt is not bound to the stable
+marker. Do not expose SSO until that association and the marker lifecycle are
+verified.
+
+Separate bound logout lookup and revocation storage actions check the
+current binding; the revocation transaction also removes any retained
+Cognito credentials and audits the result. Manager actions accept a trusted
+marker digest and never refresh during bound logout. A current Cognito
+session can be locally logged out even when its claims, identity, lifetime
+or retained provider credential are unavailable. The eventual HTTP handler
+must still validate Origin and CSRF before revocation. The existing unbound
+HTTP logout clears cookies for an exact invalid-session result, but retains
+them for wrapped operational or uncertain failures. Unbound logout and
+revocation reject bound sessions.
 
 Local administrator actions can also receive a marker digest in their
 trusted actor and transactionally recheck the current binding alongside the
@@ -329,8 +338,7 @@ invalid; it does not prove that the browser has no competing session or
 permit replacement. A joined operational error is not definite invalidity.
 The existing
 local-only and non-refreshing Cognito managers do not coordinate refresh.
-No HTTP route supplies a stable marker, and bound issuance remains
-storage-only.
+No HTTP route supplies a stable marker.
 
 The standalone session-grant resolver combines direct grants with an
 initially empty, server-owned table of exact issuer and case-sensitive
