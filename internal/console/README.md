@@ -150,9 +150,16 @@ examines raw Cookie fields and returns only the digest, rejecting missing,
 malformed and duplicate marker fields, including malformed duplicates.
 Session-record validation rejects both legacy and domain-separated marker
 digests if their underlying value is reused as a session or CSRF token.
-These helpers do not set a cookie or expose a route. Concurrent first-time
-initialization, cookie lifetime, delayed responses and real-browser behavior
-remain unresolved; a marker helper alone does not make SSO safe to enable.
+The opt-in `EnableBrowserMarkers` call (made only when SSO is configured)
+adds `POST /api/session/browser`, the only response that sets the marker.
+It requires a verified HTTPS `Origin`. One valid marker returns 204 without
+`Set-Cookie`; no marker field mints `__Host-kafka3o_browser` (Secure,
+HttpOnly, `Path=/`, `SameSite=Strict`, 400-day `Max-Age`); any malformed,
+empty or duplicate marker field returns 409 and is never overwritten. Entropy
+failure returns 503 and logs only the error type. The browser must serialize
+this call with an exclusive Web Lock as described in the
+[browser-marker discovery](../../../Kafka3O-UI/spec/discovery/browser-marker-protocol.md);
+the route alone does not enable SSO.
 
 An exploratory Chromium probe with intercepted synthetic origins observed that
 a cross-site top-level callback omitted a Strict session cookie, while a
@@ -382,7 +389,7 @@ invalid; it does not prove that the browser has no competing session or
 permit replacement. A joined operational error is not definite invalidity.
 The existing
 local-only and non-refreshing Cognito managers do not coordinate refresh.
-No HTTP route supplies a stable marker.
+Only the opt-in ensure route sets a stable marker; no session route uses it yet.
 
 The standalone session-grant resolver combines direct grants with an
 initially empty, server-owned table of exact issuer and case-sensitive

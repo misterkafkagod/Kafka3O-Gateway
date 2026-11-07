@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/netip"
@@ -33,6 +34,7 @@ type SessionAPI struct {
 	sessions     Sessions
 	csrf         *session.CSRFVerifier
 	expectedHost string
+	markerRandom io.Reader
 	logger       *slog.Logger
 	mux          *http.ServeMux
 }
