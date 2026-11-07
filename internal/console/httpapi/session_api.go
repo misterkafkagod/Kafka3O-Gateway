@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
+	"sync/atomic"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
@@ -35,8 +36,11 @@ type SessionAPI struct {
 	csrf         *session.CSRFVerifier
 	expectedHost string
 	markerRandom io.Reader
-	logger       *slog.Logger
-	mux          *http.ServeMux
+	// cognitoEnabled is set before serving; cognito is published once discovery succeeds.
+	cognitoEnabled bool
+	cognito        atomic.Pointer[CognitoServices]
+	logger         *slog.Logger
+	mux            *http.ServeMux
 }
 
 var (

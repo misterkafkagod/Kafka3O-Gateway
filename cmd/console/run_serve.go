@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	consoleapi "github.com/misterkafkagod/Kafka3O-Gateway/internal/console/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/storage"
 )
 
@@ -20,6 +21,10 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 		return err
 	}
 	tlsConfig, err := loadServerTLS(config)
+	if err != nil {
+		return err
+	}
+	cognitoSettings, cognitoConfigured, err := loadCognitoConfig(getenv, config.origin)
 	if err != nil {
 		return err
 	}
@@ -38,6 +43,11 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	handler, err := newSessionHandler(db, config.origin, logger)
 	if err != nil {
 		return fmt.Errorf("initialize Console sessions: %w", err)
+	}
+	if cognitoConfigured {
+		if err := handler.EnableCognito(rand.Reader); err != nil {
+			return fmt.Errorf("initialize Console Cognito sign-in: %w", err)
+		}
 	}
 	listener, err := listen("tcp", config.listen)
 	if err != nil {
@@ -61,12 +71,26 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 		defer close(browserCleanupDone)
 		maintainBrowserBindings(cleanupContext, db, rand.Reader, time.Now, browserCleanupTicker.C, logger)
 	}()
+	discoveryDone := make(chan struct{})
+	if cognitoConfigured {
+		go func() {
+			defer close(discoveryDone)
+			discoverCognito(cleanupContext, func(ctx context.Context) (consoleapi.CognitoServices, error) {
+				return newCognitoServices(ctx, db, cognitoSettings, rand.Reader, time.Now)
+			}, handler.PublishCognito, func(attempt int) <-chan time.Time {
+				return time.After(cognitoDiscoveryDelay(attempt))
+			}, logger)
+		}()
+	} else {
+		close(discoveryDone)
+	}
 	defer func() {
 		stopCleanup()
 		cleanupTicker.Stop()
 		browserCleanupTicker.Stop()
 		<-cleanupDone
 		<-browserCleanupDone
+		<-discoveryDone
 	}()
 	logger.Info("Console session API listening", "address", listener.Addr().String())
 	return serveConsole(ctx, server, listener)

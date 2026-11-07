@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"log/slog"
-	"net/http"
 	"time"
 
 	consoleapi "github.com/misterkafkagod/Kafka3O-Gateway/internal/console/httpapi"
@@ -12,7 +11,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/storage"
 )
 
-func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger) (http.Handler, error) {
+func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger) (*consoleapi.SessionAPI, error) {
 	authenticator, err := identity.NewAuthenticateLocal(db, rand.Reader, time.Now)
 	if err != nil {
 		return nil, err

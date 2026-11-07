@@ -476,6 +476,35 @@ verify the certificate chain and hostname; a self-signed certificate is not
 automatically trusted. The handlers use the direct peer address for throttling
 and never trust forwarded headers.
 
+Cognito sign-in is opt-in. Leave every `KAFKA3O_CONSOLE_COGNITO_*` variable
+unset to disable it; setting any of them requires all of the following, and a
+partial or unsafe set stops startup before the database opens:
+
+- `KAFKA3O_CONSOLE_COGNITO_ISSUER`: the exact HTTPS issuer
+  (`https://cognito-idp.<region>.amazonaws.com/<pool-id>`).
+- `KAFKA3O_CONSOLE_COGNITO_CLIENT_ID`: the app client ID.
+- `KAFKA3O_CONSOLE_COGNITO_AUTHORIZATION_URL`, `…_TOKEN_URL` and
+  `…_LOGOUT_URL`: the provider's `/oauth2/authorize`, `/oauth2/token` and
+  `/logout` endpoints on one login domain. Discovery must return the same
+  authorization and token endpoints.
+- `KAFKA3O_CONSOLE_COGNITO_JWKS_URL`: the JWKS URL under the issuer.
+- `KAFKA3O_CONSOLE_COGNITO_CLIENT_AUTHENTICATION`: `basic` with
+  `KAFKA3O_CONSOLE_COGNITO_CLIENT_SECRET`, or `public` without a secret.
+- `KAFKA3O_CONSOLE_COGNITO_ATTEMPT_KEY` and
+  `KAFKA3O_CONSOLE_COGNITO_REFRESH_TOKEN_KEY`: two different 32-byte random
+  keys in unpadded base64url, provisioned from a secret store and never
+  written to the database or logs.
+- `KAFKA3O_CONSOLE_COGNITO_CA_FILE` (optional): an absolute PEM bundle that
+  replaces the system roots for provider TLS; omit it for AWS.
+
+The App client must allow callback `<origin>/auth/cognito/callback` and
+sign-out URL `<origin>/`, the authorization-code grant and the `openid`
+scope. The server enables `POST /api/session/browser` and
+`GET /api/session/cognito` (`{"available": true|false}`) and discovers the
+provider in the background with retries from 1 second up to 1 minute. Until
+discovery succeeds, SSO reports unavailable and local login keeps serving.
+Logs carry only attempt counts, a provider-mismatch flag and error types.
+
 Bootstrap sessions may inspect their session, change the temporary password or
 log out. A successful password change revokes all local sessions and requires
 a new sign-in. If a password-change response is lost, its outcome may be
