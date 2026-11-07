@@ -529,6 +529,26 @@ whose session cookie still resolves (local or bound) with 409
 These handlers never log the request body, callback query, code, state,
 cookies, tokens or marker.
 
+With Cognito configured, every session route resolves a marker-carrying
+request through the bound actions first (`ResolveBound`,
+`ResolveBoundForLogout`), which refresh stale verified groups once through
+the coordinated refresh, and then through the unbound local path, which
+rejects bound sessions. A wrong or missing marker makes a bound session
+unusable (401) without revoking it. If discovery has not yet succeeded, a
+marker-carrying request that the local path cannot resolve returns 503
+`sso_unavailable` without clearing cookies; local login still proceeds.
+Failed or uncertain refreshes return 503 and are not retried; the session
+stays unusable until the user signs in again. Local-account administration
+returns 403 `global_admin_required` for Cognito sessions, and storage still
+rechecks the local administrator. Local login and SSO start both refuse to
+replace a live bound session.
+
+Logout validates `Origin` and CSRF and revokes the application session
+first (bound revocation for Cognito sessions). A Cognito logout then returns
+200 `{"providerLogoutUrl": "<logout endpoint>?client_id=…&logout_uri=<origin>/"}`;
+local logout still returns 204. Following that URL clears the Cognito
+managed-login session but does not sign out a federated upstream provider.
+
 Bootstrap sessions may inspect their session, change the temporary password or
 log out. A successful password change revokes all local sessions and requires
 a new sign-in. If a password-change response is lost, its outcome may be

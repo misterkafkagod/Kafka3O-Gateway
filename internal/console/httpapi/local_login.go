@@ -21,7 +21,12 @@ func (a *SessionAPI) localLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if found {
-		_, err := a.sessions.Resolve(r.Context(), existing)
+		// A bound Cognito session must not be silently replaced. Without discovery it cannot be
+		// checked, and local login must keep working during a provider outage.
+		_, _, err := a.resolveSession(r, existing, false)
+		if err == errCognitoNotDiscovered {
+			err = session.ErrInvalidSession
+		}
 		if err == nil {
 			a.writeProblem(w, http.StatusConflict, "already_signed_in", "Sign out before signing in again")
 			return

@@ -10,8 +10,11 @@ import (
 )
 
 func (a *SessionAPI) createLocalAccount(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessNormal, true)
+	principal, _, binding, ok := a.authorizeSession(w, r, session.AccessNormal, true)
 	if !ok {
+		return
+	}
+	if !a.requireLocalAdministrator(w, principal) {
 		return
 	}
 	var body createLocalAccountBody
@@ -20,7 +23,7 @@ func (a *SessionAPI) createLocalAccount(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	result, err := a.create.Execute(r.Context(), identity.LocalAdminActor{
-		AccountID: principal.AccountID, SessionID: principal.SessionID,
+		AccountID: principal.AccountID, SessionID: principal.SessionID, BrowserBindingHash: binding,
 	}, body.Username, body.TemporaryPassword)
 	switch {
 	case errors.Is(err, identity.ErrAccountCreationAudit):

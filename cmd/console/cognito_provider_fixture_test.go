@@ -44,6 +44,7 @@ type syntheticCognitoProvider struct {
 	mu              sync.Mutex
 	codes           map[string]syntheticGrant
 	refreshTokens   map[string]syntheticGrant
+	issuedAge       atomic.Int64 // nanoseconds subtracted from issued ID tokens to make claims stale sooner
 }
 
 type syntheticGrant struct {
@@ -159,9 +160,9 @@ func (p *syntheticCognitoProvider) token(w http.ResponseWriter, r *http.Request)
 	if p.wrongNonce.Load() && grant.nonce != "" {
 		grant.nonce = "a-different-nonce"
 	}
-	issuedAt := time.Now().Add(-2 * time.Second)
+	issuedAt := time.Now().Add(-2*time.Second - time.Duration(p.issuedAge.Load()))
 	if refresh == "" {
-		issuedAt = time.Now()
+		issuedAt = time.Now().Add(-time.Duration(p.issuedAge.Load()))
 	}
 	claims := map[string]any{
 		"iss": p.server.URL + "/pool", "sub": "synthetic|subject", "aud": syntheticCognitoClientID, "token_use": "id",

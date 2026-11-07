@@ -8,7 +8,7 @@ import (
 )
 
 func (a *SessionAPI) getSession(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessSessionInfo, false)
+	principal, _, _, ok := a.authorizeSession(w, r, session.AccessSessionInfo, false)
 	if !ok {
 		return
 	}

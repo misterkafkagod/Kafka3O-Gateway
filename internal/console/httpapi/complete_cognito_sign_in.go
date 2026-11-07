@@ -31,7 +31,7 @@ func (a *SessionAPI) completeCognitoSignIn(w http.ResponseWriter, r *http.Reques
 		a.writeProblem(w, http.StatusConflict, "invalid_browser_marker", "Browser verification failed")
 		return
 	}
-	if found, err := a.findExistingSession(r, services, marker); errors.Is(err, errInvalidSessionCookie) {
+	if found, err := a.findExistingSession(r); errors.Is(err, errInvalidSessionCookie) {
 		a.writeProblem(w, http.StatusBadRequest, "invalid_session_cookie", "Invalid session cookie")
 		return
 	} else if err != nil {

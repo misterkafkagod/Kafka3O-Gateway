@@ -10,8 +10,11 @@ import (
 )
 
 func (a *SessionAPI) listLocalAccounts(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessNormal, false)
+	principal, _, binding, ok := a.authorizeSession(w, r, session.AccessNormal, false)
 	if !ok {
+		return
+	}
+	if !a.requireLocalAdministrator(w, principal) {
 		return
 	}
 	after, limit, err := readLocalAccountListQuery(r)
@@ -20,7 +23,7 @@ func (a *SessionAPI) listLocalAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := a.list.Execute(r.Context(), identity.LocalAdminActor{
-		AccountID: principal.AccountID, SessionID: principal.SessionID,
+		AccountID: principal.AccountID, SessionID: principal.SessionID, BrowserBindingHash: binding,
 	}, after, limit)
 	switch {
 	case errors.Is(err, identity.ErrAccountListAudit):

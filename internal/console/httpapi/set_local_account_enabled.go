@@ -10,8 +10,11 @@ import (
 )
 
 func (a *SessionAPI) setLocalAccountEnabled(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessNormal, true)
+	principal, _, binding, ok := a.authorizeSession(w, r, session.AccessNormal, true)
 	if !ok {
+		return
+	}
+	if !a.requireLocalAdministrator(w, principal) {
 		return
 	}
 	var body setLocalAccountEnabledBody
@@ -27,7 +30,7 @@ func (a *SessionAPI) setLocalAccountEnabled(w http.ResponseWriter, r *http.Reque
 	enabled := body.Enabled.Value
 	selfDisable := !enabled && targetID == principal.AccountID
 	result, err := a.setEnabled.Execute(r.Context(), identity.LocalAdminActor{
-		AccountID: principal.AccountID, SessionID: principal.SessionID,
+		AccountID: principal.AccountID, SessionID: principal.SessionID, BrowserBindingHash: binding,
 	}, targetID, enabled)
 	switch {
 	case errors.Is(err, identity.ErrAccountStateUnknown):

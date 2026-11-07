@@ -9,7 +9,7 @@ import (
 )
 
 func (a *SessionAPI) changePassword(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessPasswordChange, true)
+	principal, _, _, ok := a.authorizeSession(w, r, session.AccessPasswordChange, true)
 	if !ok {
 		return
 	}

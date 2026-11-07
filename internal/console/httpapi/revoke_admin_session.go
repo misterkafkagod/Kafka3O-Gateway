@@ -11,8 +11,11 @@ import (
 )
 
 func (a *SessionAPI) revokeAdminSession(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessNormal, true)
+	principal, _, binding, ok := a.authorizeSession(w, r, session.AccessNormal, true)
 	if !ok {
+		return
+	}
+	if !a.requireLocalAdministrator(w, principal) {
 		return
 	}
 	if r.URL.RawQuery != "" {
@@ -29,7 +32,7 @@ func (a *SessionAPI) revokeAdminSession(w http.ResponseWriter, r *http.Request) 
 	target := r.PathValue("sessionID")
 	self := target == principal.SessionID
 	result, err := a.revokeAdmin.Execute(r.Context(), identity.LocalAdminActor{
-		AccountID: principal.AccountID, SessionID: principal.SessionID,
+		AccountID: principal.AccountID, SessionID: principal.SessionID, BrowserBindingHash: binding,
 	}, target)
 	switch {
 	case errors.Is(err, identity.ErrAdminSessionRevokeUnknown):

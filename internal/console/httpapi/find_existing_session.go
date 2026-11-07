@@ -10,7 +10,7 @@ import (
 var errInvalidSessionCookie = errors.New("invalid session cookie")
 
 // findExistingSession reports whether the request already has a usable local or bound session.
-func (a *SessionAPI) findExistingSession(r *http.Request, services *CognitoServices, marker [32]byte) (bool, error) {
+func (a *SessionAPI) findExistingSession(r *http.Request) (bool, error) {
 	token, found, err := readSessionCookie(r)
 	if err != nil {
 		return false, errInvalidSessionCookie
@@ -18,15 +18,13 @@ func (a *SessionAPI) findExistingSession(r *http.Request, services *CognitoServi
 	if !found {
 		return false, nil
 	}
-	if _, err := a.sessions.Resolve(r.Context(), token); err == nil {
+	_, _, err = a.resolveSession(r, token, false)
+	switch {
+	case err == nil:
 		return true, nil
-	} else if err != session.ErrInvalidSession {
+	case err == session.ErrInvalidSession:
+		return false, nil
+	default:
 		return false, err
 	}
-	if _, err := services.Sessions.ResolveBound(r.Context(), token, marker); err == nil {
-		return true, nil
-	} else if err != session.ErrInvalidSession {
-		return false, err
-	}
-	return false, nil
 }

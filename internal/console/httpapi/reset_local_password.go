@@ -10,8 +10,11 @@ import (
 )
 
 func (a *SessionAPI) resetLocalPassword(w http.ResponseWriter, r *http.Request) {
-	principal, _, ok := a.authorizeSession(w, r, session.AccessNormal, true)
+	principal, _, binding, ok := a.authorizeSession(w, r, session.AccessNormal, true)
 	if !ok {
+		return
+	}
+	if !a.requireLocalAdministrator(w, principal) {
 		return
 	}
 	var body resetPasswordBody
@@ -21,7 +24,7 @@ func (a *SessionAPI) resetLocalPassword(w http.ResponseWriter, r *http.Request) 
 	}
 	targetID := r.PathValue("accountID")
 	result, err := a.reset.Execute(r.Context(), identity.LocalAdminActor{
-		AccountID: principal.AccountID, SessionID: principal.SessionID,
+		AccountID: principal.AccountID, SessionID: principal.SessionID, BrowserBindingHash: binding,
 	}, targetID, body.TemporaryPassword)
 	switch {
 	case errors.Is(err, identity.ErrPasswordResetAudit):
