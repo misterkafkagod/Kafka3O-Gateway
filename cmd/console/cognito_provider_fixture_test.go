@@ -96,6 +96,8 @@ func (p *syntheticCognitoProvider) serve(w http.ResponseWriter, r *http.Request)
 		}}})
 	case "/oauth2/token":
 		p.token(w, r)
+	case "/oauth2/authorize":
+		p.autoAuthorize(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -120,6 +122,26 @@ func (p *syntheticCognitoProvider) authorize(t *testing.T, authorizationURL stri
 		redirect: query.Get("redirect_uri"), groups: groups}
 	p.mu.Unlock()
 	return query.Get("state"), code
+}
+
+// autoAuthorize is a synthetic managed-login page that signs in immediately and redirects
+// to the registered callback, so browser-free preview tests can follow a real redirect.
+func (p *syntheticCognitoProvider) autoAuthorize(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	redirect, err := url.Parse(query.Get("redirect_uri"))
+	if r.Method != http.MethodGet || err != nil || redirect.Scheme != "https" || query.Get("response_type") != "code" ||
+		query.Get("client_id") != syntheticCognitoClientID || query.Get("scope") != "openid" ||
+		query.Get("code_challenge_method") != "S256" || query.Get("state") == "" || query.Get("nonce") == "" ||
+		query.Get("code_challenge") == "" {
+		http.Error(w, "invalid authorization request", http.StatusBadRequest)
+		return
+	}
+	code := rand.Text()
+	p.mu.Lock()
+	p.codes[code] = syntheticGrant{nonce: query.Get("nonce"), challenge: query.Get("code_challenge"), redirect: redirect.String()}
+	p.mu.Unlock()
+	redirect.RawQuery = url.Values{"code": {code}, "state": {query.Get("state")}}.Encode()
+	http.Redirect(w, r, redirect.String(), http.StatusFound)
 }
 
 func (p *syntheticCognitoProvider) token(w http.ResponseWriter, r *http.Request) {

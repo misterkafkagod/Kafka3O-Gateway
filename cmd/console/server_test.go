@@ -55,8 +55,12 @@ func serverCertificate(t *testing.T, address string, notBefore, notAfter time.Ti
 	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(2), NotBefore: notBefore, NotAfter: notAfter,
-		IPAddresses: []net.IP{net.ParseIP(address)}, KeyUsage: x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{usage},
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{usage},
+	}
+	if ip := net.ParseIP(address); ip != nil {
+		template.IPAddresses = []net.IP{ip}
+	} else {
+		template.DNSNames = []string{address}
 	}
 	certDER, err := x509.CreateCertificate(rand.Reader, template, ca, &key.PublicKey, caKey)
 	if err != nil {

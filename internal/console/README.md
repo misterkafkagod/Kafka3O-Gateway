@@ -736,6 +736,37 @@ this is not a native-browser TLS or cookie test and does not deploy the
 preview. The normal UI and Go test suites do not need the sibling checkout or
 run this fixture unless explicitly enabled.
 
+`KAFKA3O_TEST_CONSOLE_PREVIEW_COGNITO` adds Cognito to the same fixture and
+serves the SPA at `/auth/cognito/callback`; in that mode the fixture's Console
+logs go to stderr so the UI test can scan them for leaked values:
+
+- `synthetic` starts the synthetic verified-HTTPS provider, whose
+  `/oauth2/authorize` signs in immediately and redirects to the callback. Its
+  ID tokens are almost five minutes old so claims go stale within seconds.
+- `synthetic-outage` makes that provider's discovery fail.
+- `environment` reads `KAFKA3O_CONSOLE_COGNITO_*` for a real test User Pool
+  and serves `https://localhost:8443`, which must be a registered callback.
+
+With `KAFKA3O_PREVIEW_INTEGRATION=1`, `src\console\previewCognitoIntegration.test.ts`
+runs the synthetic modes against the built preview: a real provider redirect,
+the SPA landing page, completion, session use, refresh, 409 while signed in,
+forged state, logout returning the provider URL, 401 replay after logout,
+local login, SSO unavailable during the outage, Console-origin-only requests,
+and no code, state, client secret or cookie value in the logs.
+
+`src\console\previewCognitoLive.test.ts` is opt-in with
+`KAFKA3O_LIVE_COGNITO=1`, all `KAFKA3O_CONSOLE_COGNITO_*` settings and
+`KAFKA3O_LIVE_COGNITO_USERNAME` / `KAFKA3O_LIVE_COGNITO_PASSWORD` for a test
+user, supplied from a secret store and never printed. Playwright Chromium
+signs in on the real managed-login page; every browser request to the
+Console origin is intercepted, so the browser never has to trust the
+fixture's self-signed certificate, and Node completes the callback with
+verified TLS. It checks the bound session, local revocation, the provider
+logout redirect to `<origin>/`, replay denial and log redaction. It does not
+exercise the SPA landing page or Web Locks in that browser; the
+[browser-marker discovery](../../../Kafka3O-UI/spec/discovery/browser-marker-protocol.md)
+covers those, and native Safari remains unverified.
+
 Before deploying a secured Console, every protected route must apply session
 and authorization checks and deny unknown purposes. Administrator recovery
 when no enabled local global ADMIN remains is not implemented; grant
