@@ -142,6 +142,18 @@ versa. A wrong marker cannot reserve or consume the correct proof. No browser
 route may use these primitives until stable-marker initialization, cookie
 lifecycle, replacement concurrency and credential retention are resolved.
 
+Standalone marker helpers generate 32 random bytes as canonical unpadded
+base64url; production callers must supply `crypto/rand.Reader`. They derive
+`SHA-256("Kafka3O stable browser marker v1\x00" ||
+SHA-256(raw marker bytes))`. The raw value must not be logged. The reader
+examines raw Cookie fields and returns only the digest, rejecting missing,
+malformed and duplicate marker fields, including malformed duplicates.
+Session-record validation rejects both legacy and domain-separated marker
+digests if their underlying value is reused as a session or CSRF token.
+These helpers do not set a cookie or expose a route. Concurrent first-time
+initialization, cookie lifetime, delayed responses and real-browser behavior
+remain unresolved; a marker helper alone does not make SSO safe to enable.
+
 The standalone browser-authorization helpers build an `openid`
 authorization-code URL with state, nonce and PKCE S256 only from the same
 in-process attempt manager and verified provider/callback used by the code
