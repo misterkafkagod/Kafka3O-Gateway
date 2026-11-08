@@ -18,6 +18,7 @@ import (
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/cluster"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/gatewayauth"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
@@ -38,8 +39,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	secured, securedMode, err := config.LoadSecuredMode(cfg.Security)
+	if err != nil {
+		logger.Error("invalid gateway secured-mode configuration", "error", err)
+		os.Exit(1)
+	}
 	token := os.Getenv("KAFKA3O_GATEWAY_TOKEN")
-	certificate, err := config.LoadGatewaySecurity(cfg.HTTP.TLS, token, tls.LoadX509KeyPair)
+	var certificate tls.Certificate
+	if securedMode {
+		if token != "" {
+			logger.Error("KAFKA3O_GATEWAY_TOKEN must not be set in secured mode; shared tokens cannot bypass Console policy")
+			os.Exit(1)
+		}
+		certificate, err = config.LoadGatewayCertificate(cfg.HTTP.TLS, tls.LoadX509KeyPair)
+	} else {
+		certificate, err = config.LoadGatewaySecurity(cfg.HTTP.TLS, token, tls.LoadX509KeyPair)
+	}
 	if err != nil {
 		logger.Error("invalid gateway security configuration", "error", err)
 		os.Exit(1)
@@ -90,7 +105,23 @@ func main() {
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})
 
-	server := newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
+	var server *http.Server
+	if securedMode {
+		policy, err := gatewayauth.NewConsolePolicyClient(secured.PolicyURL, secured.Identity, secured.ServiceCA)
+		if err != nil {
+			logger.Error("invalid Console policy client", "error", err)
+			os.Exit(1)
+		}
+		handler, err := gatewayauth.WithDelegatedAuthorization(mux, policy, secured.ClusterID, logger)
+		if err != nil {
+			logger.Error("invalid secured-mode handler", "error", err)
+			os.Exit(1)
+		}
+		server = newSecuredGatewayHTTPServer(cfg.HTTP.Listen, handler, certificate, secured.ServiceCA)
+		logger.Info("gateway secured mode: only the Console with a current delegation may call Kafka routes", "cluster", secured.ClusterID)
+	} else {
+		server = newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

@@ -76,3 +76,33 @@ For the two-gateway Compose demo:
 Certificate trust errors normally appear in browsers as a gateway connection
 failure. Check the URL hostname, certificate chain and trust store, and ensure
 the gateway and UI use HTTPS as described above.
+
+## Secured mode (M10, not yet deployed)
+
+By default a Gateway keeps the shared-token mode above. Secured mode is an
+explicit switch that removes the shared token entirely:
+
+```yaml
+security:
+  mode: secured
+  clusterId: prod                      # the Console's registered cluster ID
+  serviceCaFile: /run/kafka3o/service-ca.pem
+  clientCertificateFile: /run/kafka3o/gateway.pem   # URI SAN spiffe://kafka3o/gateway/prod
+  clientKeyFile: /run/kafka3o/gateway-key.pem       # owner-only
+  policyUrl: https://console-policy.example:9443
+```
+
+`KAFKA3O_GATEWAY_TOKEN` must be unset (startup fails otherwise) and CORS is
+disabled; browsers never call a secured Gateway. The HTTPS listener requires
+TLS 1.3. A client certificate is optional only so that anonymous
+`GET /api/v1/health/live` probes keep working; any certificate offered must
+chain to the service CA and carry exactly `spiffe://kafka3o/console`. Every
+other route must come from that verified Console identity, map to a known
+policy action (unknown routes return `403 action_not_classified`), carry one
+`X-Kafka3O-Delegation` header, have no duplicate query keys and a body of at
+most 1 MiB. The Gateway computes the request binding itself and asks the
+Console policy listener within 1 s: an invalid delegation returns 401, a
+denial 403, and an unavailable or slow policy service `503 policy_unavailable`;
+in every such case the Kafka action is never called. Service-certificate
+issuance and rotation on EKS-D are part of the P59 cutover.
+

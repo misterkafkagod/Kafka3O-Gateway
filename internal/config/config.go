@@ -5,8 +5,20 @@ import "time"
 // Config is the gateway configuration. Tags are lowercase so that
 // KAFKA3O_* environment overrides (lowercased) match camelCase YAML keys.
 type Config struct {
-	HTTP  HTTPConfig  `koanf:"http"`
-	Kafka KafkaConfig `koanf:"kafka"`
+	HTTP     HTTPConfig     `koanf:"http"`
+	Kafka    KafkaConfig    `koanf:"kafka"`
+	Security SecurityConfig `koanf:"security"`
+}
+
+// SecurityConfig selects the legacy shared-token mode (default) or the secured mode, in which only the Console
+// may call the Gateway and every request needs a current Console delegation.
+type SecurityConfig struct {
+	Mode                  string `koanf:"mode"`
+	ClusterID             string `koanf:"clusterid"`
+	ServiceCAFile         string `koanf:"servicecafile"`
+	ClientCertificateFile string `koanf:"clientcertificatefile"`
+	ClientKeyFile         string `koanf:"clientkeyfile"`
+	PolicyURL             string `koanf:"policyurl"`
 }
 
 type HTTPConfig struct {
