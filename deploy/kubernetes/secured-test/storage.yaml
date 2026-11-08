@@ -1,0 +1,39 @@
+# Dedicated Console volume (SQLite store and its backups); the Kafka volumes are not reused.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kafka3o-console
+  labels:
+    app.kubernetes.io/part-of: kafka3o-test-clusters
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  claimRef:
+    namespace: kafka3o-test-clusters
+    name: kafka3o-console-data
+  local:
+    path: /var/lib/kafka3o-console
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [eksd-01]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka3o-console-data
+  namespace: kafka3o-test-clusters
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: kafka3o-console
+  resources:
+    requests:
+      storage: 1Gi

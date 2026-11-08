@@ -1,0 +1,6 @@
+{
+  "clusters": [
+    { "id": "kafka-a", "name": "Kafka A", "gatewayUrl": "https://127.0.0.1:8081" },
+    { "id": "kafka-b", "name": "Kafka B", "gatewayUrl": "https://127.0.0.1:8082" }
+  ]
+}

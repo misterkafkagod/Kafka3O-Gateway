@@ -1,0 +1,182 @@
+# Secured M10 manual-test deployment. Replaces the shared-token kafka3o-manual pod in place (same name and
+# selector); the Kafka StatefulSets, volumes and Secrets are untouched. __BIN_DIR__ is set by deploy.sh.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka3o-manual
+  namespace: kafka3o-test-clusters
+  labels:
+    app.kubernetes.io/name: kafka3o-manual
+    kafka3o.dev/mode: secured
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka3o-manual
+      kafka3o.dev/manual-run: 2614e6a78d51
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka3o-manual
+        kafka3o.dev/manual-run: 2614e6a78d51
+        kafka3o.dev/mode: secured
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: eksd-01
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: prepare-ui
+          image: apache/kafka:4.3.1
+          command: ["/bin/bash", "-ec", "tar -xzf /input/site.tar.gz -C /site\ntest -s /site/index.html\n"]
+          securityContext: &restricted
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - { name: ui-bundle, mountPath: /input, readOnly: true }
+            - { name: ui-site, mountPath: /site }
+        - name: prepare-service-pki
+          image: apache/kafka:4.3.1
+          command: ["/bin/bash", "/etc/kafka3o-secured/prepare-service-pki.sh"]
+          securityContext: *restricted
+          volumeMounts:
+            - { name: secured-config, mountPath: /etc/kafka3o-secured, readOnly: true }
+            - { name: pki-ca, mountPath: /run/pki-ca }
+            - { name: pki-console, mountPath: /run/pki-console }
+            - { name: pki-gateway-a, mountPath: /run/pki-gateway-a }
+            - { name: pki-gateway-b, mountPath: /run/pki-gateway-b }
+            - { name: pki-tmp, mountPath: /tmp }
+        - name: bootstrap-console
+          image: apache/kafka:4.3.1
+          # One-time bootstrap from the optional kafka3o-console-bootstrap Secret; skipped once a marker exists.
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              mkdir -p /var/lib/kafka3o-console/backups
+              chmod 0700 /var/lib/kafka3o-console /var/lib/kafka3o-console/backups
+              if [[ -e /var/lib/kafka3o-console/.bootstrapped ]]; then echo "already bootstrapped"; exit 0; fi
+              if [[ ! -s /run/bootstrap/input || ! -s /run/bootstrap/secret ]]; then echo "bootstrap Secret missing" >&2; exit 1; fi
+              export KAFKA3O_CONSOLE_BOOTSTRAP_SECRET="$(< /run/bootstrap/secret)"
+              cat /run/bootstrap/input | /opt/kafka3o/kafka3o-console bootstrap
+              touch /var/lib/kafka3o-console/.bootstrapped
+              echo "bootstrapped"
+          env:
+            - { name: KAFKA3O_CONSOLE_DB_PATH, value: /var/lib/kafka3o-console/console.sqlite }
+          securityContext: *restricted
+          volumeMounts:
+            - { name: console-binary, mountPath: /opt/kafka3o/kafka3o-console, readOnly: true }
+            - { name: console-data, mountPath: /var/lib/kafka3o-console }
+            - { name: console-bootstrap, mountPath: /run/bootstrap, readOnly: true }
+      containers:
+        - name: console
+          image: apache/kafka:4.3.1
+          command: ["/opt/kafka3o/kafka3o-console", "serve"]
+          env:
+            - { name: KAFKA3O_CONSOLE_DB_PATH, value: /var/lib/kafka3o-console/console.sqlite }
+            - { name: KAFKA3O_CONSOLE_LISTEN, value: "127.0.0.1:8443" }
+            - { name: KAFKA3O_CONSOLE_ORIGIN, value: "https://127.0.0.1:8443" }
+            - { name: KAFKA3O_CONSOLE_TLS_CERT_FILE, value: /run/pki-console/tls.crt }
+            - { name: KAFKA3O_CONSOLE_TLS_KEY_FILE, value: /run/pki-console/tls.key }
+            - { name: KAFKA3O_CONSOLE_CLUSTERS_FILE, value: /etc/kafka3o-secured/clusters.json }
+            - { name: KAFKA3O_CONSOLE_POLICY_LISTEN, value: "127.0.0.1:9443" }
+            - { name: KAFKA3O_CONSOLE_POLICY_TLS_CERT_FILE, value: /run/pki-console/tls.crt }
+            - { name: KAFKA3O_CONSOLE_POLICY_TLS_KEY_FILE, value: /run/pki-console/tls.key }
+            - { name: KAFKA3O_CONSOLE_SERVICE_CA_FILE, value: /run/pki-console/ca.crt }
+            - { name: KAFKA3O_CONSOLE_GATEWAY_CLIENT_CERT_FILE, value: /run/pki-console/tls.crt }
+            - { name: KAFKA3O_CONSOLE_GATEWAY_CLIENT_KEY_FILE, value: /run/pki-console/tls.key }
+            - { name: KAFKA3O_CONSOLE_BACKUP_DIR, value: /var/lib/kafka3o-console/backups }
+          securityContext: *restricted
+          volumeMounts:
+            - { name: console-binary, mountPath: /opt/kafka3o/kafka3o-console, readOnly: true }
+            - { name: console-data, mountPath: /var/lib/kafka3o-console }
+            - { name: pki-console, mountPath: /run/pki-console, readOnly: true }
+            - { name: secured-config, mountPath: /etc/kafka3o-secured, readOnly: true }
+        - name: gateway-a
+          image: apache/kafka:4.3.1
+          command: ["/opt/kafka3o/kafka3o-gateway"]
+          env:
+            - { name: KAFKA3O_HTTP__LISTEN, value: "127.0.0.1:8081" }
+            - { name: KAFKA3O_HTTP__TLS__CERTIFICATEFILE, value: /run/pki/tls.crt }
+            - { name: KAFKA3O_HTTP__TLS__KEYFILE, value: /run/pki/tls.key }
+            - { name: KAFKA3O_KAFKA__BROKERS, value: "kafka-a.kafka3o-test-clusters.svc.cluster.local:9092" }
+            - { name: KAFKA3O_KAFKA__TLS__ENABLED, value: "true" }
+            - { name: KAFKA3O_KAFKA__TLS__CAFILE, value: /run/kafka-ca/ca.crt }
+            - { name: KAFKA3O_KAFKA__SASL__MECHANISM, value: SCRAM-SHA-512 }
+            - { name: KAFKA3O_KAFKA__SASL__USERNAME, value: kafka3otest-a }
+            - name: KAFKA3O_KAFKA_SASL_PASSWORD
+              valueFrom: { secretKeyRef: { name: kafka-a-security, key: sasl.password } }
+            - { name: KAFKA3O_SECURITY__MODE, value: secured }
+            - { name: KAFKA3O_SECURITY__CLUSTERID, value: kafka-a }
+            - { name: KAFKA3O_SECURITY__SERVICECAFILE, value: /run/pki/ca.crt }
+            - { name: KAFKA3O_SECURITY__CLIENTCERTIFICATEFILE, value: /run/pki/tls.crt }
+            - { name: KAFKA3O_SECURITY__CLIENTKEYFILE, value: /run/pki/tls.key }
+            - { name: KAFKA3O_SECURITY__POLICYURL, value: "https://127.0.0.1:9443" }
+          securityContext: *restricted
+          volumeMounts:
+            - { name: gateway-binary, mountPath: /opt/kafka3o/kafka3o-gateway, readOnly: true }
+            - { name: pki-gateway-a, mountPath: /run/pki, readOnly: true }
+            - { name: kafka-a-ca, mountPath: /run/kafka-ca, readOnly: true }
+        - name: gateway-b
+          image: apache/kafka:4.3.1
+          command: ["/opt/kafka3o/kafka3o-gateway"]
+          env:
+            - { name: KAFKA3O_HTTP__LISTEN, value: "127.0.0.1:8082" }
+            - { name: KAFKA3O_HTTP__TLS__CERTIFICATEFILE, value: /run/pki/tls.crt }
+            - { name: KAFKA3O_HTTP__TLS__KEYFILE, value: /run/pki/tls.key }
+            - { name: KAFKA3O_KAFKA__BROKERS, value: "kafka-b.kafka3o-test-clusters.svc.cluster.local:9092" }
+            - { name: KAFKA3O_KAFKA__TLS__ENABLED, value: "true" }
+            - { name: KAFKA3O_KAFKA__TLS__CAFILE, value: /run/kafka-ca/ca.crt }
+            - { name: KAFKA3O_KAFKA__SASL__MECHANISM, value: SCRAM-SHA-512 }
+            - { name: KAFKA3O_KAFKA__SASL__USERNAME, value: kafka3otest-b }
+            - name: KAFKA3O_KAFKA_SASL_PASSWORD
+              valueFrom: { secretKeyRef: { name: kafka-b-security, key: sasl.password } }
+            - { name: KAFKA3O_SECURITY__MODE, value: secured }
+            - { name: KAFKA3O_SECURITY__CLUSTERID, value: kafka-b }
+            - { name: KAFKA3O_SECURITY__SERVICECAFILE, value: /run/pki/ca.crt }
+            - { name: KAFKA3O_SECURITY__CLIENTCERTIFICATEFILE, value: /run/pki/tls.crt }
+            - { name: KAFKA3O_SECURITY__CLIENTKEYFILE, value: /run/pki/tls.key }
+            - { name: KAFKA3O_SECURITY__POLICYURL, value: "https://127.0.0.1:9443" }
+          securityContext: *restricted
+          volumeMounts:
+            - { name: gateway-binary, mountPath: /opt/kafka3o/kafka3o-gateway, readOnly: true }
+            - { name: pki-gateway-b, mountPath: /run/pki, readOnly: true }
+            - { name: kafka-b-ca, mountPath: /run/kafka-ca, readOnly: true }
+        - name: front
+          image: apache/kafka:4.3.1
+          command: ["/opt/kafka3o/kafka3o-secured-front", "/srv/kafka3o-ui", "https://127.0.0.1:8443", "/run/pki-ca/ca.crt"]
+          ports:
+            - { containerPort: 5173, name: ui }
+          securityContext: *restricted
+          volumeMounts:
+            - { name: front-binary, mountPath: /opt/kafka3o/kafka3o-secured-front, readOnly: true }
+            - { name: ui-site, mountPath: /srv/kafka3o-ui, readOnly: true }
+            - { name: pki-ca, mountPath: /run/pki-ca, readOnly: true }
+      volumes:
+        - { name: console-binary, hostPath: { path: __BIN_DIR__/console, type: File } }
+        - { name: gateway-binary, hostPath: { path: __BIN_DIR__/gateway, type: File } }
+        - { name: front-binary, hostPath: { path: __BIN_DIR__/front, type: File } }
+        - { name: console-data, persistentVolumeClaim: { claimName: kafka3o-console-data } }
+        - { name: console-bootstrap, secret: { secretName: kafka3o-console-bootstrap, optional: true, defaultMode: 0440 } }
+        - { name: secured-config, configMap: { name: kafka3o-secured-config } }
+        - { name: ui-bundle, configMap: { name: kafka3o-secured-ui } }
+        - { name: ui-site, emptyDir: { medium: Memory, sizeLimit: 64Mi } }
+        - { name: pki-ca, emptyDir: { medium: Memory, sizeLimit: 1Mi } }
+        - { name: pki-console, emptyDir: { medium: Memory, sizeLimit: 1Mi } }
+        - { name: pki-gateway-a, emptyDir: { medium: Memory, sizeLimit: 1Mi } }
+        - { name: pki-gateway-b, emptyDir: { medium: Memory, sizeLimit: 1Mi } }
+        - { name: pki-tmp, emptyDir: { medium: Memory, sizeLimit: 1Mi } }
+        - name: kafka-a-ca
+          secret: { secretName: kafka-a-security, defaultMode: 0440, items: [{ key: tls.crt, path: ca.crt }] }
+        - name: kafka-b-ca
+          secret: { secretName: kafka-b-security, defaultMode: 0440, items: [{ key: tls.crt, path: ca.crt }] }
