@@ -122,7 +122,11 @@ func TestSecuredModeEndToEndEnforcementBeforeKafka(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	policyHandler, err := policyapi.NewHandler(consume, console.db, logger)
+	outcome, err := delegation.NewRecordOutcome(console.db, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyHandler, err := policyapi.NewHandler(consume, outcome, console.db, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

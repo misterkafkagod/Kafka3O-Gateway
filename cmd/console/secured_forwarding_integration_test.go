@@ -46,7 +46,8 @@ func TestSecuredForwardingEndToEnd(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	consume, _ := delegation.NewConsumeDelegation(db, db, db, nil, rand.Reader, time.Now)
-	policyHandler, _ := policyapi.NewHandler(consume, db, logger)
+	outcome, _ := delegation.NewRecordOutcome(db, time.Now)
+	policyHandler, _ := policyapi.NewHandler(consume, outcome, db, logger)
 	policy := httptest.NewUnstartedServer(policyHandler)
 	policy.TLS = &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{consoleIdentity.TLS},
 		ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Pool}

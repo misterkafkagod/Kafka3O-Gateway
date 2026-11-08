@@ -6,8 +6,11 @@ import (
 	"errors"
 )
 
-// ConsumePath is the only route of the policy listener.
-const ConsumePath = "/internal/v1/delegations/consume"
+// ConsumePath and OutcomePath are the only routes of the policy listener.
+const (
+	ConsumePath = "/internal/v1/delegations/consume"
+	OutcomePath = "/internal/v1/delegations/outcome"
+)
 
 type RegisteredClusters interface {
 	ActiveRegisteredCluster(ctx context.Context, clusterID string) (bool, error)

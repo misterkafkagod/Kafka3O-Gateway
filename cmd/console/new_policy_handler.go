@@ -18,5 +18,9 @@ func newPolicyHandler(db *storage.Database, protector delegation.ProtectorSource
 	if err != nil {
 		return nil, err
 	}
-	return policyapi.NewHandler(consume, db, logger)
+	outcome, err := delegation.NewRecordOutcome(db, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	return policyapi.NewHandler(consume, outcome, db, logger)
 }

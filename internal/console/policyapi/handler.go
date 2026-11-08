@@ -1,9 +1,7 @@
 package policyapi
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -34,23 +32,29 @@ type problem struct {
 	Code   string `json:"code"`
 }
 
+type outcomeBody struct {
+	OperationID string `json:"operationId"`
+	Outcome     string `json:"outcome"`
+}
+
 type handler struct {
 	consume  delegation.ConsumeDelegation
+	outcome  delegation.RecordOutcome
 	clusters RegisteredClusters
 	logger   *slog.Logger
 }
 
 // NewHandler serves consume for verified Gateway identities of active registered clusters. The caller's cluster
 // comes only from its certificate; the body never names it.
-func NewHandler(consume delegation.ConsumeDelegation, clusters RegisteredClusters, logger *slog.Logger) (http.Handler, error) {
-	if consume == nil || clusters == nil || logger == nil {
+func NewHandler(consume delegation.ConsumeDelegation, outcome delegation.RecordOutcome, clusters RegisteredClusters, logger *slog.Logger) (http.Handler, error) {
+	if consume == nil || outcome == nil || clusters == nil || logger == nil {
 		return nil, ErrConfig
 	}
-	return handler{consume: consume, clusters: clusters, logger: logger}, nil
+	return handler{consume: consume, outcome: outcome, clusters: clusters, logger: logger}, nil
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != ConsumePath || r.URL.RawQuery != "" {
+	if (r.URL.Path != ConsumePath && r.URL.Path != OutcomePath) || r.URL.RawQuery != "" {
 		writeJSON(w, http.StatusNotFound, problem{http.StatusNotFound, "not_found"})
 		return
 	}
@@ -75,11 +79,16 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	data, readErr := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+	if err != nil || mediaType != "application/json" || readErr != nil {
+		writeJSON(w, http.StatusBadRequest, problem{http.StatusBadRequest, "invalid_request"})
+		return
+	}
+	if r.URL.Path == OutcomePath {
+		h.recordOutcome(w, r, cluster, data)
+		return
+	}
 	var body consumeBody
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	var extra json.RawMessage
-	if err != nil || mediaType != "application/json" || readErr != nil || decoder.Decode(&body) != nil || decoder.Decode(&extra) != io.EOF {
+	if !decodeStrict(data, &body) {
 		writeJSON(w, http.StatusBadRequest, problem{http.StatusBadRequest, "invalid_request"})
 		return
 	}

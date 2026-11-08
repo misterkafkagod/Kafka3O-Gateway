@@ -91,3 +91,30 @@ var (
 	ErrInvalidDelegation = errors.New("delegation is missing, expired, already used or does not match the request")
 	ErrPolicyUnavailable = errors.New("authorization policy is unavailable")
 )
+
+// Outcome is what a Gateway knows after calling Kafka for an allowed mutation; acceptance is not completion.
+type Outcome string
+
+const (
+	OutcomeConfirmed          Outcome = "confirmed"
+	OutcomeValidationRejected Outcome = "validation_rejected"
+	OutcomeFailed             Outcome = "failed"
+	OutcomeUnknown            Outcome = "unknown"
+)
+
+type OutcomeRecord struct {
+	OperationID     string
+	CallerClusterID string
+	Outcome         Outcome
+	OccurredAt      time.Time
+}
+
+type OutcomeStore interface {
+	RecordGatewayOutcome(ctx context.Context, record OutcomeRecord) error
+}
+
+var (
+	ErrInvalidOutcome   = errors.New("invalid mutation outcome")
+	ErrUnknownIntent    = errors.New("no allowed mutation intent exists for this operation and cluster")
+	ErrDuplicateOutcome = errors.New("the mutation outcome is already recorded")
+)

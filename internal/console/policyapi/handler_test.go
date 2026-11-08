@@ -32,6 +32,16 @@ func (f *fakeConsume) Execute(_ context.Context, request delegation.ConsumeReque
 	return f.decision, f.err
 }
 
+type fakeOutcome struct {
+	calls []string
+	err   error
+}
+
+func (f *fakeOutcome) Execute(_ context.Context, cluster, operationID string, outcome delegation.Outcome) error {
+	f.calls = append(f.calls, cluster+"/"+operationID+"/"+string(outcome))
+	return f.err
+}
+
 type fakeClusters map[string]bool
 
 func (f fakeClusters) ActiveRegisteredCluster(_ context.Context, id string) (bool, error) {
@@ -46,7 +56,7 @@ func TestPolicyHandlerAuthenticatesGatewaysAndMapsDecisions(t *testing.T) {
 	console := ca.Issue(t, "console", servicetls.ConsoleURI, time.Now().Add(time.Hour))
 	consume := &fakeConsume{decision: delegation.Decision{OperationID: "op", Allowed: true, ActorID: "alice", Source: "local"}}
 	var logs bytes.Buffer
-	handler, err := policyapi.NewHandler(consume, fakeClusters{"prod": true, "old": false}, slog.New(slog.NewTextHandler(&logs, nil)))
+	handler, err := policyapi.NewHandler(consume, &fakeOutcome{}, fakeClusters{"prod": true, "old": false}, slog.New(slog.NewTextHandler(&logs, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,5 +124,46 @@ func TestPolicyHandlerAuthenticatesGatewaysAndMapsDecisions(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: ca.Pool}}}
 	if _, err := client.Post(server.URL+policyapi.ConsumePath, "application/json", strings.NewReader(valid)); err == nil {
 		t.Fatal("a caller without a client certificate was served")
+	}
+}
+
+func TestPolicyHandlerRecordsOutcomesForTheCallingCluster(t *testing.T) {
+	ca := servicetlstest.NewAuthority(t)
+	console := ca.Issue(t, "console", servicetls.ConsoleURI, time.Now().Add(time.Hour))
+	outcome := &fakeOutcome{}
+	handler, err := policyapi.NewHandler(&fakeConsume{}, outcome, fakeClusters{"prod": true}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewUnstartedServer(handler)
+	server.TLS = &tls.Config{Certificates: []tls.Certificate{console.TLS}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: ca.Pool}
+	server.StartTLS()
+	defer server.Close()
+	identity := ca.Issue(t, "gateway-prod", servicetls.GatewayURIPrefix+"prod", time.Now().Add(time.Hour))
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: ca.Pool, Certificates: []tls.Certificate{identity.TLS}}}}
+	post := func(body string) int {
+		response, err := client.Post(server.URL+policyapi.OutcomePath, "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		return response.StatusCode
+	}
+	if status := post(`{"operationId":"op-1","outcome":"confirmed"}`); status != http.StatusNoContent || outcome.calls[0] != "prod/op-1/confirmed" {
+		t.Fatalf("outcome status=%d calls=%v", status, outcome.calls)
+	}
+	for _, tt := range []struct {
+		err    error
+		status int
+	}{
+		{delegation.ErrUnknownIntent, 404}, {delegation.ErrDuplicateOutcome, 409}, {delegation.ErrInvalidOutcome, 400}, {errors.New("down"), 503},
+	} {
+		outcome.err = tt.err
+		if status := post(`{"operationId":"op-1","outcome":"confirmed"}`); status != tt.status {
+			t.Fatalf("%v status=%d", tt.err, status)
+		}
+	}
+	if status := post(`{"operationId":"op-1","outcome":"confirmed","clusterId":"dev"}`); status != 400 {
+		t.Fatalf("caller-named cluster status=%d", status)
 	}
 }
