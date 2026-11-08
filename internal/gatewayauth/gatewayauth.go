@@ -28,9 +28,10 @@ type PolicyDecision struct {
 	OperationID string
 }
 
-// PolicyClient asks the Console for a decision; it never retries.
+// PolicyClient asks the Console for a decision and records mutation outcomes; it never retries.
 type PolicyClient interface {
 	Consume(ctx context.Context, handle string, binding [32]byte, action authorization.Action) (PolicyDecision, error)
+	RecordOutcome(ctx context.Context, operationID, outcome string) error
 }
 
 var (

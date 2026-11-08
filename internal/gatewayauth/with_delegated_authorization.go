@@ -87,5 +87,22 @@ func (h delegatedAuthorization) ServeHTTP(w http.ResponseWriter, r *http.Request
 	r.Header.Del(DelegationHeader)
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	r.ContentLength = int64(len(body))
-	h.next.ServeHTTP(w, r)
+	if !authorization.IsKafkaMutation(route.Action) {
+		h.next.ServeHTTP(w, r)
+		return
+	}
+	// The intent is durable; the result reaches the client only once its outcome is recorded too.
+	buffered := newBufferedResponse()
+	h.next.ServeHTTP(buffered, r)
+	outcome := classifyOutcome(buffered.status, buffered.body.Bytes())
+	recordContext, cancelRecord := context.WithTimeout(context.WithoutCancel(r.Context()), PolicyTimeout)
+	err = h.policy.RecordOutcome(recordContext, decision.OperationID, outcome)
+	cancelRecord()
+	if err != nil {
+		h.logger.Error("mutation outcome could not be recorded", "operation_id", decision.OperationID, "outcome", outcome,
+			"error_type", fmt.Sprintf("%T", err))
+		writeOutcomeUnknown(w, decision.OperationID)
+		return
+	}
+	flushBufferedResponse(w, buffered)
 }

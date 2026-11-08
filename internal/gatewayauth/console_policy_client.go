@@ -73,3 +73,26 @@ func (c consolePolicyClient) Consume(ctx context.Context, handle string, binding
 	return PolicyDecision{Allowed: *decision.Allowed, ActorID: decision.ActorID, Source: decision.Source,
 		Denial: decision.Denial, OperationID: decision.OperationID}, nil
 }
+
+// RecordOutcome reports the outcome of an allowed mutation once; any failure is returned, never retried.
+func (c consolePolicyClient) RecordOutcome(ctx context.Context, operationID, outcome string) error {
+	payload, err := json.Marshal(map[string]string{"operationId": operationID, "outcome": outcome})
+	if err != nil {
+		return errors.Join(ErrPolicyUnavailable, err)
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimSuffix(c.url, "/consume")+"/outcome", bytes.NewReader(payload))
+	if err != nil {
+		return errors.Join(ErrPolicyUnavailable, err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := c.client.Do(request)
+	if err != nil {
+		return errors.Join(ErrPolicyUnavailable, err)
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
+	if response.StatusCode != http.StatusNoContent {
+		return ErrPolicyUnavailable
+	}
+	return nil
+}

@@ -21,13 +21,20 @@ import (
 )
 
 type fakePolicy struct {
-	decision gatewayauth.PolicyDecision
-	err      error
-	delay    time.Duration
-	calls    atomic.Int64
-	handle   string
-	binding  [32]byte
-	action   authorization.Action
+	decision   gatewayauth.PolicyDecision
+	err        error
+	outcomes   []string
+	outcomeErr error
+	delay      time.Duration
+	calls      atomic.Int64
+	handle     string
+	binding    [32]byte
+	action     authorization.Action
+}
+
+func (f *fakePolicy) RecordOutcome(_ context.Context, operationID, outcome string) error {
+	f.outcomes = append(f.outcomes, operationID+"/"+outcome)
+	return f.outcomeErr
 }
 
 func (f *fakePolicy) Consume(ctx context.Context, handle string, binding [32]byte, action authorization.Action) (gatewayauth.PolicyDecision, error) {
