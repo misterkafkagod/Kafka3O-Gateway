@@ -99,8 +99,12 @@ func (c consumeDelegation) Execute(ctx context.Context, request ConsumeRequest) 
 		return decision, errors.Join(ErrPolicyUnavailable, err)
 	}
 	record.Allowed, record.Denial = policy.Allowed, string(policy.Denial)
-	if err := c.store.RecordGatewayDecision(ctx, record); err != nil {
-		return decision, errors.Join(ErrPolicyUnavailable, err)
+	// A permitted read is not audited (no per-poll noise); every denial and every mutation decision is, and a
+	// mutation's allowed decision is the durable intent that must exist before the Gateway calls Kafka.
+	if !policy.Allowed || authorization.IsKafkaMutation(consumed.Action) {
+		if err := c.store.RecordGatewayDecision(ctx, record); err != nil {
+			return decision, errors.Join(ErrPolicyUnavailable, err)
+		}
 	}
 	decision.Allowed, decision.Denial = policy.Allowed, policy.Denial
 	return decision, nil

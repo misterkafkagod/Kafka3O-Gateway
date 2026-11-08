@@ -98,8 +98,9 @@ func TestDelegationDecisionsFollowRolesAndClassification(t *testing.T) {
 			production = append(production, event)
 		}
 	}
-	if len(production) != 3 || production[1].Decision != "denied:production_admin_required" || production[1].Environment != "PRODUCTION" ||
-		production[0].Outcome != AuditAttempted || production[1].Outcome != AuditDenied {
+	// The permitted read of prod is not audited; the two prod denials are.
+	if len(production) != 2 || production[0].Decision != "denied:production_admin_required" || production[0].Environment != "PRODUCTION" ||
+		production[0].Outcome != AuditDenied || production[1].Decision != "denied:change_reason_required" {
 		t.Fatalf("production decisions audit = %+v", production)
 	}
 }
@@ -174,13 +175,24 @@ func TestDelegationsFollowRevocationAndGrantChangesAndFailClosed(t *testing.T) {
 	if _, err := f.consume.Execute(ctx, delegation.ConsumeRequest{Handle: handle, CallerClusterID: "dev", Action: authorization.ActionListTopics, Binding: produceBinding("dev")}); !errors.Is(err, delegation.ErrInvalidDelegation) {
 		t.Fatalf("revoked session error = %v", err)
 	}
+	_, writer := f.addAccount(t, "writer", "writer", "", "OPERATOR")
 	_, viewer := f.addAccount(t, "viewer", "viewer", "", "VIEWER")
-	handle = f.mintFor(t, viewer.Principal.SessionID, "dev", authorization.ActionListTopics)
 	if _, err := f.db.db.Exec(`CREATE TRIGGER reject_decision_audit BEFORE INSERT ON audit_events
 WHEN NEW.resource_kind = 'gateway_request' BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if decision, err := f.consume.Execute(ctx, delegation.ConsumeRequest{Handle: handle, CallerClusterID: "dev", Action: authorization.ActionListTopics, Binding: produceBinding("dev")}); !errors.Is(err, delegation.ErrPolicyUnavailable) || decision.Allowed {
-		t.Fatalf("unaudited decision = %+v, %v", decision, err)
+	// The intent of a mutation must be durable before dispatch: without audit there is no permission.
+	handle = f.mintFor(t, writer.Principal.SessionID, "dev", authorization.ActionProduceMessage)
+	if decision, err := f.consume.Execute(ctx, delegation.ConsumeRequest{Handle: handle, CallerClusterID: "dev", Action: authorization.ActionProduceMessage, Binding: produceBinding("dev")}); !errors.Is(err, delegation.ErrPolicyUnavailable) || decision.Allowed {
+		t.Fatalf("unaudited mutation decision = %+v, %v", decision, err)
+	}
+	// A permitted read is not audited, so it is unaffected; a denied one still needs the audit.
+	handle = f.mintFor(t, viewer.Principal.SessionID, "dev", authorization.ActionListTopics)
+	if decision, err := f.consume.Execute(ctx, delegation.ConsumeRequest{Handle: handle, CallerClusterID: "dev", Action: authorization.ActionListTopics, Binding: produceBinding("dev")}); err != nil || !decision.Allowed {
+		t.Fatalf("permitted read during an audit outage = %+v, %v", decision, err)
+	}
+	handle = f.mintFor(t, viewer.Principal.SessionID, "dev", authorization.ActionProduceMessage)
+	if _, err := f.consume.Execute(ctx, delegation.ConsumeRequest{Handle: handle, CallerClusterID: "dev", Action: authorization.ActionProduceMessage, Binding: produceBinding("dev")}); !errors.Is(err, delegation.ErrPolicyUnavailable) {
+		t.Fatalf("unaudited denial error = %v", err)
 	}
 }
