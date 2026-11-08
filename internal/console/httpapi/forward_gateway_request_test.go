@@ -102,3 +102,63 @@ func TestGatewayForwardingRouteChecksAndMapsOutcomes(t *testing.T) {
 		})
 	}
 }
+
+func TestGatewayForwardingBindsOnlyValidMutationReasons(t *testing.T) {
+	c := newTestConsole(t)
+	enableTestClusterAdministration(t, c)
+	manager, _ := session.NewManager(c.db, rand.Reader, time.Now, session.DefaultIdleLifetime, session.DefaultAbsoluteLifetime)
+	api := c.handler.(*consoleapi.SessionAPI)
+	forwarder := &fakeForwarder{response: gatewayproxy.Response{Status: 200, ContentType: "application/json", Body: []byte(`{}`)}}
+	if err := api.EnableGatewayForwarding(c.db, manager); err != nil {
+		t.Fatal(err)
+	}
+	if err := api.EnableGatewayRequests(forwarder); err != nil {
+		t.Fatal(err)
+	}
+	_, cookies, csrf := unrestrictedAdmin(t, c)
+	send := func(method, path string, reasons ...string) int {
+		t.Helper()
+		request, _ := http.NewRequest(method, c.origin+path, strings.NewReader(`{"value":"v"}`))
+		request.Header.Set("Origin", c.origin)
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set(session.CSRFHeader, csrf)
+		for _, cookie := range cookies {
+			request.AddCookie(cookie)
+		}
+		for _, reason := range reasons {
+			request.Header.Add("X-Kafka3O-Change-Reason", reason)
+		}
+		response, err := c.server.Client().Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		return response.StatusCode
+	}
+	produce := "/api/clusters/prod/gateway/api/v1/topics/orders/messages"
+	if status := send("POST", produce, "Incident 42 hotfix"); status != 200 || forwarder.requests[len(forwarder.requests)-1].Reason != "Incident 42 hotfix" {
+		t.Fatalf("reasoned write status=%d forwarded=%+v", status, forwarder.requests)
+	}
+	before := len(forwarder.requests)
+	for _, tt := range []struct {
+		method  string
+		reasons []string
+	}{
+		{"GET", []string{"reads need no reason"}}, {"POST", []string{"a", "b"}},
+		{"POST", []string{strings.Repeat("r", 513)}},
+	} {
+		path := produce
+		if tt.method == "GET" {
+			path = "/api/clusters/prod/gateway/api/v1/topics"
+		}
+		if status := send(tt.method, path, tt.reasons...); status != 400 {
+			t.Fatalf("%s with reasons %q status=%d", tt.method, tt.reasons, status)
+		}
+	}
+	if len(forwarder.requests) != before {
+		t.Fatal("an invalid reason was forwarded")
+	}
+	if status := send("POST", produce); status != 200 || forwarder.requests[len(forwarder.requests)-1].Reason != "" {
+		t.Fatal("a write without a reason was not forwarded unchanged")
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/gatewayproxy"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/gatewayauth"
 )
@@ -27,6 +28,16 @@ func (a *SessionAPI) forwardGatewayRequest(w http.ResponseWriter, r *http.Reques
 	if !strings.HasPrefix(r.URL.EscapedPath(), prefix+"/") || !known || route.Anonymous {
 		a.writeProblem(w, http.StatusNotFound, "not_found", "Unknown Gateway route")
 		return
+	}
+	// A Production change reason travels only to the Console, which binds it into the delegation.
+	reasons := r.Header.Values("X-Kafka3O-Change-Reason")
+	reason := ""
+	if len(reasons) > 0 {
+		if !mutation || len(reasons) != 1 || identity.ValidateChangeReason(reasons[0]) != nil {
+			a.writeProblem(w, http.StatusBadRequest, "invalid_change_reason", "Invalid change reason")
+			return
+		}
+		reason = reasons[0]
 	}
 	query := r.URL.Query()
 	for _, values := range query {
@@ -66,7 +77,7 @@ func (a *SessionAPI) forwardGatewayRequest(w http.ResponseWriter, r *http.Reques
 	}
 	response, err := a.forwarder.Execute(r.Context(), gatewayproxy.Request{
 		SessionID: principal.SessionID, ClusterID: clusterID, GatewayURL: gatewayURL, Method: r.Method,
-		EscapedPath: path, Query: query, Body: body, Action: route.Action,
+		EscapedPath: path, Query: query, Body: body, Action: route.Action, Reason: reason,
 	})
 	switch {
 	case errors.Is(err, gatewayproxy.ErrOutcomeUnknown):

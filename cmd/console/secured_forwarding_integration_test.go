@@ -142,9 +142,14 @@ func TestSecuredForwardingEndToEnd(t *testing.T) {
 		users[username] = signIn(username, username+" temporary passphrase")
 	}
 
+	users["admin"] = adminCredentials
+	reason := ""
 	send := func(user session.Credentials, method, path, body string) (int, string, *http.Response) {
 		t.Helper()
 		request, _ := http.NewRequest(method, origin+path, strings.NewReader(body))
+		if reason != "" {
+			request.Header.Set("X-Kafka3O-Change-Reason", reason)
+		}
 		request.Header.Set("Origin", origin)
 		request.AddCookie(&http.Cookie{Name: session.CookieName, Value: user.Token})
 		request.AddCookie(&http.Cookie{Name: session.CSRFCookieName, Value: user.CSRFToken})
@@ -195,14 +200,41 @@ func TestSecuredForwardingEndToEnd(t *testing.T) {
 			}
 		})
 	}
+	// Production: ADMIN needs a reason, which is audited; OPERATOR stays denied even with one.
+	before := kafkaCalls()
+	if status, body, _ := send(users["admin"], "POST", "/api/clusters/prod/gateway/api/v1/topics/orders/messages", produce); status != 403 ||
+		!strings.Contains(body, "change_reason_required") || kafkaCalls() != before {
+		t.Fatalf("Production ADMIN write without a reason = %d %s", status, body)
+	}
+	reason = "Incident 42 hotfix"
+	if status, body, _ := send(users["operator"], "POST", "/api/clusters/prod/gateway/api/v1/topics/orders/messages", produce); status != 403 || kafkaCalls() != before {
+		t.Fatalf("Production OPERATOR write with a reason = %d %s", status, body)
+	}
+	if status, body, _ := send(users["admin"], "POST", "/api/clusters/prod/gateway/api/v1/topics/orders/messages", produce); status != 200 || kafkaCalls() != before+1 {
+		t.Fatalf("Production ADMIN write with a reason = %d %s", status, body)
+	}
+	reason = ""
+	events, err := db.ListAuditEvents(ctx, storage.AuditFilter{ClusterID: "prod", Limit: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	audited := false
+	for _, event := range events {
+		if event.ResourceKind == "gateway_request" && event.Decision == "allowed" && event.Reason == "Incident 42 hotfix" && event.ActorID == admin.AccountID {
+			audited = true
+		}
+	}
+	if !audited {
+		t.Fatal("the Production change reason was not audited with the allowed decision")
+	}
 	mu.Lock()
 	last := calls[len(calls)-1]
 	mu.Unlock()
-	if last != (recordedKafkaCall{"dev", "POST", "/api/v1/topics/orders/messages", produce}) {
+	if last != (recordedKafkaCall{"prod", "POST", "/api/v1/topics/orders/messages", produce}) {
 		t.Fatalf("the Gateway received %+v", last)
 	}
 
-	before := kafkaCalls()
+	before = kafkaCalls()
 	gateways["prod"].Close()
 	if status, body, _ := send(users["viewer"], "GET", "/api/clusters/prod/gateway/api/v1/topics", ""); status != 503 || !strings.Contains(body, "gateway_unavailable") {
 		t.Fatalf("stopped Gateway read = %d %s", status, body)

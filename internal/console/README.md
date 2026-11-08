@@ -817,7 +817,11 @@ and sends one request over mTLS (6 s) to the registered Gateway URL, pinned to
 Outcomes: a Gateway 401 becomes 401 with cookies cleared; 403 denials pass
 through; a policy outage is `503 authorization_unavailable`; a transport failure
 is `503 gateway_unavailable` for reads and `503 gateway_outcome_unknown` for
-writes, which must be checked, never retried. Policy decisions for Cognito
+writes, which must be checked, never retried. A mutation may carry one
+`X-Kafka3O-Change-Reason` header (printable, 1–512 bytes); the Console binds it
+into the delegation, so P49's Production check sees it and the decision audit
+records it, and never forwards it. A reason on a read, duplicates or an invalid
+value return `400 invalid_change_reason` before anything is minted. Policy decisions for Cognito
 sessions use the refresh-token protector published with the discovered Cognito
 services and fail closed before discovery.
 
