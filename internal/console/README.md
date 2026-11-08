@@ -797,6 +797,36 @@ revocations, grant changes and a newly set Production flag apply to the next
 request. Cognito sessions are denied by this listener until delegated refresh
 is wired (P62). A failing policy listener stops the Console process.
 
+## Secured browser path (Console forwarding)
+
+`GET /api/clusters` returns, for any current local or Cognito session, the
+active registered clusters on which the session's current effective role is at
+least VIEWER, with name, authoritative environment and effective role. Gateway
+addresses never reach the browser.
+
+Setting `KAFKA3O_CONSOLE_GATEWAY_CLIENT_CERT_FILE` / `_KEY_FILE` (a service-CA
+certificate carrying exactly `spiffe://kafka3o/console`) together with
+`KAFKA3O_CONSOLE_SERVICE_CA_FILE` mounts same-origin forwarding at
+`/api/clusters/{clusterID}/gateway/api/v1/...`. For each request the Console
+checks the session (Origin and CSRF on non-GET), the active registration and
+the Gateway route catalog (liveness and unknown routes are 404), rejects
+duplicate query keys and bodies over 1 MiB, re-resolves the session (refreshing
+stale Cognito claims), mints a single-use delegation bound to the exact bytes
+and sends one request over mTLS (6 s) to the registered Gateway URL, pinned to
+`spiffe://kafka3o/gateway/<clusterID>`. No client headers are forwarded.
+Outcomes: a Gateway 401 becomes 401 with cookies cleared; 403 denials pass
+through; a policy outage is `503 authorization_unavailable`; a transport failure
+is `503 gateway_unavailable` for reads and `503 gateway_outcome_unknown` for
+writes, which must be checked, never retried. Policy decisions for Cognito
+sessions use the refresh-token protector published with the discovered Cognito
+services and fail closed before discovery.
+
+The UI built with `VITE_KAFKA3O_CONSOLE_SECURED=true` signs in through the
+Console, loads clusters from `GET /api/clusters` and sends every Kafka request
+through this forwarding API with the session cookie; it has no Gateway token
+panel. A 401 returns to sign-in and clears cached data; denials, authorization
+outages and unknown write outcomes are shown distinctly.
+
 ## Isolated UI preview integration
 
 The UI repository contains an opt-in cross-repository test for its built
