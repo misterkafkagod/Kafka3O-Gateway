@@ -303,6 +303,8 @@ var (
 	ErrInvalidClusterID          = errors.New("invalid cluster identifier")
 	ErrInvalidClusterRegistry    = errors.New("invalid registered cluster configuration")
 	ErrClusterRetarget           = errors.New("a registered cluster cannot be pointed at a different Gateway")
+	ErrUnknownCluster            = errors.New("cluster is not an active registered cluster")
+	ErrChangeReasonRequired      = errors.New("a valid change reason is required")
 )
 
 // RoleGrantChange sets (or, with an empty Role, removes) one direct grant; an empty ClusterID is global.
@@ -390,4 +392,20 @@ type RegisteredCluster struct {
 	ID         string
 	Name       string
 	GatewayURL string
+}
+
+// ClusterEnvironmentChange classifies one active registered cluster; Environment is never unclassified.
+type ClusterEnvironmentChange struct {
+	Actor               LocalAdminActor
+	ClusterID           string
+	ExpectedEnvironment authorization.Environment
+	Environment         authorization.Environment
+	Reason              string
+	OperationID         string
+	EventID             string
+	OccurredAt          time.Time
+}
+
+type ClusterEnvironmentStore interface {
+	ChangeClusterEnvironment(ctx context.Context, change ClusterEnvironmentChange) (int64, error)
 }
