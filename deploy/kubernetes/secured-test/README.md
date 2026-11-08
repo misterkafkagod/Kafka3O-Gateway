@@ -31,5 +31,6 @@ Console keeps 7 daily SQLite snapshots in `/var/lib/kafka3o-console/backups`.
 `~/kafka3o-rollback/kafka3o-manual-shared-token.json` on the node (server fields
 removed). Restore a Console snapshot by scaling the deployment to 0, copying a
 snapshot over `/var/lib/kafka3o-console/console.sqlite` (owner uid 1000, mode
-0600) and scaling back to 1. Cluster classification is held only by the
+0600; the volume root stays 2770 so `fsGroupChangePolicy: OnRootMismatch` never
+re-chmods the owner-only database) and scaling back to 1. Cluster classification is held only by the
 Console: `kafka-b` is Production and `kafka-a` non-Production.

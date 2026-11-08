@@ -25,7 +25,9 @@ done
 ssh -o BatchMode=yes "$host" "set -e
   sudo install -d -m 0755 -o root -g root '$bin_dir'
   for name in gateway console front; do sudo install -m 0555 -o root -g root /tmp/kafka3o-$hash-\$name '$bin_dir/'\$name; rm -f /tmp/kafka3o-$hash-\$name; done
-  sudo install -d -m 0700 -o 1000 -g 1000 /var/lib/kafka3o-console"
+  sudo install -d -m 2770 -o 1000 -g 1000 /var/lib/kafka3o-console
+  sudo chmod 2770 /var/lib/kafka3o-console
+  sudo find /var/lib/kafka3o-console -maxdepth 1 -type f -name \"console.sqlite*\" -exec chmod 0600 {} +"
 
 echo "exporting the rollback copy"
 current="$(ssh -o BatchMode=yes "$host" "kubectl -n kafka3o-test-clusters get deploy kafka3o-manual -o json")"
@@ -46,7 +48,8 @@ fi
 
 echo "applying storage, configuration and the secured deployment"
 scp -q -o BatchMode=yes "$here/storage.yaml" "$here/clusters.json" "$here/prepare-service-pki.sh" "$build/site.tar.gz" "$host:/tmp/"
-sed "s#__BIN_DIR__#$bin_dir#g" "$here/deployment.yaml" | ssh -o BatchMode=yes "$host" "cat > /tmp/kafka3o-secured-deployment.yaml"
+ui_hash="$(shasum -a 256 "$build/site.tar.gz" | cut -c1-12)"
+sed -e "s#__BIN_DIR__#$bin_dir#g" -e "s#__UI_HASH__#$ui_hash#g" "$here/deployment.yaml" | ssh -o BatchMode=yes "$host" "cat > /tmp/kafka3o-secured-deployment.yaml"
 ssh -o BatchMode=yes "$host" "set -e
   cd /tmp
   kubectl apply -f storage.yaml

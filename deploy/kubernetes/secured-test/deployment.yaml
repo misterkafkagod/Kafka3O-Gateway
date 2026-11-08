@@ -1,5 +1,5 @@
 # Secured M10 manual-test deployment. Replaces the shared-token kafka3o-manual pod in place (same name and
-# selector); the Kafka StatefulSets, volumes and Secrets are untouched. __BIN_DIR__ is set by deploy.sh.
+# selector); the Kafka StatefulSets, volumes and Secrets are untouched. __BIN_DIR__ and __UI_HASH__ are set by deploy.sh.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,6 +22,8 @@ spec:
         app.kubernetes.io/name: kafka3o-manual
         kafka3o.dev/manual-run: 2614e6a78d51
         kafka3o.dev/mode: secured
+      annotations:
+        kafka3o.dev/ui-bundle: __UI_HASH__
     spec:
       nodeSelector:
         kubernetes.io/hostname: eksd-01
@@ -31,6 +33,8 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+        # The Console volume root is kept at 2770 so the kubelet never re-chmods the owner-only database files.
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
       initContainers:
@@ -64,7 +68,7 @@ spec:
             - -ec
             - |
               mkdir -p /var/lib/kafka3o-console/backups
-              chmod 0700 /var/lib/kafka3o-console /var/lib/kafka3o-console/backups
+              chmod 0700 /var/lib/kafka3o-console/backups
               if [[ -e /var/lib/kafka3o-console/.bootstrapped ]]; then echo "already bootstrapped"; exit 0; fi
               if [[ ! -s /run/bootstrap/input || ! -s /run/bootstrap/secret ]]; then echo "bootstrap Secret missing" >&2; exit 1; fi
               export KAFKA3O_CONSOLE_BOOTSTRAP_SECRET="$(< /run/bootstrap/secret)"
