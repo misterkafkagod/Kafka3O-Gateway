@@ -33,6 +33,10 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	if err != nil {
 		return err
 	}
+	policy, policyConfigured, err := loadPolicyConfig(getenv)
+	if err != nil {
+		return err
+	}
 	db, err := storage.OpenDatabase(ctx, config.databasePath)
 	if err != nil {
 		return fmt.Errorf("open Console store: %w", err)
@@ -106,6 +110,36 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 		<-browserCleanupDone
 		<-discoveryDone
 	}()
+	policyDone := make(chan error, 1)
+	serveContext, stopServing := context.WithCancel(ctx)
+	defer stopServing()
+	if policyConfigured {
+		policyHandler, err := newPolicyHandler(db, logger)
+		if err != nil {
+			listener.Close()
+			return fmt.Errorf("initialize Console policy API: %w", err)
+		}
+		policyListener, err := listen("tcp", policy.listen)
+		if err != nil {
+			listener.Close()
+			return fmt.Errorf("listen for Console policy API: %w", err)
+		}
+		policyServer := &http.Server{
+			Handler: policyHandler, TLSConfig: policy.tls, ErrorLog: log.New(serverErrorLog{logger: logger}, "", 0),
+			ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second,
+			IdleTimeout: 60 * time.Second, MaxHeaderBytes: 8 << 10,
+		}
+		logger.Info("Console policy API listening", "address", policyListener.Addr().String())
+		go func() {
+			err := serveConsole(serveContext, policyServer, policyListener)
+			stopServing() // a failed policy listener stops the session API as well
+			policyDone <- err
+		}()
+	} else {
+		policyDone <- nil
+	}
 	logger.Info("Console session API listening", "address", listener.Addr().String())
-	return serveConsole(ctx, server, listener)
+	serveErr := serveConsole(serveContext, server, listener)
+	stopServing()
+	return errors.Join(serveErr, <-policyDone)
 }

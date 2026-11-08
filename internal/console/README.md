@@ -768,6 +768,35 @@ For a current local global ADMIN the loopback server mounts:
   made after the commit use the new classification. Audit and unknown-outcome
   failures behave as for access changes.
 
+## Delegated Gateway authorization (policy API)
+
+Secured Gateways never trust a browser, a shared token or a forwarded header.
+For every protected request they present a single-use Console delegation to
+the Console's separate mutual-TLS policy listener, enabled by setting all of:
+
+- `KAFKA3O_CONSOLE_POLICY_LISTEN`: `host:port` reachable by Gateways.
+- `KAFKA3O_CONSOLE_POLICY_TLS_CERT_FILE` / `_KEY_FILE`: an owner-only key and a
+  currently valid certificate from the service CA carrying exactly the URI SAN
+  `spiffe://kafka3o/console`.
+- `KAFKA3O_CONSOLE_SERVICE_CA_FILE`: the dedicated service CA (not the
+  browser-facing chain).
+
+The listener requires TLS 1.3 and a verified client certificate whose only URI
+SAN is `spiffe://kafka3o/gateway/<clusterID>` for an active registered cluster;
+the caller's cluster comes only from that certificate. Its single route,
+`POST /internal/v1/delegations/consume`, takes strict JSON `handle` (43-character
+base64url), `binding` (base64url SHA-256 of binding v1) and `action`, and
+returns `{operationId, allowed, actorId, source, denial}`. A missing, expired,
+already used or mismatched delegation, or a revoked session, returns
+`401 invalid_delegation`; an unknown caller `403 unknown_gateway`; storage,
+audit or policy failures `503 policy_unavailable`. Each handle is deleted on
+first use even when the decision is a denial, and every decision is audited
+(`resource_kind = gateway_request`, no request data). Decisions re-resolve the
+session's current grants and the cluster's current classification, so
+revocations, grant changes and a newly set Production flag apply to the next
+request. Cognito sessions are denied by this listener until delegated refresh
+is wired (P62). A failing policy listener stops the Console process.
+
 ## Isolated UI preview integration
 
 The UI repository contains an opt-in cross-repository test for its built
