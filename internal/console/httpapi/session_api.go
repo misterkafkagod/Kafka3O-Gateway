@@ -44,6 +44,7 @@ type SessionAPI struct {
 	activeClusters ActiveClusters
 	localGrants    LocalSessionGrants
 	forwarder      gatewayproxy.ForwardRequest
+	audit          AuditStore
 	sessions       Sessions
 	csrf           *session.CSRFVerifier
 	expectedHost   string
