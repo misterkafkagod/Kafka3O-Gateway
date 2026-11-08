@@ -64,6 +64,17 @@ func (d *Database) ChangeRoleGrant(ctx context.Context, change identity.RoleGran
 			event.Decision, decisionErr = "denied", identity.ErrSelfAccessChange
 			break
 		}
+		if change.ClusterID != "" && change.Role != authorization.RoleNone {
+			var registered bool
+			if err := tx.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM registered_clusters WHERE id = ? AND active = 1)",
+				change.ClusterID).Scan(&registered); err != nil {
+				return 0, fmt.Errorf("inspect grant cluster: %w", err)
+			}
+			if !registered {
+				event.Outcome, decisionErr = AuditValidationRejected, identity.ErrUnknownCluster
+				break
+			}
+		}
 		var exists bool
 		if err := tx.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM identities WHERE id = ?)", change.TargetID).Scan(&exists); err != nil {
 			return 0, fmt.Errorf("inspect role grant target: %w", err)

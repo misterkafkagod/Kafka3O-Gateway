@@ -30,9 +30,26 @@ func roleGrantEvents(t *testing.T, db *Database) []AuditEvent {
 	return events
 }
 
+// registerTestClusters registers active, unclassified clusters for cluster-scoped grant tests.
+func registerTestClusters(t *testing.T, db *Database, ids ...string) {
+	t.Helper()
+	clusters := make([]identity.RegisteredCluster, 0, len(ids))
+	for _, id := range ids {
+		clusters = append(clusters, identity.RegisteredCluster{ID: id, Name: id, GatewayURL: "https://" + id + ".example"})
+	}
+	operationID, err := identity.NewOperationID(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SyncRegisteredClusters(context.Background(), clusters, operationID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRoleGrantChangesApplyToNextResolutionAndAuditBeforeAfter(t *testing.T) {
 	f := newAccountAdministrationFixture(t)
 	ctx := context.Background()
+	registerTestClusters(t, f.db, "cluster-a")
 	_, alice := f.addAccount(t, "alice", "alice", "", "")
 	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
 	grants := roleGrantService(t, f.db)
@@ -171,5 +188,30 @@ func TestRoleGrantChangeRejectsInvalidInputBeforeStorage(t *testing.T) {
 	}
 	if after := len(roleGrantEvents(t, f.db)); after != before {
 		t.Fatalf("invalid input reached storage: %d events", after-before)
+	}
+}
+
+func TestRoleGrantChangesRequireARegisteredClusterExceptForRemoval(t *testing.T) {
+	f := newAccountAdministrationFixture(t)
+	ctx := context.Background()
+	f.addAccount(t, "alice", "alice", "", "")
+	registerTestClusters(t, f.db, "cluster-a")
+	actor := identity.LocalAdminActor{AccountID: f.admin.ID, SessionID: f.adminRun.Principal.SessionID}
+	grants := roleGrantService(t, f.db)
+	if _, err := grants.Execute(ctx, actor, "alice", "unregistered", authorization.RoleNone, authorization.RoleViewer); !errors.Is(err, identity.ErrUnknownCluster) {
+		t.Fatalf("unregistered cluster grant error = %v", err)
+	}
+	if _, err := grants.Execute(ctx, actor, "alice", "cluster-a", authorization.RoleNone, authorization.RoleOperator); err != nil {
+		t.Fatal(err)
+	}
+	registerTestClusters(t, f.db, "cluster-b")
+	if _, err := grants.Execute(ctx, actor, "alice", "cluster-a", authorization.RoleOperator, authorization.RoleAdmin); !errors.Is(err, identity.ErrUnknownCluster) {
+		t.Fatalf("deactivated cluster upgrade error = %v", err)
+	}
+	if _, err := grants.Execute(ctx, actor, "alice", "cluster-a", authorization.RoleOperator, authorization.RoleNone); err != nil {
+		t.Fatalf("removing a grant on a deactivated cluster failed: %v", err)
+	}
+	if _, err := grants.Execute(ctx, actor, "alice", "", authorization.RoleNone, authorization.RoleViewer); err != nil {
+		t.Fatalf("global grant needs no registered cluster: %v", err)
 	}
 }

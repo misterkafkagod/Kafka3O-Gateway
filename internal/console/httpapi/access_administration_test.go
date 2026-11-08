@@ -75,6 +75,11 @@ func unrestrictedAdmin(t *testing.T, c testConsole) (string, []*http.Cookie, str
 func TestAccessAdministrationHTTPSFlow(t *testing.T) {
 	c := newTestConsole(t)
 	enableTestAccessAdministration(t, c)
+	if err := c.db.SyncRegisteredClusters(context.Background(), []identity.RegisteredCluster{
+		{ID: "cluster-a", Name: "A", GatewayURL: "https://a.example"}, {ID: "cluster-b", Name: "B", GatewayURL: "https://b.example"},
+	}, "test-registry", time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	adminID, cookies, csrf := unrestrictedAdmin(t, c)
 	response, data := c.request(t, http.MethodPost, "/api/admin/local-accounts",
 		`{"username":"alice","temporaryPassword":"alice temporary passphrase"}`, c.origin, cookies, csrf)

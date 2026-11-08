@@ -49,7 +49,11 @@ func TestGroupMappingChangesApplyToTheNextCognitoResolution(t *testing.T) {
 	f := newRefreshingSessionFixture(t, "refresh rotated")
 	ctx := context.Background()
 	admin := groupMappingAdmin(t, f, "admin", authorization.RoleAdmin)
+	registerTestClusters(t, f.db, "cluster-a", "cluster-b")
 	mappings := groupMappingService(t, f)
+	if _, err := mappings.Execute(ctx, admin, f.provider.Issuer, "unmapped-group", "unregistered", authorization.RoleNone, authorization.RoleViewer); !errors.Is(err, identity.ErrUnknownCluster) {
+		t.Fatalf("unregistered cluster mapping error = %v", err)
+	}
 	if role, _ := fixtureResolvedRole(t, f, "cluster-a"); role != authorization.RoleNone {
 		t.Fatalf("unmapped Cognito session had role %q", role)
 	}
@@ -91,6 +95,7 @@ func TestGroupMappingChangesRequireGlobalAdminAndCurrentPolicy(t *testing.T) {
 	ctx := context.Background()
 	admin := groupMappingAdmin(t, f, "admin", authorization.RoleAdmin)
 	operator := groupMappingAdmin(t, f, "operator", authorization.RoleOperator)
+	registerTestClusters(t, f.db, "cluster-a")
 	if _, err := f.db.db.ExecContext(ctx, "INSERT INTO role_grants (account_id, cluster_id, role) VALUES ('operator', 'cluster-a', 'ADMIN')"); err != nil {
 		t.Fatal(err)
 	}

@@ -59,6 +59,17 @@ func (d *Database) ChangeGroupMapping(ctx context.Context, change identity.Group
 			break
 		}
 		event.ResourceKind, event.ResourceID, event.ClusterID = "cognito_group", change.Issuer+"#"+change.Group, change.ClusterID
+		if change.ClusterID != "" && change.Role != authorization.RoleNone {
+			var registered bool
+			if err := tx.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM registered_clusters WHERE id = ? AND active = 1)",
+				change.ClusterID).Scan(&registered); err != nil {
+				return 0, fmt.Errorf("inspect grant cluster: %w", err)
+			}
+			if !registered {
+				event.Outcome, decisionErr = AuditValidationRejected, identity.ErrUnknownCluster
+				break
+			}
+		}
 		var current string
 		err := tx.QueryRowContext(ctx, "SELECT role FROM cognito_group_bindings WHERE issuer = ? AND group_name = ? AND cluster_id = ?",
 			change.Issuer, change.Group, change.ClusterID).Scan(&current)
