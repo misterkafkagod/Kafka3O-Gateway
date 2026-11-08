@@ -19,7 +19,6 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/cluster"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
-	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/settings"
@@ -82,23 +81,14 @@ func main() {
 
 	mux := http.NewServeMux()
 	api := humago.New(mux, huma.DefaultConfig("Kafka3O Gateway", "0.1.0"))
-	httpapi.RegisterLive(api)
-	httpapi.RegisterGetCluster(api, getCluster)
-	httpapi.RegisterListTopics(api, listTopics)
-	httpapi.RegisterGetTopicDetail(api, getTopicDetail)
-	httpapi.RegisterListLatestTopicMessages(api, listLatestTopicMessages, readTopicMessages)
-	httpapi.RegisterSearchTopicMessages(api, searchTopicMessages)
-	httpapi.RegisterProduceTopicMessage(api, produceTopicMessage)
-	httpapi.RegisterCreateTopic(api, createTopic)
-	httpapi.RegisterDeleteTopic(api, deleteTopic)
-	httpapi.RegisterListConsumerGroups(api, listConsumerGroups)
-	httpapi.RegisterGetTopicConfigurations(api, getConfigurations)
-	httpapi.RegisterGetBrokerConfigurations(api, getConfigurations)
-	httpapi.RegisterAlterTopicConfiguration(api, alterConfiguration)
-	httpapi.RegisterAlterBrokerConfiguration(api, alterConfiguration)
-	httpapi.RegisterIncreasePartitions(api, increasePartitions)
-	httpapi.RegisterListReassignments(api, listReassignments)
-	httpapi.RegisterReassignPartition(api, reassignPartition)
+	registerGatewayRoutes(api, gatewayActions{
+		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
+		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
+		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups,
+		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
+		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
+	})
 
 	server := newGatewayHTTPServer(cfg.HTTP.Listen, mux, cfg.HTTP.CORS.AllowedOrigins, token, certificate)
 
