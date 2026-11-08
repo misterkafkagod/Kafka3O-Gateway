@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -42,6 +43,10 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	forwarding, forwardingConfigured, err := loadForwardingConfig(getenv)
 	if err != nil {
 		return err
+	}
+	backupDirectory := getenv("KAFKA3O_CONSOLE_BACKUP_DIR")
+	if backupDirectory != "" && (!filepath.IsAbs(backupDirectory) || filepath.Clean(backupDirectory) != backupDirectory) {
+		return fmt.Errorf("%w: the backup directory must be absolute", errInvalidServerConfig)
 	}
 	var protector atomic.Pointer[cognito.RefreshTokenProtector]
 	db, err := storage.OpenDatabase(ctx, config.databasePath)
@@ -111,6 +116,16 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 		defer close(browserCleanupDone)
 		maintainBrowserBindings(cleanupContext, db, rand.Reader, time.Now, browserCleanupTicker.C, logger)
 	}()
+	backupsDone := make(chan struct{})
+	backupTicker := time.NewTicker(24 * time.Hour)
+	if backupDirectory != "" {
+		go func() {
+			defer close(backupsDone)
+			maintainBackups(cleanupContext, db.Backup, backupDirectory, time.Now, backupTicker.C, logger)
+		}()
+	} else {
+		close(backupsDone)
+	}
 	discoveryDone := make(chan struct{})
 	if cognitoConfigured {
 		go func() {
@@ -136,6 +151,8 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 		browserCleanupTicker.Stop()
 		<-cleanupDone
 		<-browserCleanupDone
+		backupTicker.Stop()
+		<-backupsDone
 		<-discoveryDone
 	}()
 	policyDone := make(chan error, 1)
