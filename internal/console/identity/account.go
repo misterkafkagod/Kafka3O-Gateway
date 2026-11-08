@@ -320,3 +320,21 @@ type AccessChangeResult struct {
 type RoleGrantStore interface {
 	ChangeRoleGrant(ctx context.Context, change RoleGrantChange) (int64, error)
 }
+
+// GroupMappingChange sets (or, with an empty Role, removes) the role an exact issuer and
+// case-sensitive verified Cognito group receive; an empty ClusterID is global.
+type GroupMappingChange struct {
+	Actor        LocalAdminActor
+	Issuer       string
+	Group        string
+	ClusterID    string
+	ExpectedRole authorization.Role
+	Role         authorization.Role
+	OperationID  string
+	EventID      string
+	OccurredAt   time.Time
+}
+
+type GroupMappingStore interface {
+	ChangeGroupMapping(ctx context.Context, change GroupMappingChange) (int64, error)
+}
