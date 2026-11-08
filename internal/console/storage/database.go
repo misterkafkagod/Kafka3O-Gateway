@@ -57,6 +57,9 @@ type AuditEvent struct {
 	Outcome        AuditOutcome
 	Reason         string
 	PolicyRevision int64
+	// BeforeState and AfterState hold only a role or environment token, never free text.
+	BeforeState string
+	AfterState  string
 }
 
 // AuditFilter limits storage results; callers must separately authorize the requested scope.

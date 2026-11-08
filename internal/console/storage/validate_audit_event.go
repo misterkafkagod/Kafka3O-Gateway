@@ -7,7 +7,8 @@ import (
 )
 
 func validateAuditEvent(event AuditEvent) error {
-	if event.Sequence != 0 || event.OccurredAt.IsZero() || event.OccurredAt.Year() < 1970 || event.OccurredAt.Year() > 2261 || event.PolicyRevision < 0 {
+	if event.Sequence != 0 || event.OccurredAt.IsZero() || event.OccurredAt.Year() < 1970 || event.OccurredAt.Year() > 2261 || event.PolicyRevision < 0 ||
+		!validAuditState(event.BeforeState) || !validAuditState(event.AfterState) {
 		return ErrInvalidAuditEvent
 	}
 	switch event.Source {

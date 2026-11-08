@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 10 {
+	if version > 11 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -231,6 +231,21 @@ CREATE TABLE console_browser_sessions (
 PRAGMA user_version = 10;`
 		if _, err := tx.ExecContext(ctx, browserSessions); err != nil {
 			return fmt.Errorf("apply browser session binding schema: %w", err)
+		}
+		version = 10
+	}
+	if version == 10 {
+		const policyRevision = `
+CREATE TABLE policy_state (
+    id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+    revision INTEGER NOT NULL CHECK (revision >= 0)
+);
+INSERT INTO policy_state (id, revision) VALUES (1, 0);
+ALTER TABLE audit_events ADD COLUMN before_state TEXT NOT NULL DEFAULT '';
+ALTER TABLE audit_events ADD COLUMN after_state TEXT NOT NULL DEFAULT '';
+PRAGMA user_version = 11;`
+		if _, err := tx.ExecContext(ctx, policyRevision); err != nil {
+			return fmt.Errorf("apply policy revision schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

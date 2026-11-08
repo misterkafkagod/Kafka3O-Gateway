@@ -540,7 +540,7 @@ func TestCognitoSessionVersionSevenMigrationPreservesLocalState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE console_browser_sessions; ALTER TABLE console_sessions DROP COLUMN browser_binding_hash; DROP TABLE cognito_group_bindings; DROP TABLE cognito_session_credentials; DROP TABLE cognito_identities; ALTER TABLE console_sessions DROP COLUMN auth_source; PRAGMA user_version = 7"); err != nil {
+	if _, err := f.db.db.ExecContext(ctx, "DROP TABLE console_browser_sessions; ALTER TABLE console_sessions DROP COLUMN browser_binding_hash; DROP TABLE cognito_group_bindings; DROP TABLE cognito_session_credentials; DROP TABLE cognito_identities; ALTER TABLE console_sessions DROP COLUMN auth_source; "+dropPolicyRevisionSchema+"PRAGMA user_version = 7"); err != nil {
 		t.Fatal(err)
 	}
 	path := f.db.path
@@ -568,7 +568,7 @@ func TestCognitoSessionVersionSevenMigrationPreservesLocalState(t *testing.T) {
 		t.Fatalf("version-seven migration lost a pending authorization attempt: %v", err)
 	}
 	var version, tables int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 10 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 11 {
 		t.Fatalf("version-seven migration failed: version=%d err=%v", version, err)
 	}
 	if err := db.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'

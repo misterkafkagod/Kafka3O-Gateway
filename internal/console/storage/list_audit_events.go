@@ -16,7 +16,8 @@ func (d *Database) ListAuditEvents(ctx context.Context, filter AuditFilter) ([]A
 		return nil, ErrInvalidAuditFilter
 	}
 	query := `SELECT sequence, event_id, operation_id, occurred_at_ns, actor_id, source,
-cluster_id, environment, action, resource_kind, resource_id, decision, outcome, reason, policy_revision
+cluster_id, environment, action, resource_kind, resource_id, decision, outcome, reason, policy_revision,
+before_state, after_state
 FROM audit_events WHERE sequence > ?`
 	args := []any{filter.AfterSequence}
 	if !filter.Global {
@@ -59,6 +60,7 @@ FROM audit_events WHERE sequence > ?`
 			&event.Sequence, &event.EventID, &event.OperationID, &occurredAt, &event.ActorID,
 			&event.Source, &event.ClusterID, &event.Environment, &event.Action, &event.ResourceKind,
 			&event.ResourceID, &event.Decision, &event.Outcome, &event.Reason, &event.PolicyRevision,
+			&event.BeforeState, &event.AfterState,
 		); err != nil {
 			return nil, fmt.Errorf("read audit event: %w", err)
 		}

@@ -558,12 +558,14 @@ func TestBrowserSessionMigrationRestartAndUnboundIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.db.db.Exec(`DROP TABLE console_browser_sessions;
-ALTER TABLE console_sessions DROP COLUMN browser_binding_hash; PRAGMA user_version = 9`); err != nil {
+ALTER TABLE console_sessions DROP COLUMN browser_binding_hash;
+DROP TABLE policy_state; ALTER TABLE audit_events DROP COLUMN before_state;
+ALTER TABLE audit_events DROP COLUMN after_state; PRAGMA user_version = 9`); err != nil {
 		t.Fatal(err)
 	}
 	f.reopen(t)
 	var version, count int
-	if err := f.db.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 10 {
+	if err := f.db.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 11 {
 		t.Fatalf("version-nine database did not migrate: version=%d err=%v", version, err)
 	}
 	if err := f.db.db.QueryRow("SELECT COUNT(*) FROM console_browser_sessions").Scan(&count); err != nil || count != 0 {
