@@ -24,7 +24,7 @@ func TestSessionHandlerMountsAccessAndClusterAdministrationRoutes(t *testing.T) 
 	}
 	for _, route := range []struct{ method, path string }{
 		{http.MethodGet, "/api/admin/access"}, {http.MethodPut, "/api/admin/role-grants"}, {http.MethodPut, "/api/admin/group-mappings"},
-		{http.MethodGet, "/api/admin/clusters"}, {http.MethodPut, "/api/admin/clusters/prod/environment"},
+		{http.MethodGet, "/api/admin/clusters"}, {http.MethodGet, "/api/clusters"}, {http.MethodPut, "/api/admin/clusters/prod/environment"},
 	} {
 		request := httptest.NewRequest(route.method, "https://console.example"+route.path, nil)
 		request.Header.Set("Origin", "https://console.example")

@@ -82,5 +82,8 @@ func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger)
 	if err := api.EnableClusterAdministration(clusters, classify); err != nil {
 		return nil, err
 	}
+	if err := api.EnableGatewayForwarding(db, manager); err != nil {
+		return nil, err
+	}
 	return api, nil
 }

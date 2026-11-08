@@ -39,10 +39,13 @@ type SessionAPI struct {
 	// Cluster administration is mounted only by EnableClusterAdministration.
 	clusterList     identity.ListRegisteredClusters
 	classifyCluster identity.ChangeClusterEnvironment
-	sessions        Sessions
-	csrf            *session.CSRFVerifier
-	expectedHost    string
-	markerRandom    io.Reader
+	// Gateway forwarding is mounted only by EnableGatewayForwarding.
+	activeClusters ActiveClusters
+	localGrants    LocalSessionGrants
+	sessions       Sessions
+	csrf           *session.CSRFVerifier
+	expectedHost   string
+	markerRandom   io.Reader
 	// cognitoEnabled is set before serving; cognito is published once discovery succeeds.
 	cognitoEnabled bool
 	cognito        atomic.Pointer[CognitoServices]

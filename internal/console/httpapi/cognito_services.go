@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/authorization"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
 )
@@ -25,6 +26,7 @@ type CognitoSessions interface {
 	ResolveBound(ctx context.Context, token string, browserHash [32]byte) (session.Principal, error)
 	ResolveBoundForLogout(ctx context.Context, token string, browserHash [32]byte) (session.Principal, error)
 	RevokeBound(ctx context.Context, token string, browserHash [32]byte) error
+	ResolveBoundGrants(ctx context.Context, token string, browserHash [32]byte, clusterID string) (session.Principal, []authorization.Grant, error)
 }
 
 // CognitoServices are the discovered provider components used by SSO routes.
