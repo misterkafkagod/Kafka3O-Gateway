@@ -32,7 +32,7 @@ func TestOpenDatabaseCreatesDurableDatabaseWithRequiredSettings(t *testing.T) {
 			t.Fatalf("%s: %v", query, err)
 		}
 	}
-	if journal != "wal" || sync != 2 || foreignKeys != 1 || version != 12 {
+	if journal != "wal" || sync != 2 || foreignKeys != 1 || version != 13 {
 		t.Fatalf("journal=%q synchronous=%d foreignKeys=%d version=%d", journal, sync, foreignKeys, version)
 	}
 	info, err := os.Stat(path)
@@ -115,7 +115,7 @@ func TestOpenDatabaseMigratesVersionOneWithoutLosingAudit(t *testing.T) {
 		"DROP TABLE console_browser_sessions", "DROP TABLE cognito_group_bindings", "DROP TABLE cognito_session_credentials", "DROP TABLE cognito_identities",
 		"DROP TABLE console_sessions", "DROP TABLE role_grants", "DROP TABLE local_accounts", "DROP TABLE identities",
 		"DROP TABLE bootstrap_state", "DROP TABLE bootstrap_attempts", "DROP TABLE password_reset_attempts",
-		"DROP TABLE local_account_creation_attempts", "DROP TABLE local_auth_attempts", "DROP TABLE cognito_authorization_attempts", "DROP TABLE registered_clusters", "DROP TABLE policy_state", "ALTER TABLE audit_events DROP COLUMN before_state", "ALTER TABLE audit_events DROP COLUMN after_state", "PRAGMA user_version = 1",
+		"DROP TABLE local_account_creation_attempts", "DROP TABLE local_auth_attempts", "DROP TABLE cognito_authorization_attempts", "DROP TABLE gateway_delegations", "DROP TABLE registered_clusters", "DROP TABLE policy_state", "ALTER TABLE audit_events DROP COLUMN before_state", "ALTER TABLE audit_events DROP COLUMN after_state", "PRAGMA user_version = 1",
 	} {
 		if _, err := db.db.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -134,7 +134,7 @@ func TestOpenDatabaseMigratesVersionOneWithoutLosingAudit(t *testing.T) {
 		t.Fatalf("events after migration = %+v, %v", events, err)
 	}
 	var version int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 12 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 13 {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 }
@@ -158,7 +158,7 @@ func TestOpenDatabaseMigratesVersionTwoWithoutLosingAccounts(t *testing.T) {
 	for _, statement := range []string{
 		"DROP TABLE console_browser_sessions", "DROP TABLE cognito_group_bindings", "DROP TABLE cognito_session_credentials", "DROP TABLE cognito_identities",
 		"DROP TABLE console_sessions", "DROP TABLE bootstrap_attempts", "DROP TABLE password_reset_attempts", "DROP TABLE local_account_creation_attempts", "DROP TABLE cognito_authorization_attempts",
-		"ALTER TABLE local_accounts DROP COLUMN credential_version", "DROP TABLE registered_clusters", "DROP TABLE policy_state", "ALTER TABLE audit_events DROP COLUMN before_state", "ALTER TABLE audit_events DROP COLUMN after_state", "PRAGMA user_version = 2",
+		"ALTER TABLE local_accounts DROP COLUMN credential_version", "DROP TABLE gateway_delegations", "DROP TABLE registered_clusters", "DROP TABLE policy_state", "ALTER TABLE audit_events DROP COLUMN before_state", "ALTER TABLE audit_events DROP COLUMN after_state", "PRAGMA user_version = 2",
 	} {
 		if _, err := db.db.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
@@ -207,7 +207,7 @@ func TestOpenDatabaseMigratesVersionThreeWithoutLosingSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{"DROP TABLE console_browser_sessions", "ALTER TABLE console_sessions DROP COLUMN browser_binding_hash", "DROP TABLE cognito_group_bindings", "DROP TABLE cognito_session_credentials", "DROP TABLE cognito_identities", "ALTER TABLE console_sessions DROP COLUMN auth_source", "DROP TABLE bootstrap_attempts", "DROP TABLE password_reset_attempts", "DROP TABLE local_account_creation_attempts", "DROP TABLE cognito_authorization_attempts", "DROP TABLE registered_clusters", "DROP TABLE policy_state", "ALTER TABLE audit_events DROP COLUMN before_state", "ALTER TABLE audit_events DROP COLUMN after_state", "PRAGMA user_version = 3"} {
+	for _, statement := range []string{"DROP TABLE console_browser_sessions", "ALTER TABLE console_sessions DROP COLUMN browser_binding_hash", "DROP TABLE cognito_group_bindings", "DROP TABLE cognito_session_credentials", "DROP TABLE cognito_identities", "ALTER TABLE console_sessions DROP COLUMN auth_source", "DROP TABLE bootstrap_attempts", "DROP TABLE password_reset_attempts", "DROP TABLE local_account_creation_attempts", "DROP TABLE cognito_authorization_attempts", "DROP TABLE gateway_delegations", "DROP TABLE registered_clusters", "DROP TABLE policy_state", "ALTER TABLE audit_events DROP COLUMN before_state", "ALTER TABLE audit_events DROP COLUMN after_state", "PRAGMA user_version = 3"} {
 		if _, err := db.db.ExecContext(ctx, statement); err != nil {
 			t.Fatal(err)
 		}

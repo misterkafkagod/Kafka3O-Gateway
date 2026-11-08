@@ -429,7 +429,7 @@ func TestCognitoGroupBindingVersionEightMigrationAndRestart(t *testing.T) {
 		}
 		if i == 0 {
 			var version, bindings int
-			if err := f.db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 12 {
+			if err := f.db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 13 {
 				t.Fatalf("version-eight migration did not advance: version=%d err=%v", version, err)
 			}
 			if err := f.db.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cognito_group_bindings").Scan(&bindings); err != nil || bindings != 0 {

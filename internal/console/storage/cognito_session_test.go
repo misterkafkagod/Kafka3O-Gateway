@@ -568,7 +568,7 @@ func TestCognitoSessionVersionSevenMigrationPreservesLocalState(t *testing.T) {
 		t.Fatalf("version-seven migration lost a pending authorization attempt: %v", err)
 	}
 	var version, tables int
-	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 12 {
+	if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 13 {
 		t.Fatalf("version-seven migration failed: version=%d err=%v", version, err)
 	}
 	if err := db.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'

@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 12 {
+	if version > 13 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -261,6 +261,26 @@ CREATE TABLE registered_clusters (
 PRAGMA user_version = 12;`
 		if _, err := tx.ExecContext(ctx, registeredClusters); err != nil {
 			return fmt.Errorf("apply registered cluster schema: %w", err)
+		}
+		version = 12
+	}
+	if version == 12 {
+		const gatewayDelegations = `
+CREATE TABLE gateway_delegations (
+    handle_hash BLOB PRIMARY KEY NOT NULL CHECK (length(handle_hash) = 32),
+    session_id TEXT NOT NULL REFERENCES console_sessions(id),
+    cluster_id TEXT NOT NULL CHECK (length(cluster_id) BETWEEN 1 AND 128),
+    action TEXT NOT NULL CHECK (length(action) BETWEEN 1 AND 128),
+    resource TEXT NOT NULL CHECK (length(resource) BETWEEN 1 AND 512),
+    binding BLOB NOT NULL CHECK (length(binding) = 32),
+    reason TEXT NOT NULL CHECK (length(reason) <= 512),
+    created_at_ns INTEGER NOT NULL,
+    expires_at_ns INTEGER NOT NULL CHECK (expires_at_ns > created_at_ns AND expires_at_ns - created_at_ns <= 30000000000)
+);
+CREATE INDEX gateway_delegations_expiry ON gateway_delegations(expires_at_ns);
+PRAGMA user_version = 13;`
+		if _, err := tx.ExecContext(ctx, gatewayDelegations); err != nil {
+			return fmt.Errorf("apply gateway delegation schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
