@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/authorization"
 )
 
 type LocalAccount struct {
@@ -289,4 +291,32 @@ var (
 	ErrAccountCreationExpired    = errors.New("local account creation attempt has expired")
 	ErrAccountCreationUnknown    = errors.New("local account creation outcome is unknown")
 	ErrAccountCreationAudit      = errors.New("local account creation failure could not be audited")
+	ErrAccessAdminConfig         = errors.New("access administration dependencies are required")
+	ErrInvalidAccessChange       = errors.New("invalid access change")
+	ErrAccessTargetNotFound      = errors.New("access change target identity not found")
+	ErrSelfAccessChange          = errors.New("administrators cannot change their own access")
+	ErrPolicyConflict            = errors.New("access policy changed since it was read")
+	ErrAccessChangeAudit         = errors.New("access change could not be audited")
+	ErrAccessChangeUnknown       = errors.New("access change outcome is unknown")
 )
+
+// RoleGrantChange sets (or, with an empty Role, removes) one direct grant; an empty ClusterID is global.
+type RoleGrantChange struct {
+	Actor        LocalAdminActor
+	TargetID     string
+	ClusterID    string
+	ExpectedRole authorization.Role
+	Role         authorization.Role
+	OperationID  string
+	EventID      string
+	OccurredAt   time.Time
+}
+
+type AccessChangeResult struct {
+	OperationID    string
+	PolicyRevision int64
+}
+
+type RoleGrantStore interface {
+	ChangeRoleGrant(ctx context.Context, change RoleGrantChange) (int64, error)
+}
