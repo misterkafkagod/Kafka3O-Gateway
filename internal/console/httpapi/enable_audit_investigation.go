@@ -7,5 +7,6 @@ func (a *SessionAPI) EnableAuditInvestigation(audit AuditStore) error {
 	}
 	a.audit = audit
 	a.mux.HandleFunc("GET /api/audit", a.listAuditEvents)
+	a.mux.HandleFunc("GET /api/audit/export", a.exportAuditEvents)
 	return nil
 }

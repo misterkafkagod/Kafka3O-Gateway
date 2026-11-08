@@ -189,3 +189,31 @@ func TestAuditSearchReturnsNoDataWhenTheReadCannotBeAudited(t *testing.T) {
 		t.Fatalf("unaudited read = %d %s", response.StatusCode, data)
 	}
 }
+
+func TestAuditExportIsScopedNeutralizedAndAudited(t *testing.T) {
+	f := newAuditFixture(t)
+	request := func(cookies []*http.Cookie, path string) (*http.Response, string) {
+		t.Helper()
+		response, data := f.c.request(t, http.MethodGet, path, "", f.c.origin, cookies, "")
+		return response, string(data)
+	}
+	response, body := request(f.users["alice"], "/api/audit/export?cluster=prod")
+	if response.StatusCode != 200 || !strings.HasPrefix(response.Header.Get("Content-Type"), "text/csv") ||
+		!strings.Contains(response.Header.Get("Content-Disposition"), "kafka3o-audit-prod-") || !strings.HasPrefix(body, "sequence,occurred_at,") {
+		t.Fatalf("cluster export = %d %q", response.StatusCode, body[:min(len(body), 120)])
+	}
+	for _, line := range strings.Split(strings.TrimSpace(body), "\n")[1:] {
+		if !strings.Contains(line, ",prod,") {
+			t.Fatalf("cluster export leaked %q", line)
+		}
+	}
+	if response, _ := request(f.users["alice"], "/api/audit/export"); response.StatusCode != 403 {
+		t.Fatalf("cluster ADMIN global export = %d", response.StatusCode)
+	}
+	if response, _ := request(f.users["bob"], "/api/audit/export?cluster=prod"); response.StatusCode != 403 {
+		t.Fatalf("OPERATOR export = %d", response.StatusCode)
+	}
+	if response, body := request(f.admin, "/api/audit/export"); response.StatusCode != 200 || !strings.Contains(body, "console.audit.export") {
+		t.Fatalf("global export = %d (the earlier exports should be listed)", response.StatusCode)
+	}
+}
