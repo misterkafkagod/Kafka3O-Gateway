@@ -52,5 +52,24 @@ func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger)
 	if err != nil {
 		return nil, err
 	}
-	return consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, list, listSessions, revokeAdmin, manager, origin, logger)
+	api, err := consoleapi.NewSessionAPI(login, change, create, reset, setEnabled, list, listSessions, revokeAdmin, manager, origin, logger)
+	if err != nil {
+		return nil, err
+	}
+	accessList, err := identity.NewListAccessBindings(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	grants, err := identity.NewChangeRoleGrant(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	mappings, err := identity.NewChangeGroupMapping(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	if err := api.EnableAccessAdministration(accessList, grants, mappings); err != nil {
+		return nil, err
+	}
+	return api, nil
 }

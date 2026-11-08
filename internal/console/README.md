@@ -699,6 +699,40 @@ without an operation ID: investigate the target and audit before any retry.
 Send temporary passwords only over verified TLS and never put them in logs,
 URLs, command histories, or files.
 
+## Access administration
+
+The loopback server mounts three access-administration routes. Each requires
+a current **local** global ADMIN without a pending password change; Cognito
+sessions receive 403, and storage rechecks the session and grant
+transactionally. Grants are resolved again for every authorization decision,
+so a committed change affects the target's next request without re-login.
+
+- `GET /api/admin/access?limit=&after=` returns a no-store, audited
+  (`console.access.list`) page of identities ordered by opaque ID: source
+  (`local` or `cognito`), label (local username or Cognito subject, never
+  email), enabled state and direct grants; all Cognito group mappings (at most
+  1000, with `groupGrantsTruncated`); and the current `policyRevision`.
+  `limit` defaults to 50 and is capped at 100. An audit failure returns 503
+  and no data.
+- `PUT /api/admin/role-grants` takes `identityId`, `clusterId` (empty for
+  global), `expectedRole` and `role` (empty to remove); every field is
+  required.
+- `PUT /api/admin/group-mappings` takes an exact HTTPS `issuer`, a
+  case-sensitive `group`, `clusterId`, `expectedRole` and `role`.
+
+Both change routes require the exact Origin, the session-bound CSRF header and
+strict JSON with no actor, session or extra fields. In one transaction they
+compare `expectedRole` with the current value (`409 policy_conflict` on a
+mismatch), set or remove the binding, increment the policy revision and write
+an audit event whose `before_state`/`after_state` can only hold a role token.
+Administrators cannot change their own grants (`403 self_access_change`), so
+the actor always remains an enabled local global ADMIN. Cluster-only ADMINs
+receive `403 global_admin_required`. Audit failure blocks the change
+(`503 access_change_audit_unavailable`); an uncertain commit returns
+`503 access_change_outcome_unknown` and must be investigated by operation ID,
+not retried automatically. Cluster IDs are syntactically validated only; the
+registered-cluster check arrives with P60.
+
 ## Isolated UI preview integration
 
 The UI repository contains an opt-in cross-repository test for its built

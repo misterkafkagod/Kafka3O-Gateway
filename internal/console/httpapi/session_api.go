@@ -32,10 +32,14 @@ type SessionAPI struct {
 	list         identity.ListLocalAccounts
 	listSessions identity.ListAdminSessions
 	revokeAdmin  identity.RevokeAdminSession
-	sessions     Sessions
-	csrf         *session.CSRFVerifier
-	expectedHost string
-	markerRandom io.Reader
+	// Access administration is mounted only by EnableAccessAdministration.
+	accessList    identity.ListAccessBindings
+	changeGrant   identity.ChangeRoleGrant
+	changeMapping identity.ChangeGroupMapping
+	sessions      Sessions
+	csrf          *session.CSRFVerifier
+	expectedHost  string
+	markerRandom  io.Reader
 	// cognitoEnabled is set before serving; cognito is published once discovery succeeds.
 	cognitoEnabled bool
 	cognito        atomic.Pointer[CognitoServices]
@@ -66,6 +70,22 @@ type resetPasswordBody struct {
 type createLocalAccountBody struct {
 	Username          string `json:"username"`
 	TemporaryPassword string `json:"temporaryPassword"`
+}
+
+// Every access-change field is required; empty strings mean global scope or no role.
+type roleGrantChangeBody struct {
+	IdentityID   *string `json:"identityId"`
+	ClusterID    *string `json:"clusterId"`
+	ExpectedRole *string `json:"expectedRole"`
+	Role         *string `json:"role"`
+}
+
+type groupMappingChangeBody struct {
+	Issuer       *string `json:"issuer"`
+	Group        *string `json:"group"`
+	ClusterID    *string `json:"clusterId"`
+	ExpectedRole *string `json:"expectedRole"`
+	Role         *string `json:"role"`
 }
 
 type requiredBoolean struct {
