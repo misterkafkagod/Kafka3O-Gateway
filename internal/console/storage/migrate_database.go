@@ -22,7 +22,7 @@ func migrateDatabase(ctx context.Context, db *sql.DB) (result error) {
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("read database schema version: %w", err)
 	}
-	if version > 11 {
+	if version > 12 {
 		return ErrUnsupportedSchema
 	}
 	if version == 0 {
@@ -246,6 +246,21 @@ ALTER TABLE audit_events ADD COLUMN after_state TEXT NOT NULL DEFAULT '';
 PRAGMA user_version = 11;`
 		if _, err := tx.ExecContext(ctx, policyRevision); err != nil {
 			return fmt.Errorf("apply policy revision schema: %w", err)
+		}
+		version = 11
+	}
+	if version == 11 {
+		const registeredClusters = `
+CREATE TABLE registered_clusters (
+    id TEXT COLLATE BINARY PRIMARY KEY NOT NULL CHECK (length(id) BETWEEN 1 AND 128),
+    display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 128),
+    gateway_url TEXT NOT NULL CHECK (length(gateway_url) BETWEEN 1 AND 512),
+    environment TEXT NOT NULL DEFAULT '' CHECK (environment IN ('', 'NON_PRODUCTION', 'PRODUCTION')),
+    active INTEGER NOT NULL CHECK (active IN (0, 1))
+);
+PRAGMA user_version = 12;`
+		if _, err := tx.ExecContext(ctx, registeredClusters); err != nil {
+			return fmt.Errorf("apply registered cluster schema: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

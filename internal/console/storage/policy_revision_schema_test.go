@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// dropPolicyRevisionSchema undoes schema v11 so older-version migration tests start from their real schema.
-const dropPolicyRevisionSchema = "DROP TABLE policy_state; ALTER TABLE audit_events DROP COLUMN before_state; ALTER TABLE audit_events DROP COLUMN after_state; "
+// dropSchemaAfterVersionTen undoes schemas v11–v12 so older-version migration tests start from their real schema.
+const dropSchemaAfterVersionTen = "DROP TABLE registered_clusters; DROP TABLE policy_state; ALTER TABLE audit_events DROP COLUMN before_state; ALTER TABLE audit_events DROP COLUMN after_state; "
 
 func TestPolicyRevisionMigrationFromVersionTenPreservesAudit(t *testing.T) {
 	ctx := context.Background()
@@ -24,7 +24,7 @@ func TestPolicyRevisionMigrationFromVersionTenPreservesAudit(t *testing.T) {
 	if err := db.AppendAuditEvent(ctx, legacy); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.db.ExecContext(ctx, dropPolicyRevisionSchema+"PRAGMA user_version = 10"); err != nil {
+	if _, err := db.db.ExecContext(ctx, dropSchemaAfterVersionTen+"PRAGMA user_version = 10"); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -37,7 +37,7 @@ func TestPolicyRevisionMigrationFromVersionTenPreservesAudit(t *testing.T) {
 		}
 		var version int
 		var revision int64
-		if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 11 {
+		if err := db.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 12 {
 			t.Fatalf("version-ten migration did not advance: version=%d err=%v", version, err)
 		}
 		if err := db.db.QueryRowContext(ctx, "SELECT revision FROM policy_state WHERE id = 1").Scan(&revision); err != nil || revision != 0 {

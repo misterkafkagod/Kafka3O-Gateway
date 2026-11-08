@@ -12,6 +12,7 @@ import (
 	"time"
 
 	consoleapi "github.com/misterkafkagod/Kafka3O-Gateway/internal/console/httpapi"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/storage"
 )
 
@@ -28,6 +29,10 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	if err != nil {
 		return err
 	}
+	clusters, clustersConfigured, err := loadClusterRegistry(getenv)
+	if err != nil {
+		return err
+	}
 	db, err := storage.OpenDatabase(ctx, config.databasePath)
 	if err != nil {
 		return fmt.Errorf("open Console store: %w", err)
@@ -39,6 +44,15 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	}()
 	if err := db.VerifyInitialAdministrator(ctx); err != nil {
 		return fmt.Errorf("verify Console bootstrap: %w", err)
+	}
+	if clustersConfigured {
+		operationID, err := identity.NewOperationID(rand.Reader)
+		if err != nil {
+			return err
+		}
+		if err := db.SyncRegisteredClusters(ctx, clusters, operationID, time.Now()); err != nil {
+			return fmt.Errorf("sync registered clusters: %w", err)
+		}
 	}
 	handler, err := newSessionHandler(db, config.origin, logger)
 	if err != nil {

@@ -300,6 +300,9 @@ var (
 	ErrAccessChangeUnknown       = errors.New("access change outcome is unknown")
 	ErrInvalidAccessList         = errors.New("invalid access listing request")
 	ErrAccessListAudit           = errors.New("access listing could not be audited")
+	ErrInvalidClusterID          = errors.New("invalid cluster identifier")
+	ErrInvalidClusterRegistry    = errors.New("invalid registered cluster configuration")
+	ErrClusterRetarget           = errors.New("a registered cluster cannot be pointed at a different Gateway")
 )
 
 // RoleGrantChange sets (or, with an empty Role, removes) one direct grant; an empty ClusterID is global.
@@ -380,4 +383,11 @@ type AccessListResult struct {
 
 type AccessListStore interface {
 	ListAccessBindings(ctx context.Context, request AccessListRequest) (AccessListResult, error)
+}
+
+// RegisteredCluster is one operator-configured cluster; its environment is held only by the Console store.
+type RegisteredCluster struct {
+	ID         string
+	Name       string
+	GatewayURL string
 }
