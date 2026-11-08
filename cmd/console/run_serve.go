@@ -65,6 +65,16 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 			return fmt.Errorf("sync registered clusters: %w", err)
 		}
 	}
+	// Mutations whose outcome was never recorded are surfaced for investigation, never replayed.
+	if unresolved, err := db.ListUnresolvedGatewayIntents(ctx, time.Now().Add(-time.Minute), 100); err != nil {
+		logger.Warn("could not check unresolved Kafka mutation intents", "error_type", fmt.Sprintf("%T", err))
+	} else if len(unresolved) > 0 {
+		ids := make([]string, 0, len(unresolved))
+		for _, intent := range unresolved {
+			ids = append(ids, intent.OperationID)
+		}
+		logger.Warn("Kafka mutations without a recorded outcome; check each before any retry", "count", len(unresolved), "operation_ids", ids)
+	}
 	handler, err := newSessionHandler(db, config.origin, logger)
 	if err != nil {
 		return fmt.Errorf("initialize Console sessions: %w", err)

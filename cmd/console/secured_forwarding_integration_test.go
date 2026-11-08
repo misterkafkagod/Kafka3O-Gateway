@@ -228,6 +228,34 @@ func TestSecuredForwardingEndToEnd(t *testing.T) {
 	if !audited {
 		t.Fatal("the Production change reason was not audited with the allowed decision")
 	}
+	// Each allowed mutation has a correlated outcome, permitted reads left no audit events, nothing is unresolved.
+	all, err := db.ListAuditEvents(ctx, storage.AuditFilter{Global: true, Limit: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	intents, outcomes := map[string]bool{}, map[string]storage.AuditOutcome{}
+	for _, event := range all {
+		switch {
+		case event.ResourceKind == "gateway_request" && event.Decision == "allowed":
+			if !authorization.IsKafkaMutation(authorization.Action(event.Action)) {
+				t.Fatalf("a permitted read was audited: %+v", event)
+			}
+			intents[event.OperationID] = true
+		case event.ResourceKind == "gateway_outcome":
+			outcomes[event.OperationID] = event.Outcome
+		}
+	}
+	if len(intents) != 2 || len(outcomes) != 2 {
+		t.Fatalf("intents=%v outcomes=%v", intents, outcomes)
+	}
+	for operationID := range intents {
+		if outcomes[operationID] != storage.AuditConfirmed {
+			t.Fatalf("intent %s outcome = %q", operationID, outcomes[operationID])
+		}
+	}
+	if unresolved, err := db.ListUnresolvedGatewayIntents(ctx, time.Now().Add(time.Hour), 10); err != nil || len(unresolved) != 0 {
+		t.Fatalf("unresolved after confirmed writes = %+v, %v", unresolved, err)
+	}
 	mu.Lock()
 	last := calls[len(calls)-1]
 	mu.Unlock()

@@ -118,3 +118,12 @@ var (
 	ErrUnknownIntent    = errors.New("no allowed mutation intent exists for this operation and cluster")
 	ErrDuplicateOutcome = errors.New("the mutation outcome is already recorded")
 )
+
+// UnresolvedIntent is an allowed mutation intent without a recorded outcome; it must be investigated, never replayed.
+type UnresolvedIntent struct {
+	OperationID string
+	ClusterID   string
+	Action      authorization.Action
+	ActorID     string
+	OccurredAt  time.Time
+}

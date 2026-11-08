@@ -831,6 +831,22 @@ through this forwarding API with the session cookie; it has no Gateway token
 panel. A 401 returns to sign-in and clears cached data; denials, authorization
 outages and unknown write outcomes are shown distinctly.
 
+## Mutation intents and outcomes
+
+Every delegated decision is audited except permitted reads, so status polling
+adds no audit events. An allowed Kafka mutation's decision is its durable
+intent (`resource_kind = gateway_request`, outcome `attempted`), committed
+before the Gateway may call Kafka; if it cannot be written the Gateway gets
+503 and Kafka is not called. After the Kafka call the secured Gateway buffers
+the response and posts one outcome to `POST /internal/v1/delegations/outcome`
+(`confirmed` for 2xx, `validation_rejected` for 4xx, `unknown` for any
+`*_unknown` problem, `failed` for other 5xx); it is stored under the same
+operation ID and actor (`resource_kind = gateway_outcome`). Only the intent's
+own cluster may record it, once. If the outcome cannot be recorded the client
+receives `503 outcome_unknown` with the operation ID instead of the result.
+At startup the Console logs operation IDs of intents older than one minute
+without an outcome; they are never replayed and must be checked.
+
 ## Isolated UI preview integration
 
 The UI repository contains an opt-in cross-repository test for its built
