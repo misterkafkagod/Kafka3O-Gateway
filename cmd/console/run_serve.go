@@ -37,6 +37,10 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	if err != nil {
 		return err
 	}
+	forwarding, forwardingConfigured, err := loadForwardingConfig(getenv)
+	if err != nil {
+		return err
+	}
 	db, err := storage.OpenDatabase(ctx, config.databasePath)
 	if err != nil {
 		return fmt.Errorf("open Console store: %w", err)
@@ -61,6 +65,11 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	handler, err := newSessionHandler(db, config.origin, logger)
 	if err != nil {
 		return fmt.Errorf("initialize Console sessions: %w", err)
+	}
+	if forwardingConfigured {
+		if err := enableGatewayRequests(handler, db, forwarding); err != nil {
+			return fmt.Errorf("initialize Console Gateway forwarding: %w", err)
+		}
 	}
 	if cognitoConfigured {
 		if err := handler.EnableCognito(rand.Reader); err != nil {

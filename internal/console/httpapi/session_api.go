@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"sync/atomic"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/gatewayproxy"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/session"
 )
@@ -42,6 +43,7 @@ type SessionAPI struct {
 	// Gateway forwarding is mounted only by EnableGatewayForwarding.
 	activeClusters ActiveClusters
 	localGrants    LocalSessionGrants
+	forwarder      gatewayproxy.ForwardRequest
 	sessions       Sessions
 	csrf           *session.CSRFVerifier
 	expectedHost   string
