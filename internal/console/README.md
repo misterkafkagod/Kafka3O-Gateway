@@ -823,6 +823,15 @@ forged state, logout returning the provider URL, 401 replay after logout,
 local login, SSO unavailable during the outage, Console-origin-only requests,
 and no code, state, client secret or cookie value in the logs.
 
+`KAFKA3O_TEST_CONSOLE_PREVIEW_CLUSTERS=1` registers two synthetic clusters
+(`dev`, `prod`, unreachable `.invalid` Gateway URLs) in the fixture's
+temporary database. With `KAFKA3O_PREVIEW_INTEGRATION=1`,
+`src\console\previewAdministrationIntegration.test.ts` drives the built
+preview's Access management and Cluster classification views against the
+real Console routes: cancel sends nothing, classification requires a reason,
+self-change shows a 403 explanation, a grant commits with before/after
+confirmation, and a concurrent change produces a 409 reload.
+
 `src\console\previewCognitoLive.test.ts` is opt-in with
 `KAFKA3O_LIVE_COGNITO=1`, all `KAFKA3O_CONSOLE_COGNITO_*` settings and
 `KAFKA3O_LIVE_COGNITO_USERNAME` / `KAFKA3O_LIVE_COGNITO_PASSWORD` for a test

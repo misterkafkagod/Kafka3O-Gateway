@@ -61,6 +61,15 @@ func TestConsolePreviewHTTPSFixture(t *testing.T) {
 	if err := db.VerifyInitialAdministrator(ctx); err != nil {
 		t.Fatal(err)
 	}
+	// Optional synthetic registry for the administration preview test; no Gateway is contacted.
+	if os.Getenv("KAFKA3O_TEST_CONSOLE_PREVIEW_CLUSTERS") == "1" {
+		if err := db.SyncRegisteredClusters(ctx, []identity.RegisteredCluster{
+			{ID: "dev", Name: "Dev", GatewayURL: "https://dev.invalid:8081"},
+			{ID: "prod", Name: "Prod", GatewayURL: "https://prod.invalid:8082"},
+		}, "preview-registry", time.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	// Optional Cognito: "synthetic" or "synthetic-outage" use the synthetic HTTPS provider;
 	// "environment" reads KAFKA3O_CONSOLE_COGNITO_* for a real test User Pool on https://localhost:8443.
 	mode := os.Getenv("KAFKA3O_TEST_CONSOLE_PREVIEW_COGNITO")
