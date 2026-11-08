@@ -71,5 +71,16 @@ func newSessionHandler(db *storage.Database, origin string, logger *slog.Logger)
 	if err := api.EnableAccessAdministration(accessList, grants, mappings); err != nil {
 		return nil, err
 	}
+	clusters, err := identity.NewListRegisteredClusters(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	classify, err := identity.NewChangeClusterEnvironment(db, rand.Reader, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	if err := api.EnableClusterAdministration(clusters, classify); err != nil {
+		return nil, err
+	}
 	return api, nil
 }

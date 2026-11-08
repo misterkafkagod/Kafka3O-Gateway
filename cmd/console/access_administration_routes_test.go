@@ -12,7 +12,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/storage"
 )
 
-func TestSessionHandlerMountsAccessAdministrationRoutes(t *testing.T) {
+func TestSessionHandlerMountsAccessAndClusterAdministrationRoutes(t *testing.T) {
 	db, err := storage.OpenDatabase(context.Background(), filepath.Join(t.TempDir(), "console.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -24,6 +24,7 @@ func TestSessionHandlerMountsAccessAdministrationRoutes(t *testing.T) {
 	}
 	for _, route := range []struct{ method, path string }{
 		{http.MethodGet, "/api/admin/access"}, {http.MethodPut, "/api/admin/role-grants"}, {http.MethodPut, "/api/admin/group-mappings"},
+		{http.MethodGet, "/api/admin/clusters"}, {http.MethodPut, "/api/admin/clusters/prod/environment"},
 	} {
 		request := httptest.NewRequest(route.method, "https://console.example"+route.path, nil)
 		request.Header.Set("Origin", "https://console.example")

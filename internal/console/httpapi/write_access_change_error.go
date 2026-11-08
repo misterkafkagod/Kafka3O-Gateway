@@ -35,6 +35,10 @@ func (a *SessionAPI) writeAccessChangeError(w http.ResponseWriter, err error, op
 			"The last enabled local global administrator cannot be removed", operationID)
 	case errors.Is(err, identity.ErrInvalidAccessChange):
 		a.writeAccountProblem(w, http.StatusBadRequest, "invalid_access_change", "Invalid access change", operationID)
+	case errors.Is(err, identity.ErrChangeReasonRequired):
+		a.writeAccountProblem(w, http.StatusBadRequest, "change_reason_required", "A change reason is required", operationID)
+	case errors.Is(err, identity.ErrUnknownCluster):
+		a.writeAccountProblem(w, http.StatusNotFound, "cluster_not_found", "Cluster is not an active registered cluster", operationID)
 	case errors.Is(err, identity.ErrAccessTargetNotFound):
 		a.writeAccountProblem(w, http.StatusNotFound, "identity_not_found", "Identity not found", operationID)
 	default:

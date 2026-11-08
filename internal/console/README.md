@@ -733,6 +733,41 @@ receive `403 global_admin_required`. Audit failure blocks the change
 not retried automatically. Cluster IDs are syntactically validated only; the
 registered-cluster check arrives with P60.
 
+## Registered clusters and Production classification
+
+`KAFKA3O_CONSOLE_CLUSTERS_FILE` optionally names an absolute, operator-owned
+JSON file: `{"clusters":[{"id":"prod","name":"Prod","gatewayUrl":"https://gateway.example:8082"}]}`.
+IDs use letters, digits, `.`, `_` and `-` (at most 128); Gateway URLs are exact
+HTTPS origins with no credentials, path, query or fragment. Unknown fields,
+duplicates or files over 1 MiB stop startup. On each start the registry is
+synchronized in one audited transaction (`console.cluster.register`,
+`rename`, `deactivate`, `reactivate`, attributed to the Console service): new
+IDs are registered **unclassified**, absent IDs are deactivated but keep their
+classification, and pointing an existing ID at a different Gateway URL stops
+startup instead of reusing its classification. Browser `config.json`, display
+names, query parameters and headers are never classification sources.
+
+`ClusterEnvironment` reports the stored classification only for an active
+registered cluster; unknown, inactive and unclassified clusters are all
+unclassified, so P49 policy denies every Kafka mutation for them. New
+cluster-scoped grants and group mappings require an active registered cluster
+(`404 cluster_not_found`); removals remain possible for deactivated clusters.
+
+For a current local global ADMIN the loopback server mounts:
+
+- `GET /api/admin/clusters`: audited (`console.cluster.list`), no-store list of
+  every registered cluster with name, Gateway URL, environment, active flag
+  and the policy revision.
+- `PUT /api/admin/clusters/{clusterID}/environment` with required
+  `expectedEnvironment`, `environment` (`PRODUCTION` or `NON_PRODUCTION`) and
+  `reason` (trimmed, printable, 1–512 bytes; otherwise
+  `400 change_reason_required`). Query parameters are rejected. A stale
+  expected value returns `409 policy_conflict`; cluster-only ADMINs receive
+  `403 global_admin_required`. The change, policy revision and an audit event
+  with before/after environment and the reason commit atomically; decisions
+  made after the commit use the new classification. Audit and unknown-outcome
+  failures behave as for access changes.
+
 ## Isolated UI preview integration
 
 The UI repository contains an opt-in cross-repository test for its built

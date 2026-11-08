@@ -305,6 +305,7 @@ var (
 	ErrClusterRetarget           = errors.New("a registered cluster cannot be pointed at a different Gateway")
 	ErrUnknownCluster            = errors.New("cluster is not an active registered cluster")
 	ErrChangeReasonRequired      = errors.New("a valid change reason is required")
+	ErrClusterListAudit          = errors.New("cluster listing could not be audited")
 )
 
 // RoleGrantChange sets (or, with an empty Role, removes) one direct grant; an empty ClusterID is global.
@@ -408,4 +409,28 @@ type ClusterEnvironmentChange struct {
 
 type ClusterEnvironmentStore interface {
 	ChangeClusterEnvironment(ctx context.Context, change ClusterEnvironmentChange) (int64, error)
+}
+
+type RegisteredClusterSummary struct {
+	ID          string
+	Name        string
+	GatewayURL  string
+	Environment authorization.Environment
+	Active      bool
+}
+
+type ClusterListRequest struct {
+	Actor       LocalAdminActor
+	OperationID string
+	OccurredAt  time.Time
+}
+
+type ClusterListResult struct {
+	OperationID    string
+	Clusters       []RegisteredClusterSummary
+	PolicyRevision int64
+}
+
+type ClusterListStore interface {
+	ListRegisteredClusters(ctx context.Context, request ClusterListRequest) (ClusterListResult, error)
 }

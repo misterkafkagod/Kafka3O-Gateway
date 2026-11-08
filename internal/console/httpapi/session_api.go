@@ -36,10 +36,13 @@ type SessionAPI struct {
 	accessList    identity.ListAccessBindings
 	changeGrant   identity.ChangeRoleGrant
 	changeMapping identity.ChangeGroupMapping
-	sessions      Sessions
-	csrf          *session.CSRFVerifier
-	expectedHost  string
-	markerRandom  io.Reader
+	// Cluster administration is mounted only by EnableClusterAdministration.
+	clusterList     identity.ListRegisteredClusters
+	classifyCluster identity.ChangeClusterEnvironment
+	sessions        Sessions
+	csrf            *session.CSRFVerifier
+	expectedHost    string
+	markerRandom    io.Reader
 	// cognitoEnabled is set before serving; cognito is published once discovery succeeds.
 	cognitoEnabled bool
 	cognito        atomic.Pointer[CognitoServices]
@@ -86,6 +89,12 @@ type groupMappingChangeBody struct {
 	ClusterID    *string `json:"clusterId"`
 	ExpectedRole *string `json:"expectedRole"`
 	Role         *string `json:"role"`
+}
+
+type clusterEnvironmentChangeBody struct {
+	ExpectedEnvironment *string `json:"expectedEnvironment"`
+	Environment         *string `json:"environment"`
+	Reason              *string `json:"reason"`
 }
 
 type requiredBoolean struct {
