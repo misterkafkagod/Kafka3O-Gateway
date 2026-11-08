@@ -78,6 +78,9 @@ type SessionGrants interface {
 	ResolveBoundSessionGrants(ctx context.Context, tokenHash, browserHash [32]byte, clusterID string, requested time.Time, protector *cognito.RefreshTokenProtector) ([]authorization.Grant, error)
 }
 
+// ProtectorSource returns the current Cognito refresh-token protector, or nil while Cognito is unavailable.
+type ProtectorSource func() *cognito.RefreshTokenProtector
+
 type Environments interface {
 	ClusterEnvironment(ctx context.Context, clusterID string) (authorization.Environment, error)
 }

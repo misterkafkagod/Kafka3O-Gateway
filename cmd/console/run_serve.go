@@ -9,8 +9,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/cognito"
 	consoleapi "github.com/misterkafkagod/Kafka3O-Gateway/internal/console/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/identity"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/console/storage"
@@ -41,6 +43,7 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	if err != nil {
 		return err
 	}
+	var protector atomic.Pointer[cognito.RefreshTokenProtector]
 	db, err := storage.OpenDatabase(ctx, config.databasePath)
 	if err != nil {
 		return fmt.Errorf("open Console store: %w", err)
@@ -104,7 +107,13 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 			defer close(discoveryDone)
 			discoverCognito(cleanupContext, func(ctx context.Context) (consoleapi.CognitoServices, error) {
 				return newCognitoServices(ctx, db, cognitoSettings, rand.Reader, time.Now)
-			}, handler.PublishCognito, func(attempt int) <-chan time.Time {
+			}, func(services consoleapi.CognitoServices) error {
+				if err := handler.PublishCognito(services); err != nil {
+					return err
+				}
+				protector.Store(services.Protector)
+				return nil
+			}, func(attempt int) <-chan time.Time {
 				return time.After(cognitoDiscoveryDelay(attempt))
 			}, logger)
 		}()
@@ -123,7 +132,7 @@ func runServe(ctx context.Context, getenv func(string) string, listen func(strin
 	serveContext, stopServing := context.WithCancel(ctx)
 	defer stopServing()
 	if policyConfigured {
-		policyHandler, err := newPolicyHandler(db, logger)
+		policyHandler, err := newPolicyHandler(db, func() *cognito.RefreshTokenProtector { return protector.Load() }, logger)
 		if err != nil {
 			listener.Close()
 			return fmt.Errorf("initialize Console policy API: %w", err)

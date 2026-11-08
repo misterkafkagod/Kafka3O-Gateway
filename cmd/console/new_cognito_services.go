@@ -40,5 +40,5 @@ func newCognitoServices(ctx context.Context, db *storage.Database, config cognit
 		return consoleapi.CognitoServices{}, errInvalidCognitoConfig
 	}
 	logout.RawQuery = url.Values{"client_id": {config.provider.ClientID}, "logout_uri": {config.logoutReturn}}.Encode()
-	return consoleapi.CognitoServices{Attempts: attempts, Exchanger: exchanger, Sessions: manager, LogoutURL: logout.String()}, nil
+	return consoleapi.CognitoServices{Attempts: attempts, Exchanger: exchanger, Sessions: manager, LogoutURL: logout.String(), Protector: protector}, nil
 }

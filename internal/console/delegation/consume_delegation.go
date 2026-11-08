@@ -21,14 +21,14 @@ type consumeDelegation struct {
 	store        Store
 	grants       SessionGrants
 	environments Environments
-	protector    *cognito.RefreshTokenProtector
+	protector    ProtectorSource
 	random       io.Reader
 	now          func() time.Time
 }
 
-// NewConsumeDelegation builds the policy decision; protector may be nil when Cognito is not configured,
-// in which case Cognito sessions fail closed.
-func NewConsumeDelegation(store Store, grants SessionGrants, environments Environments, protector *cognito.RefreshTokenProtector,
+// NewConsumeDelegation builds the policy decision. protector may be nil, or return nil until Cognito discovery
+// succeeds; Cognito sessions then fail closed while local sessions are unaffected.
+func NewConsumeDelegation(store Store, grants SessionGrants, environments Environments, protector ProtectorSource,
 	random io.Reader, now func() time.Time) (ConsumeDelegation, error) {
 	if store == nil || grants == nil || environments == nil || random == nil || now == nil {
 		return nil, ErrConfig
@@ -67,11 +67,15 @@ func (c consumeDelegation) Execute(ctx context.Context, request ConsumeRequest) 
 		}
 		return decision, ErrInvalidDelegation
 	}
+	var protector *cognito.RefreshTokenProtector
+	if c.protector != nil {
+		protector = c.protector()
+	}
 	var grants []authorization.Grant
 	if consumed.BrowserHash == ([32]byte{}) {
-		grants, err = c.grants.ResolveSessionGrants(ctx, consumed.TokenHash, consumed.ClusterID, now, c.protector)
+		grants, err = c.grants.ResolveSessionGrants(ctx, consumed.TokenHash, consumed.ClusterID, now, protector)
 	} else {
-		grants, err = c.grants.ResolveBoundSessionGrants(ctx, consumed.TokenHash, consumed.BrowserHash, consumed.ClusterID, now, c.protector)
+		grants, err = c.grants.ResolveBoundSessionGrants(ctx, consumed.TokenHash, consumed.BrowserHash, consumed.ClusterID, now, protector)
 	}
 	if errors.Is(err, session.ErrInvalidSession) {
 		record.Denial = "invalid_session"

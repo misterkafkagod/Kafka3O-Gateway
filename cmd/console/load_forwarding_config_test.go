@@ -12,7 +12,9 @@ func TestGatewayForwardingConfiguration(t *testing.T) {
 	ca := servicetlstest.NewAuthority(t)
 	console := ca.Issue(t, "console", servicetls.ConsoleURI, time.Now().Add(time.Hour))
 	gateway := ca.Issue(t, "gateway", servicetls.GatewayURIPrefix+"dev", time.Now().Add(time.Hour))
-	env := func(values map[string]string) func(string) string { return func(key string) string { return values[key] } }
+	env := func(values map[string]string) func(string) string {
+		return func(key string) string { return values[key] }
+	}
 	if _, configured, err := loadForwardingConfig(env(nil)); err != nil || configured {
 		t.Fatalf("unset = %t %v", configured, err)
 	}

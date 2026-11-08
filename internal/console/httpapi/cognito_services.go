@@ -35,4 +35,6 @@ type CognitoServices struct {
 	Exchanger CognitoExchanger
 	Sessions  CognitoSessions
 	LogoutURL string
+	// Protector authenticates retained Cognito credentials for delegated Gateway decisions.
+	Protector *cognito.RefreshTokenProtector
 }
