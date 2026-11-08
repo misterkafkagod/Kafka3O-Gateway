@@ -298,6 +298,8 @@ var (
 	ErrPolicyConflict            = errors.New("access policy changed since it was read")
 	ErrAccessChangeAudit         = errors.New("access change could not be audited")
 	ErrAccessChangeUnknown       = errors.New("access change outcome is unknown")
+	ErrInvalidAccessList         = errors.New("invalid access listing request")
+	ErrAccessListAudit           = errors.New("access listing could not be audited")
 )
 
 // RoleGrantChange sets (or, with an empty Role, removes) one direct grant; an empty ClusterID is global.
@@ -337,4 +339,45 @@ type GroupMappingChange struct {
 
 type GroupMappingStore interface {
 	ChangeGroupMapping(ctx context.Context, change GroupMappingChange) (int64, error)
+}
+
+const (
+	MaxAccessPageSize    = 100
+	MaxListedGroupGrants = 1000
+)
+
+// AccessIdentity is one local or Cognito identity with its direct grants; it never carries credentials or email.
+type AccessIdentity struct {
+	ID      string
+	Source  string
+	Label   string
+	Enabled bool
+	Grants  []authorization.Grant
+}
+
+type GroupGrant struct {
+	Issuer string
+	Group  string
+	Grant  authorization.Grant
+}
+
+type AccessListRequest struct {
+	Actor       LocalAdminActor
+	AfterID     string
+	Limit       int
+	OperationID string
+	OccurredAt  time.Time
+}
+
+type AccessListResult struct {
+	OperationID          string
+	Identities           []AccessIdentity
+	NextCursor           string
+	GroupGrants          []GroupGrant
+	GroupGrantsTruncated bool
+	PolicyRevision       int64
+}
+
+type AccessListStore interface {
+	ListAccessBindings(ctx context.Context, request AccessListRequest) (AccessListResult, error)
 }
