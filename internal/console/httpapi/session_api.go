@@ -136,4 +136,11 @@ type sessionResponse struct {
 	Source             string `json:"authSource"`
 	MustChangePassword bool   `json:"mustChangePassword"`
 	AbsoluteExpiresAt  string `json:"absoluteExpiresAt"`
+	// Administration is reported by GET /api/session only; sign-in responses omit it.
+	Administration *sessionAdministration `json:"administration,omitempty"`
+}
+
+type sessionAdministration struct {
+	Access bool `json:"access"`
+	Audit  bool `json:"audit"`
 }
