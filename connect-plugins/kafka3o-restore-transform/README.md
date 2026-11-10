@@ -10,7 +10,7 @@ key, value and headers). See the UI repository's
   drops records from objects newer than `snapshot.boundary` (`partition:offset,...`, the highest object start offset
   per partition when the restore started).
 
-Build with Java 21 (Temurin 21.0.13) and Maven 3.9.16:
+Build with Java 21 (Temurin 21.0.13) and Maven 3.9.16, against connect-api 4.3.2 (Kafka 4.3.2 fixes the lz4-java and snappy-java advisories in 4.3.1):
 
 ```bash
 mvn -B verify          # tests and target/kafka3o-restore-transform-1.0.0.jar
