@@ -9,6 +9,16 @@ type Config struct {
 	Kafka    KafkaConfig    `koanf:"kafka"`
 	Security SecurityConfig `koanf:"security"`
 	Connect  ConnectConfig  `koanf:"connect"`
+	Backup   BackupConfig   `koanf:"backup"`
+}
+
+// BackupConfig optionally names the S3-compatible location for topic backups made through Kafka Connect; an empty
+// endpoint means backups are not configured. Credentials are not here: Connect reads them from its own environment.
+type BackupConfig struct {
+	S3Endpoint string `koanf:"s3endpoint"`
+	Bucket     string `koanf:"bucket"`
+	Region     string `koanf:"region"`
+	Prefix     string `koanf:"prefix"`
 }
 
 // ConnectConfig optionally points the Gateway at its cluster's Kafka Connect REST API; empty means no Connect.

@@ -156,3 +156,18 @@ func TestLoadConfig_ReadsOptionalConnectURL(t *testing.T) {
 		t.Fatal("a Connect URL without a scheme was accepted")
 	}
 }
+
+func TestLoadConfig_ReadsOptionalBackupSettings(t *testing.T) {
+	t.Setenv("KAFKA3O_CONNECT__URL", "http://kafka-connect:8083")
+	t.Setenv("KAFKA3O_BACKUP__S3ENDPOINT", "http://seaweedfs-s3:8333")
+	t.Setenv("KAFKA3O_BACKUP__BUCKET", "kafka3o-backups")
+	t.Setenv("KAFKA3O_BACKUP__REGION", "us-east-1")
+	t.Setenv("KAFKA3O_BACKUP__PREFIX", "kafka-a/")
+	cfg, err := LoadConfig(writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Backup != (BackupConfig{S3Endpoint: "http://seaweedfs-s3:8333", Bucket: "kafka3o-backups", Region: "us-east-1", Prefix: "kafka-a/"}) {
+		t.Fatalf("backup = %+v", cfg.Backup)
+	}
+}

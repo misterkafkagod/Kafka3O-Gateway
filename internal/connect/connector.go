@@ -42,4 +42,5 @@ var (
 	ErrConnectActionUnknown = errors.New("the connect action may have been applied")
 	ErrInvalidConnectorName = errors.New("the connector name is invalid")
 	ErrInvalidConnectAction = errors.New("the connect action is invalid")
+	ErrConnectorExists      = errors.New("a connector with this name already exists")
 )

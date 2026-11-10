@@ -61,5 +61,8 @@ func LoadConfig(path string) (Config, error) {
 	if err := ValidateConnectURL(cfg.Connect.URL); err != nil {
 		return Config{}, err
 	}
+	if err := ValidateBackupConfig(cfg.Backup, cfg.Connect.URL); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
 }
