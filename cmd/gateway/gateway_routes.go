@@ -27,6 +27,7 @@ type gatewayActions struct {
 	previewOffsetReset      groups.PreviewOffsetReset
 	applyOffsetReset        groups.ApplyOffsetReset
 	listConnectors          connect.ListConnectors
+	manageConnector         connect.ManageConnector
 	getConfigurations       settings.GetConfigurations
 	alterConfiguration      settings.AlterConfiguration
 	increasePartitions      partitions.IncreasePartitionCount
@@ -49,6 +50,7 @@ func registerGatewayRoutes(api huma.API, a gatewayActions) {
 	httpapi.RegisterPreviewOffsetReset(api, a.previewOffsetReset)
 	httpapi.RegisterApplyOffsetReset(api, a.applyOffsetReset)
 	httpapi.RegisterListConnectors(api, a.listConnectors)
+	httpapi.RegisterConnectorActions(api, a.manageConnector)
 	httpapi.RegisterGetTopicConfigurations(api, a.getConfigurations)
 	httpapi.RegisterGetBrokerConfigurations(api, a.getConfigurations)
 	httpapi.RegisterAlterTopicConfiguration(api, a.alterConfiguration)

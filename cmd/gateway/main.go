@@ -91,6 +91,7 @@ func main() {
 	applyOffsetReset := groups.NewApplyOffsetReset(kafka.NewCommitOffsetReset(groupInactive, admin, writeAdmin), cfg.Kafka.Timeout)
 	connectClient := &http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	listConnectors := connect.NewListConnectors(connect.NewFetchConnectConnectors(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
+	manageConnector := connect.NewManageConnector(connect.NewSendConnectAction(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
 	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
 	alterConfiguration := settings.NewAlterConfiguration(describeConfigurations, kafka.NewAlterConfiguration(writeAdmin), cfg.Kafka.Timeout)
@@ -106,7 +107,7 @@ func main() {
 		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
 		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
 		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
-		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector,
 		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})

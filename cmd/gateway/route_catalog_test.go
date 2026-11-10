@@ -36,7 +36,7 @@ func TestRouteCatalogCoversEveryRegisteredOperation(t *testing.T) {
 			}
 		}
 	}
-	if operations != 20 {
+	if operations != 24 {
 		t.Fatalf("checked %d operations; update this test when routes change", operations)
 	}
 }

@@ -9,7 +9,8 @@ func classifyAction(action Action) (actionCategory, error) {
 		return clusterRead, nil
 	case ActionProduceMessage, ActionCreateTopic, ActionDeleteTopic,
 		ActionAlterTopicConfig, ActionAlterBrokerConfig, ActionIncreasePartitions,
-		ActionReassignReplicas, ActionResetOffsets:
+		ActionReassignReplicas, ActionResetOffsets, ActionPauseConnector, ActionResumeConnector,
+		ActionRestartConnector, ActionRestartConnectTask:
 		return kafkaWrite, nil
 	case ActionReadClusterAudit:
 		return clusterAuditRead, nil
