@@ -15,7 +15,7 @@ func TestEvaluatePolicyKafkaActionMatrix(t *testing.T) {
 		ActionProduceMessage, ActionCreateTopic, ActionDeleteTopic,
 		ActionAlterTopicConfig, ActionAlterBrokerConfig, ActionIncreasePartitions,
 		ActionReassignReplicas, ActionResetOffsets, ActionPauseConnector, ActionResumeConnector,
-		ActionRestartConnector, ActionRestartConnectTask,
+		ActionRestartConnector, ActionRestartConnectTask, ActionStartBackup,
 	}
 	for _, tt := range []struct {
 		name        string

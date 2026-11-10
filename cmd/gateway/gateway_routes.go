@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/backup"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/cluster"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
@@ -28,6 +29,7 @@ type gatewayActions struct {
 	applyOffsetReset        groups.ApplyOffsetReset
 	listConnectors          connect.ListConnectors
 	manageConnector         connect.ManageConnector
+	startBackup             backup.StartBackup
 	getConfigurations       settings.GetConfigurations
 	alterConfiguration      settings.AlterConfiguration
 	increasePartitions      partitions.IncreasePartitionCount
@@ -51,6 +53,7 @@ func registerGatewayRoutes(api huma.API, a gatewayActions) {
 	httpapi.RegisterApplyOffsetReset(api, a.applyOffsetReset)
 	httpapi.RegisterListConnectors(api, a.listConnectors)
 	httpapi.RegisterConnectorActions(api, a.manageConnector)
+	httpapi.RegisterStartBackup(api, a.startBackup)
 	httpapi.RegisterGetTopicConfigurations(api, a.getConfigurations)
 	httpapi.RegisterGetBrokerConfigurations(api, a.getConfigurations)
 	httpapi.RegisterAlterTopicConfiguration(api, a.alterConfiguration)

@@ -45,6 +45,7 @@ const (
 	ActionResumeConnector     Action = "connect.connectors.resume"
 	ActionRestartConnector    Action = "connect.connectors.restart"
 	ActionRestartConnectTask  Action = "connect.tasks.restart"
+	ActionStartBackup         Action = "backups.start"
 	ActionManageAccounts      Action = "console.accounts.manage"
 	ActionManageRoleBindings  Action = "console.role_bindings.manage"
 	ActionManageGroupMappings Action = "console.group_mappings.manage"

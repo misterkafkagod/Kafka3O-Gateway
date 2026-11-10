@@ -124,6 +124,11 @@ spec:
             - { name: KAFKA3O_SECURITY__CLUSTERID, value: kafka-a }
             # M12 test Kafka Connect worker (namespace kafka3o-connect-test); Kafka B has no Connect.
             - { name: KAFKA3O_CONNECT__URL, value: "http://kafka-connect.kafka3o-connect-test.svc.cluster.local:8083" }
+            # M13 backups: SeaweedFS S3 test storage; Connect holds the credentials.
+            - { name: KAFKA3O_BACKUP__S3ENDPOINT, value: "http://seaweedfs-s3.kafka3o-backup-storage.svc.cluster.local:8333" }
+            - { name: KAFKA3O_BACKUP__BUCKET, value: kafka3o-backups }
+            - { name: KAFKA3O_BACKUP__REGION, value: us-east-1 }
+            - { name: KAFKA3O_BACKUP__PREFIX, value: kafka-a/ }
             - { name: KAFKA3O_SECURITY__SERVICECAFILE, value: /run/pki/ca.crt }
             - { name: KAFKA3O_SECURITY__CLIENTCERTIFICATEFILE, value: /run/pki/tls.crt }
             - { name: KAFKA3O_SECURITY__CLIENTKEYFILE, value: /run/pki/tls.key }

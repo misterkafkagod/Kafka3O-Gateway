@@ -46,3 +46,15 @@ and runs in its own namespace on Kafka A only. Remove it with
 `kubectl delete namespace kafka3o-connect-test` and delete the
 `kafka3o-connect-configs`, `kafka3o-connect-offsets` and `kafka3o-connect-status`
 topics on Kafka A.
+
+## Backups (M13)
+
+`gateway-a` creates topic backups as Aiven S3 sink connectors on the test
+Connect worker, writing to the SeaweedFS S3 test storage in namespace
+`kafka3o-backup-storage` (bucket `kafka3o-backups`, prefix `kafka-a/`). The
+storage credentials exist only in Secrets (`seaweedfs-s3-config`,
+`kafka-connect-backup-s3`) and the Connect worker's environment. Setup and the
+connector recipe are in the UI repository's
+[s3-backup-connectors discovery](../../../../Kafka3O-UI/spec/discovery/s3-backup-connectors.md).
+Kafka B has no backup setting.
+

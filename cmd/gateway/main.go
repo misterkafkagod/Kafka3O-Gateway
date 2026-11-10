@@ -16,6 +16,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 	"github.com/twmb/franz-go/pkg/kadm"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/backup"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/cluster"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/config"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
@@ -92,6 +93,8 @@ func main() {
 	connectClient := &http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	listConnectors := connect.NewListConnectors(connect.NewFetchConnectConnectors(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	manageConnector := connect.NewManageConnector(connect.NewSendConnectAction(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
+	backupSettings := backup.Settings{S3Endpoint: cfg.Backup.S3Endpoint, Bucket: cfg.Backup.Bucket, Region: cfg.Backup.Region, Prefix: cfg.Backup.Prefix}
+	startBackup := backup.NewStartBackup(backupSettings, connect.NewCreateConnector(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
 	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
 	alterConfiguration := settings.NewAlterConfiguration(describeConfigurations, kafka.NewAlterConfiguration(writeAdmin), cfg.Kafka.Timeout)
@@ -107,7 +110,7 @@ func main() {
 		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
 		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
 		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
-		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup,
 		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})
