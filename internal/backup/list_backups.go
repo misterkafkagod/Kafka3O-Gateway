@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
@@ -16,10 +17,11 @@ type listBackups struct {
 	settings   Settings
 	connectors connect.ListConnectors
 	objects    s3store.ListObjects
+	restores   CheckRestore
 }
 
-func NewListBackups(settings Settings, connectors connect.ListConnectors, objects s3store.ListObjects) ListBackups {
-	return listBackups{settings: settings, connectors: connectors, objects: objects}
+func NewListBackups(settings Settings, connectors connect.ListConnectors, objects s3store.ListObjects, restores CheckRestore) ListBackups {
+	return listBackups{settings: settings, connectors: connectors, objects: objects, restores: restores}
 }
 
 // Execute reports every backup connector with its Connect state and, when the storage can be listed, what it wrote.
@@ -32,6 +34,24 @@ func (l listBackups) Execute(ctx context.Context) ([]Backup, error) {
 		return nil, err
 	}
 	prefix := BackupConnectorName("")
+	restorePrefix := RestoreConnectorName("")
+	restoring := map[string]connect.Connector{}
+	backedUp := map[string]bool{}
+	for _, connector := range connectors {
+		if strings.HasPrefix(connector.Name, restorePrefix) && connector.Type == "source" {
+			restoring[strings.TrimPrefix(connector.Name, restorePrefix)] = connector
+		}
+		if strings.HasPrefix(connector.Name, prefix) && connector.Type == "sink" {
+			backedUp[strings.TrimPrefix(connector.Name, prefix)] = true
+		}
+	}
+	// A restore whose backup job was deleted still appears, so it can be followed to the end.
+	for topic := range restoring {
+		if !backedUp[topic] {
+			connectors = append(connectors, connect.Connector{Name: BackupConnectorName(topic), Type: "sink", State: "NO JOB"})
+		}
+	}
+	slices.SortFunc(connectors, connect.CompareConnectors)
 	backups := []Backup{}
 	for _, connector := range connectors {
 		if !strings.HasPrefix(connector.Name, prefix) || connector.Type != "sink" {
@@ -57,6 +77,13 @@ func (l listBackups) Execute(ctx context.Context) ([]Backup, error) {
 				}
 			}
 			backup.Storage = &summary
+		}
+		if restore, ok := restoring[topic]; ok && l.restores != nil {
+			status := l.restores.Execute(ctx, topic, restore)
+			backup.Restore = &status
+			if status.Finished && backup.State == "PAUSED" {
+				backup.State = "RUNNING"
+			}
 		}
 		backups = append(backups, backup)
 	}

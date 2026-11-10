@@ -100,7 +100,11 @@ func main() {
 	startBackup := backup.NewStartBackup(backupSettings, connect.NewCreateConnector(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	backupObjects := s3store.NewListObjects(cfg.Backup.S3Endpoint, cfg.Backup.Bucket, cfg.Backup.Region,
 		s3store.Credentials{AccessKey: cfg.Backup.ReadAccessKey, SecretKey: cfg.Backup.ReadSecretKey}, connectClient, time.Now)
-	listBackups := backup.NewListBackups(backupSettings, listConnectors, backupObjects)
+	backupReadCredentials := s3store.Credentials{AccessKey: cfg.Backup.ReadAccessKey, SecretKey: cfg.Backup.ReadSecretKey}
+	checkRestore := backup.NewCheckRestore(backupSettings, connect.NewFetchConnectorConfig(cfg.Connect.URL, connectClient), backupObjects,
+		backup.NewCountObjectRecords(s3store.NewGetObject(cfg.Backup.S3Endpoint, cfg.Backup.Bucket, cfg.Backup.Region, backupReadCredentials, connectClient, time.Now)),
+		kafka.NewReadConnectOffsets(admin, kafkaClient, cfg.Connect.OffsetsTopic), manageConnector)
+	listBackups := backup.NewListBackups(backupSettings, listConnectors, backupObjects, checkRestore)
 	manageBackup := backup.NewManageBackup(backupSettings, manageConnector)
 	restoreID := func() string {
 		suffix := make([]byte, 4)

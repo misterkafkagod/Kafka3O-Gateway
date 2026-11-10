@@ -40,7 +40,7 @@ func TestListBackupsCombinesConnectAndStorage(t *testing.T) {
 	objects := fakeObjects{byPrefix: map[string][]s3store.Object{
 		"kafka-a/orders/": {{Key: "a", Size: 265, LastModified: first}, {Key: "b", Size: 120, LastModified: last}},
 	}}
-	backups, err := NewListBackups(settings, connectors, objects).Execute(context.Background())
+	backups, err := NewListBackups(settings, connectors, objects, nil).Execute(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,14 +59,46 @@ func TestListBackupsCombinesConnectAndStorage(t *testing.T) {
 
 func TestListBackupsWithoutStorageOrConnect(t *testing.T) {
 	connectors := fakeConnectors{connectors: []connect.Connector{{Name: "kafka3o-backup-orders", Type: "sink", State: "PAUSED"}}}
-	backups, err := NewListBackups(settings, connectors, fakeObjects{err: s3store.ErrNoCredentials}).Execute(context.Background())
+	backups, err := NewListBackups(settings, connectors, fakeObjects{err: s3store.ErrNoCredentials}, nil).Execute(context.Background())
 	if err != nil || len(backups) != 1 || backups[0].Storage != nil || backups[0].State != "PAUSED" {
 		t.Fatalf("backups = %+v, %v", backups, err)
 	}
-	if _, err := NewListBackups(Settings{}, connectors, fakeObjects{}).Execute(context.Background()); !errors.Is(err, ErrBackupsNotConfigured) {
+	if _, err := NewListBackups(Settings{}, connectors, fakeObjects{}, nil).Execute(context.Background()); !errors.Is(err, ErrBackupsNotConfigured) {
 		t.Fatalf("not configured: %v", err)
 	}
-	if _, err := NewListBackups(settings, fakeConnectors{err: connect.ErrConnectUnreachable}, fakeObjects{}).Execute(context.Background()); !errors.Is(err, connect.ErrConnectUnreachable) {
+	if _, err := NewListBackups(settings, fakeConnectors{err: connect.ErrConnectUnreachable}, fakeObjects{}, nil).Execute(context.Background()); !errors.Is(err, connect.ErrConnectUnreachable) {
 		t.Fatalf("connect down: %v", err)
+	}
+}
+
+type fakeCheckRestore struct {
+	status RestoreStatus
+	topics []string
+}
+
+func (f *fakeCheckRestore) Execute(_ context.Context, topic string, _ connect.Connector) RestoreStatus {
+	f.topics = append(f.topics, topic)
+	return f.status
+}
+
+func TestListBackupsIncludesRestores(t *testing.T) {
+	connectors := fakeConnectors{connectors: []connect.Connector{
+		{Name: "kafka3o-backup-orders", Type: "sink", State: "PAUSED"},
+		{Name: "kafka3o-restore-orders", Type: "source", State: "RUNNING"},
+		{Name: "kafka3o-restore-audit", Type: "source", State: "RUNNING"},
+	}}
+	check := &fakeCheckRestore{status: RestoreStatus{RestoreID: "r-1", State: "RUNNING", Restored: 3, Total: 10}}
+	backups, err := NewListBackups(settings, connectors, fakeObjects{}, check).Execute(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 2 || backups[0].Topic != "audit" || backups[0].State != "NO JOB" || backups[1].Topic != "orders" ||
+		backups[1].Restore == nil || backups[1].Restore.Restored != 3 || len(check.topics) != 2 {
+		t.Fatalf("backups = %+v, checked %v", backups, check.topics)
+	}
+	check.status.Finished = true
+	backups, _ = NewListBackups(settings, connectors, fakeObjects{}, check).Execute(context.Background())
+	if backups[1].State != "RUNNING" || !backups[1].Restore.Finished {
+		t.Fatalf("finished restore = %+v", backups[1])
 	}
 }

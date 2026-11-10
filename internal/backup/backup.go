@@ -22,6 +22,17 @@ type Backup struct {
 	State   string          `json:"state,omitempty"`
 	Error   string          `json:"error,omitempty"`
 	Storage *StorageSummary `json:"storage,omitempty"`
+	Restore *RestoreStatus  `json:"restore,omitempty"`
+}
+
+// RestoreStatus is a running or just-finished restore of the topic's backup.
+type RestoreStatus struct {
+	RestoreID string `json:"restoreId"`
+	State     string `json:"state"`
+	Restored  int64  `json:"restored"`
+	Total     int64  `json:"total"`
+	Finished  bool   `json:"finished"`
+	Error     string `json:"error,omitempty"`
 }
 
 // StorageSummary describes what a backup has written so far.
