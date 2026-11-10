@@ -39,6 +39,7 @@ const (
 	ActionAlterBrokerConfig   Action = "brokers.config.alter"
 	ActionIncreasePartitions  Action = "topics.partitions.increase"
 	ActionReassignReplicas    Action = "topics.replicas.reassign"
+	ActionResetOffsets        Action = "consumer_groups.offsets.reset"
 	ActionManageAccounts      Action = "console.accounts.manage"
 	ActionManageRoleBindings  Action = "console.role_bindings.manage"
 	ActionManageGroupMappings Action = "console.group_mappings.manage"

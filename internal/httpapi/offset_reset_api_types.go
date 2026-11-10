@@ -12,3 +12,26 @@ type offsetResetPreviewBody struct {
 	Topic      string                 `json:"topic"`
 	Partitions []offsetResetPartition `json:"partitions"`
 }
+
+type offsetResetApplyPartition struct {
+	Partition int32 `json:"partition" minimum:"0"`
+	// ExpectedOffset is the committed offset the preview showed; omit or null when it showed no commit.
+	ExpectedOffset *string `json:"expectedOffset,omitempty" pattern:"^[0-9]{1,19}$"`
+	TargetOffset   string  `json:"targetOffset" pattern:"^[0-9]{1,19}$"`
+}
+
+type offsetResetApplyBody struct {
+	Topic      string                      `json:"topic" minLength:"1"`
+	Partitions []offsetResetApplyPartition `json:"partitions" minItems:"1" maxItems:"100000"`
+}
+
+type offsetResetCommitted struct {
+	Partition       int32  `json:"partition"`
+	CommittedOffset string `json:"committedOffset"`
+}
+
+type offsetResetAppliedBody struct {
+	Group      string                 `json:"group"`
+	Topic      string                 `json:"topic"`
+	Partitions []offsetResetCommitted `json:"partitions"`
+}

@@ -17,6 +17,7 @@ func TestClassifyRouteMapsEveryKnownRouteAndDeniesTheRest(t *testing.T) {
 		{"GET", "/api/v1/consumer-groups", authorization.ActionListConsumerGroups},
 		{"GET", "/api/v1/consumer-groups/billing/offset-reset", authorization.ActionPreviewOffsetReset},
 		{"GET", "/api/v1/consumer-groups/team%2Fbilling/offset-reset", authorization.ActionPreviewOffsetReset},
+		{"POST", "/api/v1/consumer-groups/billing/offset-reset", authorization.ActionResetOffsets},
 		{"GET", "/api/v1/topics/orders", authorization.ActionDescribeTopic},
 		{"DELETE", "/api/v1/topics/orders", authorization.ActionDeleteTopic},
 		{"GET", "/api/v1/topics/orders/messages", authorization.ActionReadMessages},

@@ -85,7 +85,9 @@ func main() {
 	createTopic := topics.NewCreateTopic(kafka.NewCreateKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	deleteTopic := topics.NewDeleteTopic(kafka.NewDeleteKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
-	previewOffsetReset := groups.NewPreviewOffsetReset(kafka.NewComputeOffsetResetPreview(kafka.NewEnsureGroupInactive(admin), admin), cfg.Kafka.Timeout)
+	groupInactive := kafka.NewEnsureGroupInactive(admin)
+	previewOffsetReset := groups.NewPreviewOffsetReset(kafka.NewComputeOffsetResetPreview(groupInactive, admin), cfg.Kafka.Timeout)
+	applyOffsetReset := groups.NewApplyOffsetReset(kafka.NewCommitOffsetReset(groupInactive, admin, writeAdmin), cfg.Kafka.Timeout)
 	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
 	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
 	alterConfiguration := settings.NewAlterConfiguration(describeConfigurations, kafka.NewAlterConfiguration(writeAdmin), cfg.Kafka.Timeout)
@@ -101,7 +103,7 @@ func main() {
 		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
 		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
 		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
-		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset,
 		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})

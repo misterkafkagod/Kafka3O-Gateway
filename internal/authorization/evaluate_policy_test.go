@@ -14,7 +14,7 @@ func TestEvaluatePolicyKafkaActionMatrix(t *testing.T) {
 	writes := []Action{
 		ActionProduceMessage, ActionCreateTopic, ActionDeleteTopic,
 		ActionAlterTopicConfig, ActionAlterBrokerConfig, ActionIncreasePartitions,
-		ActionReassignReplicas,
+		ActionReassignReplicas, ActionResetOffsets,
 	}
 	for _, tt := range []struct {
 		name        string

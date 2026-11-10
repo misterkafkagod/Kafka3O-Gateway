@@ -37,8 +37,8 @@ type OffsetResetResult struct {
 }
 
 var (
-	ErrStalePreview   = errors.New("committed offsets or log ranges changed since the preview")
-	ErrOutcomeUnknown = errors.New("the reset may have been applied; check the group's offsets")
+	ErrStalePreview       = errors.New("committed offsets or log ranges changed since the preview")
+	ErrOutcomeUnknown     = errors.New("the reset may have been applied; check the group's offsets")
 	ErrGroupActive        = errors.New("the consumer group has active members")
 	ErrGroupNotFound      = errors.New("the consumer group does not exist")
 	ErrTopicNotFound      = errors.New("the topic does not exist")

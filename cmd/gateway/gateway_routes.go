@@ -24,6 +24,7 @@ type gatewayActions struct {
 	deleteTopic             topics.DeleteTopic
 	listConsumerGroups      groups.ListConsumerGroups
 	previewOffsetReset      groups.PreviewOffsetReset
+	applyOffsetReset        groups.ApplyOffsetReset
 	getConfigurations       settings.GetConfigurations
 	alterConfiguration      settings.AlterConfiguration
 	increasePartitions      partitions.IncreasePartitionCount
@@ -44,6 +45,7 @@ func registerGatewayRoutes(api huma.API, a gatewayActions) {
 	httpapi.RegisterDeleteTopic(api, a.deleteTopic)
 	httpapi.RegisterListConsumerGroups(api, a.listConsumerGroups)
 	httpapi.RegisterPreviewOffsetReset(api, a.previewOffsetReset)
+	httpapi.RegisterApplyOffsetReset(api, a.applyOffsetReset)
 	httpapi.RegisterGetTopicConfigurations(api, a.getConfigurations)
 	httpapi.RegisterGetBrokerConfigurations(api, a.getConfigurations)
 	httpapi.RegisterAlterTopicConfiguration(api, a.alterConfiguration)

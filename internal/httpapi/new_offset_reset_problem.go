@@ -16,6 +16,12 @@ func NewOffsetResetProblem(err error, group, topic string) *Problem {
 	case errors.Is(err, groups.ErrInvalidResetTarget):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusBadRequest, Title: "Invalid reset target",
 			Detail: "choose earliest, latest, or timestamp with a non-negative millisecond timestamp"}, Code: "invalid_reset_target"}
+	case errors.Is(err, groups.ErrOutcomeUnknown):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusServiceUnavailable, Title: "Offset reset not confirmed",
+			Detail: "The reset may have been applied; check the group's offsets before retrying."}, Code: "offset_reset_unknown"}
+	case errors.Is(err, groups.ErrStalePreview):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusConflict, Title: "Preview is out of date",
+			Detail: "Committed offsets or log ranges changed since the preview; preview again."}, Code: "stale_preview"}
 	case errors.Is(err, groups.ErrGroupActive):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusConflict, Title: "Consumer group is active",
 			Detail: "Stop the group's consumers first"}, Code: "group_active"}
