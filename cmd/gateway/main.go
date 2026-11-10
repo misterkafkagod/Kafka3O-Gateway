@@ -99,6 +99,7 @@ func main() {
 	backupObjects := s3store.NewListObjects(cfg.Backup.S3Endpoint, cfg.Backup.Bucket, cfg.Backup.Region,
 		s3store.Credentials{AccessKey: cfg.Backup.ReadAccessKey, SecretKey: cfg.Backup.ReadSecretKey}, connectClient, time.Now)
 	listBackups := backup.NewListBackups(backupSettings, listConnectors, backupObjects)
+	manageBackup := backup.NewManageBackup(backupSettings, manageConnector)
 	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
 	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
 	alterConfiguration := settings.NewAlterConfiguration(describeConfigurations, kafka.NewAlterConfiguration(writeAdmin), cfg.Kafka.Timeout)
@@ -114,7 +115,7 @@ func main() {
 		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
 		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
 		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
-		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup, listBackups: listBackups,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup, listBackups: listBackups, manageBackup: manageBackup,
 		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})

@@ -18,6 +18,9 @@ func NewBackupProblem(err error) *Problem {
 	case errors.Is(err, backup.ErrInvalidTopic):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusBadRequest, Title: "Invalid topic",
 			Detail: "the topic name is invalid"}, Code: "invalid_topic"}
+	case errors.Is(err, backup.ErrBackupNotFound):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusNotFound, Title: "Backup not found",
+			Detail: "This topic has no backup"}, Code: "not_found"}
 	case errors.Is(err, backup.ErrBackupExists):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusConflict, Title: "Backup already exists",
 			Detail: "This topic already has a backup"}, Code: "backup_exists"}

@@ -46,6 +46,8 @@ func (s sendConnectAction) Execute(ctx context.Context, action Action) error {
 			return ErrInvalidConnectAction
 		}
 		method, target = http.MethodPost, base+"/tasks/"+strconv.Itoa(int(action.Task))+"/restart"
+	case ActionDelete:
+		method, target = http.MethodDelete, base
 	default:
 		return ErrInvalidConnectAction
 	}

@@ -41,6 +41,11 @@ func ClassifyRoute(method, escapedPath string) (Route, bool) {
 				key += "/" + segment
 			}
 		}
+	case len(segments) >= 2 && segments[0] == "backups":
+		key += "backups/{}"
+		if len(segments) > 2 {
+			key += "/" + strings.Join(segments[2:], "/")
+		}
 	case len(segments) >= 3 && segments[0] == "consumer-groups":
 		key += "consumer-groups/{}/" + strings.Join(segments[2:], "/")
 	case len(segments) >= 2 && (segments[0] == "topics" || segments[0] == "brokers"):

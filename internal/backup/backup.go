@@ -35,4 +35,5 @@ var (
 	ErrBackupsNotConfigured = errors.New("backups are not configured for this cluster")
 	ErrBackupExists         = errors.New("the topic already has a backup")
 	ErrInvalidTopic         = errors.New("the topic name is invalid")
+	ErrBackupNotFound       = errors.New("the topic has no backup")
 )

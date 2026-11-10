@@ -32,6 +32,8 @@ const (
 	ActionResume      = "resume"
 	ActionRestart     = "restart"
 	ActionRestartTask = "restart-task"
+	// ActionDelete is used only for Gateway-managed connectors such as backups; the Connect tab cannot delete.
+	ActionDelete = "delete"
 )
 
 var (

@@ -22,6 +22,7 @@ func TestSendConnectActionUsesTheDiscoveredRequests(t *testing.T) {
 		{Kind: ActionResume, Connector: "orders sink"},
 		{Kind: ActionRestart, Connector: "orders-sink"},
 		{Kind: ActionRestartTask, Connector: "orders-sink", Task: 3},
+		{Kind: ActionDelete, Connector: "kafka3o-backup-orders"},
 	} {
 		if err := send.Execute(context.Background(), action); err != nil {
 			t.Fatalf("%+v: %v", action, err)
@@ -32,6 +33,7 @@ func TestSendConnectActionUsesTheDiscoveredRequests(t *testing.T) {
 		"PUT /connectors/orders%20sink/resume?",
 		"POST /connectors/orders-sink/restart?includeTasks=true&onlyFailed=false",
 		"POST /connectors/orders-sink/tasks/3/restart?",
+		"DELETE /connectors/kafka3o-backup-orders?",
 	}
 	for i := range want {
 		if asked[i] != want[i] {
@@ -50,7 +52,7 @@ func TestSendConnectActionRejectsInvalidRequestsWithoutCallingConnect(t *testing
 		want   error
 	}{
 		{Action{Kind: ActionPause, Connector: "a/b"}, ErrInvalidConnectorName},
-		{Action{Kind: "delete", Connector: "sink"}, ErrInvalidConnectAction},
+		{Action{Kind: "stop", Connector: "sink"}, ErrInvalidConnectAction},
 		{Action{Kind: ActionRestartTask, Connector: "sink", Task: -1}, ErrInvalidConnectAction},
 	} {
 		if err := send.Execute(context.Background(), tt.action); !errors.Is(err, tt.want) {

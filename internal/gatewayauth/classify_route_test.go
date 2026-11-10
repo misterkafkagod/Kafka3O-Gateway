@@ -21,6 +21,9 @@ func TestClassifyRouteMapsEveryKnownRouteAndDeniesTheRest(t *testing.T) {
 		{"GET", "/api/v1/connect/connectors", authorization.ActionListConnectors},
 		{"POST", "/api/v1/backups", authorization.ActionStartBackup},
 		{"GET", "/api/v1/backups", authorization.ActionListBackups},
+		{"POST", "/api/v1/backups/orders/pause", authorization.ActionPauseBackup},
+		{"POST", "/api/v1/backups/orders/resume", authorization.ActionResumeBackup},
+		{"DELETE", "/api/v1/backups/orders", authorization.ActionDeleteBackup},
 		{"POST", "/api/v1/connect/connectors/orders%20sink/pause", authorization.ActionPauseConnector},
 		{"POST", "/api/v1/connect/connectors/orders-sink/resume", authorization.ActionResumeConnector},
 		{"POST", "/api/v1/connect/connectors/orders-sink/restart", authorization.ActionRestartConnector},
@@ -53,7 +56,7 @@ func TestClassifyRouteMapsEveryKnownRouteAndDeniesTheRest(t *testing.T) {
 		{"POST", "/api/v1/topics/orders/partitions/3/replicas/x"}, {"GET", "/api/v1/brokers/1"}, {"GET", "/api/v1/admin"},
 		{"GET", "/api/v1/consumer-groups/billing"}, {"DELETE", "/api/v1/consumer-groups/billing/offset-reset"},
 		{"GET", "/api/v1/consumer-groups//offset-reset"}, {"GET", "/api/v1/consumer-groups/billing/offset-reset/extra"},
-		{"GET", "/api/v1/connect"}, {"DELETE", "/api/v1/backups"}, {"PUT", "/api/v1/backups"}, {"POST", "/api/v1/connect/connectors"}, {"GET", "/api/v1/connect/connectors/sink"}, {"GET", "/api/v1/connect/plugins"},
+		{"GET", "/api/v1/connect"}, {"DELETE", "/api/v1/backups"}, {"PUT", "/api/v1/backups"}, {"GET", "/api/v1/backups/orders"}, {"POST", "/api/v1/backups/orders/restart"}, {"POST", "/api/v1/connect/connectors"}, {"GET", "/api/v1/connect/connectors/sink"}, {"GET", "/api/v1/connect/plugins"},
 		{"GET", "/api/v1/connect/connectors/sink/pause"}, {"PUT", "/api/v1/connect/connectors/sink/pause"}, {"DELETE", "/api/v1/connect/connectors/sink"},
 		{"POST", "/api/v1/connect/connectors/sink/config"}, {"POST", "/api/v1/connect/connectors/sink/tasks/0"}, {"POST", "/api/v1/connect/connectors/sink/tasks/0/restart/x"},
 	} {
