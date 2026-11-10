@@ -13,9 +13,6 @@ import (
 )
 
 type offsetResetAdmin interface {
-	ListGroupsByType(context.Context, []string, ...string) (kadm.ListedGroups, error)
-	DescribeGroups(context.Context, ...string) (kadm.DescribedGroups, error)
-	DescribeConsumerGroups(context.Context, ...string) (kadm.DescribedConsumerGroups, error)
 	FetchOffsets(context.Context, string) (kadm.OffsetResponses, error)
 	ListStartOffsets(context.Context, ...string) (kadm.ListedOffsets, error)
 	ListEndOffsets(context.Context, ...string) (kadm.ListedOffsets, error)
@@ -23,11 +20,12 @@ type offsetResetAdmin interface {
 }
 
 type computeOffsetResetPreview struct {
-	admin offsetResetAdmin
+	inactive GroupInactiveCheck
+	admin    offsetResetAdmin
 }
 
-func NewComputeOffsetResetPreview(admin offsetResetAdmin) groups.ComputeOffsetResetPreview {
-	return computeOffsetResetPreview{admin: admin}
+func NewComputeOffsetResetPreview(inactive GroupInactiveCheck, admin offsetResetAdmin) groups.ComputeOffsetResetPreview {
+	return computeOffsetResetPreview{inactive: inactive, admin: admin}
 }
 
 func (p computeOffsetResetPreview) Execute(ctx context.Context, group, topic string, target groups.OffsetResetTarget) (groups.OffsetResetPreview, error) {
@@ -35,41 +33,8 @@ func (p computeOffsetResetPreview) Execute(ctx context.Context, group, topic str
 		(target.Kind == "timestamp" && target.Timestamp < 0) {
 		return groups.OffsetResetPreview{}, groups.ErrInvalidResetTarget
 	}
-	classic, err := p.admin.ListGroupsByType(ctx, []string{"classic"})
-	if err != nil {
-		return groups.OffsetResetPreview{}, fmt.Errorf("list classic groups: %w", err)
-	}
-	modern, err := p.admin.ListGroupsByType(ctx, []string{"consumer"})
-	if err != nil {
-		return groups.OffsetResetPreview{}, fmt.Errorf("list consumer groups: %w", err)
-	}
-	// A reset requires a group without members; Kafka would also reject commits from outside an active group.
-	if listed, ok := classic[group]; ok && (listed.ProtocolType == "" || listed.ProtocolType == "consumer") {
-		described, err := p.admin.DescribeGroups(ctx, group)
-		if err != nil && len(described) == 0 {
-			return groups.OffsetResetPreview{}, fmt.Errorf("describe group: %w", err)
-		}
-		entry, ok := described[group]
-		if !ok || entry.Err != nil {
-			return groups.OffsetResetPreview{}, fmt.Errorf("describe group: %w", errors.Join(entry.Err, err))
-		}
-		if len(entry.Members) > 0 {
-			return groups.OffsetResetPreview{}, groups.ErrGroupActive
-		}
-	} else if _, ok := modern[group]; ok {
-		described, err := p.admin.DescribeConsumerGroups(ctx, group)
-		if err != nil && len(described) == 0 {
-			return groups.OffsetResetPreview{}, fmt.Errorf("describe consumer group: %w", err)
-		}
-		entry, ok := described[group]
-		if !ok || entry.Err != nil {
-			return groups.OffsetResetPreview{}, fmt.Errorf("describe consumer group: %w", errors.Join(entry.Err, err))
-		}
-		if len(entry.Members) > 0 {
-			return groups.OffsetResetPreview{}, groups.ErrGroupActive
-		}
-	} else {
-		return groups.OffsetResetPreview{}, groups.ErrGroupNotFound
+	if err := p.inactive.Execute(ctx, group); err != nil {
+		return groups.OffsetResetPreview{}, err
 	}
 
 	committed, err := p.admin.FetchOffsets(ctx, group)

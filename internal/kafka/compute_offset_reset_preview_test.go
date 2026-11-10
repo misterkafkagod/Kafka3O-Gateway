@@ -80,7 +80,7 @@ func TestOffsetResetPreviewTargets(t *testing.T) {
 		{groups.OffsetResetTarget{Kind: "timestamp", Timestamp: 1700000000000}, []int64{5, 20}},
 	} {
 		admin := inactiveClassicAdmin()
-		preview, err := NewComputeOffsetResetPreview(admin).Execute(context.Background(), "billing", "orders", tt.target)
+		preview, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(admin), admin).Execute(context.Background(), "billing", "orders", tt.target)
 		if err != nil {
 			t.Fatalf("%s: %v", tt.target.Kind, err)
 		}
@@ -107,39 +107,39 @@ func TestOffsetResetPreviewTargets(t *testing.T) {
 func TestOffsetResetPreviewRefusesActiveGroups(t *testing.T) {
 	classic := inactiveClassicAdmin()
 	classic.described = kadm.DescribedGroups{"billing": {Group: "billing", State: "Stable", Members: []kadm.DescribedGroupMember{{MemberID: "m-1"}}}}
-	if _, err := NewComputeOffsetResetPreview(classic).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupActive) {
+	if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(classic), classic).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupActive) {
 		t.Fatalf("active classic group: %v", err)
 	}
 	modern := inactiveClassicAdmin()
 	modern.classic = kadm.ListedGroups{}
 	modern.modern = kadm.ListedGroups{"billing": {Group: "billing", ProtocolType: "consumer", State: "Stable"}}
 	modern.consumers = kadm.DescribedConsumerGroups{"billing": {Group: "billing", Members: []kadm.ConsumerGroupMember{{MemberID: "m-1"}}}}
-	if _, err := NewComputeOffsetResetPreview(modern).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupActive) {
+	if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(modern), modern).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupActive) {
 		t.Fatalf("active consumer-protocol group: %v", err)
 	}
 	modern.consumers = kadm.DescribedConsumerGroups{"billing": {Group: "billing", State: "Empty"}}
-	if _, err := NewComputeOffsetResetPreview(modern).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); err != nil {
+	if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(modern), modern).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); err != nil {
 		t.Fatalf("inactive consumer-protocol group: %v", err)
 	}
 }
 
 func TestOffsetResetPreviewRejectsUnknownAndInvalidInput(t *testing.T) {
 	admin := inactiveClassicAdmin()
-	if _, err := NewComputeOffsetResetPreview(admin).Execute(context.Background(), "missing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupNotFound) {
+	if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(admin), admin).Execute(context.Background(), "missing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupNotFound) {
 		t.Fatalf("unknown group: %v", err)
 	}
 	connect := inactiveClassicAdmin()
 	connect.classic = kadm.ListedGroups{"billing": {Group: "billing", ProtocolType: "connect"}}
-	if _, err := NewComputeOffsetResetPreview(connect).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupNotFound) {
+	if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(connect), connect).Execute(context.Background(), "billing", "orders", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrGroupNotFound) {
 		t.Fatalf("non-consumer group: %v", err)
 	}
 	missingTopic := inactiveClassicAdmin()
 	missingTopic.ends = kadm.ListedOffsets{"nope": {-1: {Topic: "nope", Partition: -1, Err: kerr.UnknownTopicOrPartition}}}
-	if _, err := NewComputeOffsetResetPreview(missingTopic).Execute(context.Background(), "billing", "nope", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrTopicNotFound) {
+	if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(missingTopic), missingTopic).Execute(context.Background(), "billing", "nope", groups.OffsetResetTarget{Kind: "latest"}); !errors.Is(err, groups.ErrTopicNotFound) {
 		t.Fatalf("unknown topic: %v", err)
 	}
 	for _, target := range []groups.OffsetResetTarget{{Kind: ""}, {Kind: "middle"}, {Kind: "timestamp", Timestamp: -1}} {
-		if _, err := NewComputeOffsetResetPreview(admin).Execute(context.Background(), "billing", "orders", target); !errors.Is(err, groups.ErrInvalidResetTarget) {
+		if _, err := NewComputeOffsetResetPreview(NewEnsureGroupInactive(admin), admin).Execute(context.Background(), "billing", "orders", target); !errors.Is(err, groups.ErrInvalidResetTarget) {
 			t.Fatalf("target %+v: %v", target, err)
 		}
 	}
