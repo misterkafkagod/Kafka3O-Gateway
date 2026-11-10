@@ -10,6 +10,14 @@ type Config struct {
 	Security SecurityConfig `koanf:"security"`
 	Connect  ConnectConfig  `koanf:"connect"`
 	Backup   BackupConfig   `koanf:"backup"`
+	Metrics  MetricsConfig  `koanf:"metrics"`
+}
+
+// MetricsConfig optionally starts a second TLS listener that serves only Prometheus metrics; empty Listen means off.
+type MetricsConfig struct {
+	Listen string `koanf:"listen"`
+	// Token comes only from KAFKA3O_METRICS_TOKEN; scrapers send it as a bearer token.
+	Token string `koanf:"-"`
 }
 
 // BackupConfig optionally names the S3-compatible location for topic backups made through Kafka Connect; an empty

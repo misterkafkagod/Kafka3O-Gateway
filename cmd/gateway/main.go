@@ -24,6 +24,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/gatewayauth"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/metrics"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
@@ -163,12 +164,28 @@ func main() {
 			stop()
 		}
 	}()
+	var metricsServer *http.Server
+	if cfg.Metrics.Listen != "" {
+		metricsServer = newMetricsHTTPServer(cfg.Metrics.Listen, httpapi.NewPrometheusHandler(getMetrics), cfg.Metrics.Token, certificate)
+		go func() {
+			logger.Info("metrics listening with TLS", "addr", cfg.Metrics.Listen)
+			if err := metricsServer.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logger.Error("metrics server failed", "error", err)
+				stop()
+			}
+		}()
+	}
 
 	<-ctx.Done()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("shutdown failed", "error", err)
+	}
+	if metricsServer != nil {
+		if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+			logger.Error("metrics shutdown failed", "error", err)
+		}
 	}
 	logger.Info("gateway stopped")
 }

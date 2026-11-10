@@ -34,6 +34,9 @@ func LoadConfig(path string) (Config, error) {
 		if strings.HasPrefix(strings.ToLower(key), "backup.") && (strings.Contains(strings.ToLower(key), "key") || strings.Contains(strings.ToLower(key), "secret")) {
 			return Config{}, errors.New("set backup S3 credentials only with KAFKA3O_BACKUP_S3_ACCESS_KEY and KAFKA3O_BACKUP_S3_SECRET_KEY")
 		}
+		if strings.EqualFold(key, "metrics.token") {
+			return Config{}, errors.New("set the metrics token only with KAFKA3O_METRICS_TOKEN")
+		}
 	}
 
 	cfg := Config{
@@ -60,6 +63,10 @@ func LoadConfig(path string) (Config, error) {
 	cfg.Kafka.SASL.Password = os.Getenv("KAFKA3O_KAFKA_SASL_PASSWORD")
 	cfg.Backup.ReadAccessKey = os.Getenv("KAFKA3O_BACKUP_S3_ACCESS_KEY")
 	cfg.Backup.ReadSecretKey = os.Getenv("KAFKA3O_BACKUP_S3_SECRET_KEY")
+	cfg.Metrics.Token = os.Getenv("KAFKA3O_METRICS_TOKEN")
+	if cfg.Metrics.Listen != "" && (len(cfg.Metrics.Token) < 32 || !bearerTokenPattern.MatchString(cfg.Metrics.Token)) {
+		return Config{}, errors.New("metrics.listen needs KAFKA3O_METRICS_TOKEN with at least 32 bearer-token characters")
+	}
 	if err := ValidateKafkaSecurity(cfg.Kafka); err != nil {
 		return Config{}, err
 	}

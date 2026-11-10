@@ -63,3 +63,12 @@ The Gateway lists backup objects with a separate read-only SeaweedFS identity
 `access-key`, `secret-key`) in `kafka3o-test-clusters`. Without it, the backup
 list shows the storage summary as unknown.
 
+
+## Prometheus metrics (M15)
+
+gateway-a serves Prometheus metrics on a second TLS listener, `127.0.0.1:9464`
+inside the pod, at `/metrics` only. Scrapers send the token from the Secret
+`kafka3o-metrics-token` (key `token`) as `Authorization: Bearer <token>`.
+`deploy.sh` generates that Secret on the node the first time and never prints
+it. Kafka B has no metrics listener. Without a Prometheus server on EKS-D, the
+endpoint is checked with `curl` through a port-forward.

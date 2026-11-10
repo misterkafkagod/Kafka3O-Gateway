@@ -182,3 +182,28 @@ func TestLoadConfig_ReadsOptionalBackupSettings(t *testing.T) {
 		t.Fatal("a backup secret in the config file was accepted")
 	}
 }
+
+func TestLoadConfig_ReadsTheOptionalMetricsListener(t *testing.T) {
+	yamlPath := writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\n")
+	cfg, err := LoadConfig(yamlPath)
+	if err != nil || cfg.Metrics != (MetricsConfig{}) {
+		t.Fatalf("metrics = %+v, %v", cfg.Metrics, err)
+	}
+	t.Setenv("KAFKA3O_METRICS__LISTEN", ":9464")
+	if _, err := LoadConfig(yamlPath); err == nil || !strings.Contains(err.Error(), "KAFKA3O_METRICS_TOKEN") {
+		t.Fatalf("a metrics listener without a token was accepted: %v", err)
+	}
+	t.Setenv("KAFKA3O_METRICS_TOKEN", "short")
+	if _, err := LoadConfig(yamlPath); err == nil {
+		t.Fatal("a short metrics token was accepted")
+	}
+	token := strings.Repeat("m", 32)
+	t.Setenv("KAFKA3O_METRICS_TOKEN", token)
+	cfg, err = LoadConfig(yamlPath)
+	if err != nil || cfg.Metrics != (MetricsConfig{Listen: ":9464", Token: token}) {
+		t.Fatalf("metrics = %+v, %v", cfg.Metrics, err)
+	}
+	if _, err := LoadConfig(writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\nmetrics:\n  token: x\n")); err == nil {
+		t.Fatal("a metrics token in the config file was accepted")
+	}
+}

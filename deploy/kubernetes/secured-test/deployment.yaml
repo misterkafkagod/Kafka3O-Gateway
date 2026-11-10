@@ -134,6 +134,10 @@ spec:
               valueFrom: { secretKeyRef: { name: kafka3o-backup-read, key: access-key, optional: true } }
             - name: KAFKA3O_BACKUP_S3_SECRET_KEY
               valueFrom: { secretKeyRef: { name: kafka3o-backup-read, key: secret-key, optional: true } }
+            # M15 Prometheus metrics on a second listener with its own token (Secret created by deploy.sh).
+            - { name: KAFKA3O_METRICS__LISTEN, value: "127.0.0.1:9464" }
+            - name: KAFKA3O_METRICS_TOKEN
+              valueFrom: { secretKeyRef: { name: kafka3o-metrics-token, key: token } }
             - { name: KAFKA3O_SECURITY__SERVICECAFILE, value: /run/pki/ca.crt }
             - { name: KAFKA3O_SECURITY__CLIENTCERTIFICATEFILE, value: /run/pki/tls.crt }
             - { name: KAFKA3O_SECURITY__CLIENTKEYFILE, value: /run/pki/tls.key }

@@ -53,6 +53,13 @@ sed -e "s#__BIN_DIR__#$bin_dir#g" -e "s#__UI_HASH__#$ui_hash#g" "$here/deploymen
 ssh -o BatchMode=yes "$host" "set -e
   cd /tmp
   kubectl apply -f storage.yaml
+  # M15 Prometheus token for gateway-a, generated on the node once and never printed.
+  if ! kubectl -n kafka3o-test-clusters get secret kafka3o-metrics-token >/dev/null 2>&1; then
+    token_dir=\$(mktemp -d); umask 077
+    head -c 32 /dev/urandom | base64 | tr -d '=+/\n' > \$token_dir/token
+    kubectl -n kafka3o-test-clusters create secret generic kafka3o-metrics-token --from-file=token=\$token_dir/token
+    rm -rf \$token_dir
+  fi
   kubectl -n kafka3o-test-clusters create configmap kafka3o-secured-config --from-file=clusters.json --from-file=prepare-service-pki.sh --dry-run=client -o yaml | kubectl apply -f -
   kubectl -n kafka3o-test-clusters create configmap kafka3o-secured-ui --from-file=site.tar.gz --dry-run=client -o yaml | kubectl apply -f -
   kubectl replace -f kafka3o-secured-deployment.yaml
