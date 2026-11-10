@@ -31,6 +31,9 @@ func LoadConfig(path string) (Config, error) {
 		if strings.EqualFold(key, "kafka.sasl.password") {
 			return Config{}, errors.New("set the Kafka SASL password only with KAFKA3O_KAFKA_SASL_PASSWORD")
 		}
+		if strings.HasPrefix(strings.ToLower(key), "backup.") && (strings.Contains(strings.ToLower(key), "key") || strings.Contains(strings.ToLower(key), "secret")) {
+			return Config{}, errors.New("set backup S3 credentials only with KAFKA3O_BACKUP_S3_ACCESS_KEY and KAFKA3O_BACKUP_S3_SECRET_KEY")
+		}
 	}
 
 	cfg := Config{
@@ -55,6 +58,8 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, errors.New("kafka.brokers must list at least one broker")
 	}
 	cfg.Kafka.SASL.Password = os.Getenv("KAFKA3O_KAFKA_SASL_PASSWORD")
+	cfg.Backup.ReadAccessKey = os.Getenv("KAFKA3O_BACKUP_S3_ACCESS_KEY")
+	cfg.Backup.ReadSecretKey = os.Getenv("KAFKA3O_BACKUP_S3_SECRET_KEY")
 	if err := ValidateKafkaSecurity(cfg.Kafka); err != nil {
 		return Config{}, err
 	}

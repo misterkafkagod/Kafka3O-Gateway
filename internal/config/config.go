@@ -19,6 +19,9 @@ type BackupConfig struct {
 	Bucket     string `koanf:"bucket"`
 	Region     string `koanf:"region"`
 	Prefix     string `koanf:"prefix"`
+	// The Gateway's read-only listing credentials come only from KAFKA3O_BACKUP_S3_ACCESS_KEY and _SECRET_KEY.
+	ReadAccessKey string `koanf:"-"`
+	ReadSecretKey string `koanf:"-"`
 }
 
 // ConnectConfig optionally points the Gateway at its cluster's Kafka Connect REST API; empty means no Connect.

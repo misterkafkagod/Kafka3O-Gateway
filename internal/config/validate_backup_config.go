@@ -16,7 +16,7 @@ var (
 // ValidateBackupConfig accepts no backup setting, or a complete one: an http(s) endpoint, an S3 bucket name, a region
 // and an optional prefix of path segments ending in "/". Backups also need Kafka Connect.
 func ValidateBackupConfig(backup BackupConfig, connectURL string) error {
-	if backup == (BackupConfig{}) {
+	if backup.S3Endpoint == "" && backup.Bucket == "" && backup.Region == "" && backup.Prefix == "" {
 		return nil
 	}
 	endpoint, err := url.Parse(backup.S3Endpoint)

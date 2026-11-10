@@ -170,4 +170,13 @@ func TestLoadConfig_ReadsOptionalBackupSettings(t *testing.T) {
 	if cfg.Backup != (BackupConfig{S3Endpoint: "http://seaweedfs-s3:8333", Bucket: "kafka3o-backups", Region: "us-east-1", Prefix: "kafka-a/"}) {
 		t.Fatalf("backup = %+v", cfg.Backup)
 	}
+	t.Setenv("KAFKA3O_BACKUP_S3_ACCESS_KEY", "read-key")
+	t.Setenv("KAFKA3O_BACKUP_S3_SECRET_KEY", "read-secret")
+	cfg, err = LoadConfig(writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\n"))
+	if err != nil || cfg.Backup.ReadAccessKey != "read-key" || cfg.Backup.ReadSecretKey != "read-secret" {
+		t.Fatalf("read credentials = %q/%q, %v", cfg.Backup.ReadAccessKey, cfg.Backup.ReadSecretKey, err)
+	}
+	if _, err := LoadConfig(writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\nbackup:\n  secretkey: x\n")); err == nil {
+		t.Fatal("a backup secret in the config file was accepted")
+	}
 }
