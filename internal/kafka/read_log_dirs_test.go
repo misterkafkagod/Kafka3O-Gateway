@@ -21,14 +21,15 @@ func (f fakeLogDirsAdmin) DescribeAllLogDirs(context.Context, kadm.TopicsSet) (k
 func TestReadLogDirs_ReportsVolumeAndKafkaSizes(t *testing.T) {
 	admin := fakeLogDirsAdmin{dirs: kadm.DescribedAllLogDirs{1: {"/data": {
 		Broker: 1, Dir: "/data", TotalBytes: 100, UsableBytes: 40,
-		Topics: kadm.DescribedLogDirTopics{"orders": {0: {Size: 7}, 1: {Size: 5}}, "__consumer_offsets": {0: {Size: 3}}},
+		Topics: kadm.DescribedLogDirTopics{"orders": {0: {Topic: "orders", Size: 7}, 1: {Topic: "orders", Partition: 1, Size: 5}}, "__consumer_offsets": {0: {Topic: "__consumer_offsets", Size: 3}}},
 	}}}}
 	dirs, err := NewReadLogDirs(admin).Execute(context.Background())
 	if err != nil || len(dirs) != 1 {
 		t.Fatalf("dirs = %+v, err = %v", dirs, err)
 	}
 	d := dirs[0]
-	if d.Broker != 1 || d.Dir != "/data" || *d.TotalBytes != 100 || *d.UsableBytes != 40 || d.KafkaBytes != 15 || d.Error != "" {
+	if d.Broker != 1 || d.Dir != "/data" || *d.TotalBytes != 100 || *d.UsableBytes != 40 || d.KafkaBytes != 15 || d.Error != "" ||
+		d.TopicBytes["orders"] != 12 || d.TopicBytes["__consumer_offsets"] != 3 {
 		t.Fatalf("dir = %+v", d)
 	}
 }

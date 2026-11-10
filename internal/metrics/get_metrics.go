@@ -13,12 +13,13 @@ type GetMetrics interface {
 
 type getMetrics struct {
 	logDirs ReadLogDirs
+	health  ReadPartitionHealth
 	timeout time.Duration
 	now     func() time.Time
 }
 
-func NewGetMetrics(logDirs ReadLogDirs, timeout time.Duration, now func() time.Time) GetMetrics {
-	return getMetrics{logDirs: logDirs, timeout: timeout, now: now}
+func NewGetMetrics(logDirs ReadLogDirs, health ReadPartitionHealth, timeout time.Duration, now func() time.Time) GetMetrics {
+	return getMetrics{logDirs: logDirs, health: health, timeout: timeout, now: now}
 }
 
 func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
@@ -29,10 +30,19 @@ func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 	dirs, err := g.logDirs.Execute(ctx)
 	if err != nil {
 		result.LogDirs.Error = err.Error()
+		result.LargestTopics.Error = err.Error()
 	}
 	if dirs != nil {
 		result.LogDirs.Dirs = slices.Clone(dirs)
 		slices.SortFunc(result.LogDirs.Dirs, CompareLogDirs)
+	}
+	result.LargestTopics.Topics = LargestTopics(dirs)
+
+	topics, err := g.health.Execute(ctx)
+	if err != nil {
+		result.Partitions = Partitions{Error: err.Error(), UnreadableTopics: []string{}}
+	} else {
+		result.Partitions = SummarizePartitionHealth(topics)
 	}
 	return result
 }

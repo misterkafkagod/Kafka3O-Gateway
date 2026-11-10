@@ -26,7 +26,7 @@ func (r readLogDirs) Execute(ctx context.Context) ([]metrics.LogDir, error) {
 	described, err := r.admin.DescribeAllLogDirs(ctx, nil)
 	var dirs []metrics.LogDir
 	described.Each(func(d kadm.DescribedLogDir) {
-		dir := metrics.LogDir{Broker: d.Broker, Dir: d.Dir}
+		dir := metrics.LogDir{Broker: d.Broker, Dir: d.Dir, TopicBytes: map[string]int64{}}
 		if d.TotalBytes >= 0 {
 			dir.TotalBytes = &d.TotalBytes
 		}
@@ -36,7 +36,10 @@ func (r readLogDirs) Execute(ctx context.Context) ([]metrics.LogDir, error) {
 		if d.Err != nil {
 			dir.Error = d.Err.Error()
 		}
-		d.Topics.Each(func(p kadm.DescribedLogDirPartition) { dir.KafkaBytes += p.Size })
+		d.Topics.Each(func(p kadm.DescribedLogDirPartition) {
+			dir.KafkaBytes += p.Size
+			dir.TopicBytes[p.Topic] += p.Size
+		})
 		dirs = append(dirs, dir)
 	})
 	if err != nil {
