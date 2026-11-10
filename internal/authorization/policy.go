@@ -50,6 +50,7 @@ const (
 	ActionPauseBackup         Action = "backups.pause"
 	ActionResumeBackup        Action = "backups.resume"
 	ActionDeleteBackup        Action = "backups.delete"
+	ActionRestoreBackup       Action = "backups.restore"
 	ActionManageAccounts      Action = "console.accounts.manage"
 	ActionManageRoleBindings  Action = "console.role_bindings.manage"
 	ActionManageGroupMappings Action = "console.group_mappings.manage"

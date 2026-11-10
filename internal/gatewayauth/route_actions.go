@@ -13,6 +13,7 @@ var routeActions = map[string]authorization.Action{
 	"GET backups":                                 authorization.ActionListBackups,
 	"POST backups/{}/pause":                       authorization.ActionPauseBackup,
 	"POST backups/{}/resume":                      authorization.ActionResumeBackup,
+	"POST backups/{}/restore":                     authorization.ActionRestoreBackup,
 	"DELETE backups/{}":                           authorization.ActionDeleteBackup,
 	"POST backups":                                authorization.ActionStartBackup,
 	"GET connect/connectors":                      authorization.ActionListConnectors,

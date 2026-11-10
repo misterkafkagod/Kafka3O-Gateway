@@ -24,6 +24,7 @@ func TestClassifyRouteMapsEveryKnownRouteAndDeniesTheRest(t *testing.T) {
 		{"POST", "/api/v1/backups/orders/pause", authorization.ActionPauseBackup},
 		{"POST", "/api/v1/backups/orders/resume", authorization.ActionResumeBackup},
 		{"DELETE", "/api/v1/backups/orders", authorization.ActionDeleteBackup},
+		{"POST", "/api/v1/backups/orders/restore", authorization.ActionRestoreBackup},
 		{"POST", "/api/v1/connect/connectors/orders%20sink/pause", authorization.ActionPauseConnector},
 		{"POST", "/api/v1/connect/connectors/orders-sink/resume", authorization.ActionResumeConnector},
 		{"POST", "/api/v1/connect/connectors/orders-sink/restart", authorization.ActionRestartConnector},

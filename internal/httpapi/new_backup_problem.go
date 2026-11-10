@@ -21,6 +21,15 @@ func NewBackupProblem(err error) *Problem {
 	case errors.Is(err, backup.ErrBackupNotFound):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusNotFound, Title: "Backup not found",
 			Detail: "This topic has no backup"}, Code: "not_found"}
+	case errors.Is(err, backup.ErrRestoreInProgress):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusConflict, Title: "Restore in progress",
+			Detail: "A restore of this topic is already running"}, Code: "restore_in_progress"}
+	case errors.Is(err, backup.ErrNothingToRestore):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusNotFound, Title: "Nothing to restore",
+			Detail: "This topic's backup holds no stored objects yet"}, Code: "nothing_to_restore"}
+	case errors.Is(err, backup.ErrStorageUnavailable):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusServiceUnavailable, Title: "Backup storage unavailable",
+			Detail: "The backup storage cannot be listed"}, Code: "storage_unavailable"}
 	case errors.Is(err, backup.ErrBackupExists):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusConflict, Title: "Backup already exists",
 			Detail: "This topic already has a backup"}, Code: "backup_exists"}

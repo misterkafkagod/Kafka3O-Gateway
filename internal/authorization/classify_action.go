@@ -11,7 +11,7 @@ func classifyAction(action Action) (actionCategory, error) {
 		ActionAlterTopicConfig, ActionAlterBrokerConfig, ActionIncreasePartitions,
 		ActionReassignReplicas, ActionResetOffsets, ActionPauseConnector, ActionResumeConnector,
 		ActionRestartConnector, ActionRestartConnectTask, ActionStartBackup,
-		ActionPauseBackup, ActionResumeBackup, ActionDeleteBackup:
+		ActionPauseBackup, ActionResumeBackup, ActionDeleteBackup, ActionRestoreBackup:
 		return kafkaWrite, nil
 	case ActionReadClusterAudit:
 		return clusterAuditRead, nil

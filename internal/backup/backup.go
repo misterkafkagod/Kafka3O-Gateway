@@ -36,4 +36,14 @@ var (
 	ErrBackupExists         = errors.New("the topic already has a backup")
 	ErrInvalidTopic         = errors.New("the topic name is invalid")
 	ErrBackupNotFound       = errors.New("the topic has no backup")
+	ErrRestoreInProgress    = errors.New("a restore of this topic is already running")
+	ErrNothingToRestore     = errors.New("the topic's backup holds no objects")
+	ErrStorageUnavailable   = errors.New("the backup storage cannot be listed")
 )
+
+// Restore is a restore started for a topic from the objects that existed at that moment.
+type Restore struct {
+	Topic     string `json:"topic"`
+	RestoreID string `json:"restoreId"`
+	Objects   int    `json:"objects"`
+}
