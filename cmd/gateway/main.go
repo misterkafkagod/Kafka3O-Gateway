@@ -25,6 +25,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/gatewayauth"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/metrics"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/s3store"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/settings"
@@ -81,6 +82,7 @@ func main() {
 	writeAdmin := kadm.NewClient(producer)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
+	getMetrics := metrics.NewGetMetrics(kafka.NewReadLogDirs(admin), cfg.Kafka.Timeout, time.Now)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, kafkaClient), cfg.Kafka.Timeout)
@@ -128,7 +130,7 @@ func main() {
 		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
 		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
 		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
-		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup, listBackups: listBackups, manageBackup: manageBackup, startRestore: startRestore,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup, listBackups: listBackups, manageBackup: manageBackup, startRestore: startRestore, getMetrics: getMetrics,
 		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})

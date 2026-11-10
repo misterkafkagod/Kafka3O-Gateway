@@ -8,6 +8,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/httpapi"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/metrics"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/settings"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
@@ -33,6 +34,7 @@ type gatewayActions struct {
 	listBackups             backup.ListBackups
 	manageBackup            backup.ManageBackup
 	startRestore            backup.StartRestore
+	getMetrics              metrics.GetMetrics
 	getConfigurations       settings.GetConfigurations
 	alterConfiguration      settings.AlterConfiguration
 	increasePartitions      partitions.IncreasePartitionCount
@@ -60,6 +62,7 @@ func registerGatewayRoutes(api huma.API, a gatewayActions) {
 	httpapi.RegisterListBackups(api, a.listBackups)
 	httpapi.RegisterBackupActions(api, a.manageBackup)
 	httpapi.RegisterStartRestore(api, a.startRestore)
+	httpapi.RegisterGetMetrics(api, a.getMetrics)
 	httpapi.RegisterGetTopicConfigurations(api, a.getConfigurations)
 	httpapi.RegisterGetBrokerConfigurations(api, a.getConfigurations)
 	httpapi.RegisterAlterTopicConfiguration(api, a.alterConfiguration)
