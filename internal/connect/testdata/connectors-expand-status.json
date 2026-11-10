@@ -1,0 +1,60 @@
+{
+  "kafka3o-verify-failing": {
+    "status": {
+      "name": "kafka3o-verify-failing",
+      "connector": {
+        "state": "RUNNING",
+        "worker_id": "0.0.0.0:8083",
+        "version": "4.3.1"
+      },
+      "tasks": [
+        {
+          "id": 0,
+          "state": "FAILED",
+          "worker_id": "0.0.0.0:8083",
+          "version": "4.3.1",
+          "trace": "org.apache.kafka.connect.errors.ConnectException: Couldn't find or create file '/nonexistent-dir/kafka3o-verify-failing.txt' for FileStreamSinkTask\n\tat org.apache.kafka.connect.file.FileStreamSinkTask.start(FileStreamSinkTask.java:74)\n\tat org.apache.kafka.connect.runtime.WorkerSinkTask.initializeAndStart(WorkerSinkTask.java:338)\n\t... (trimmed for the fixture)"
+        }
+      ],
+      "type": "sink"
+    }
+  },
+  "kafka3o-verify-paused": {
+    "status": {
+      "name": "kafka3o-verify-paused",
+      "connector": {
+        "state": "PAUSED",
+        "worker_id": "0.0.0.0:8083",
+        "version": "4.3.1"
+      },
+      "tasks": [
+        {
+          "id": 0,
+          "state": "PAUSED",
+          "worker_id": "0.0.0.0:8083",
+          "version": "4.3.1"
+        }
+      ],
+      "type": "sink"
+    }
+  },
+  "kafka3o-verify-running": {
+    "status": {
+      "name": "kafka3o-verify-running",
+      "connector": {
+        "state": "RUNNING",
+        "worker_id": "0.0.0.0:8083",
+        "version": "4.3.1"
+      },
+      "tasks": [
+        {
+          "id": 0,
+          "state": "RUNNING",
+          "worker_id": "0.0.0.0:8083",
+          "version": "4.3.1"
+        }
+      ],
+      "type": "sink"
+    }
+  }
+}

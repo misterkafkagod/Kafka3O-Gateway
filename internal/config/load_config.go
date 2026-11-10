@@ -58,5 +58,8 @@ func LoadConfig(path string) (Config, error) {
 	if err := ValidateKafkaSecurity(cfg.Kafka); err != nil {
 		return Config{}, err
 	}
+	if err := ValidateConnectURL(cfg.Connect.URL); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
 }

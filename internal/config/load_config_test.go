@@ -141,3 +141,18 @@ func TestLoadConfig_MissingFileIsAnError(t *testing.T) {
 		t.Fatal("expected an error for a missing file")
 	}
 }
+
+func TestLoadConfig_ReadsOptionalConnectURL(t *testing.T) {
+	t.Setenv("KAFKA3O_CONNECT__URL", "http://kafka-connect.kafka3o-connect-test.svc.cluster.local:8083")
+	cfg, err := LoadConfig(writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Connect.URL != "http://kafka-connect.kafka3o-connect-test.svc.cluster.local:8083" {
+		t.Fatalf("connect url = %q", cfg.Connect.URL)
+	}
+	t.Setenv("KAFKA3O_CONNECT__URL", "kafka-connect:8083")
+	if _, err := LoadConfig(writeYAML(t, "kafka:\n  brokers: [\"localhost:9092\"]\n")); err == nil {
+		t.Fatal("a Connect URL without a scheme was accepted")
+	}
+}

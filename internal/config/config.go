@@ -8,6 +8,12 @@ type Config struct {
 	HTTP     HTTPConfig     `koanf:"http"`
 	Kafka    KafkaConfig    `koanf:"kafka"`
 	Security SecurityConfig `koanf:"security"`
+	Connect  ConnectConfig  `koanf:"connect"`
+}
+
+// ConnectConfig optionally points the Gateway at its cluster's Kafka Connect REST API; empty means no Connect.
+type ConnectConfig struct {
+	URL string `koanf:"url"`
 }
 
 // SecurityConfig selects the legacy shared-token mode (default) or the secured mode, in which only the Console
