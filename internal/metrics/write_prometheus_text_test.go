@@ -1,0 +1,78 @@
+package metrics
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestWritePrometheusText_WritesEverySection(t *testing.T) {
+	total, usable := int64(100), int64(60)
+	var out strings.Builder
+	err := WritePrometheusText(&out, ClusterMetrics{
+		LogDirs: LogDirs{Dirs: []LogDir{
+			{Broker: 1, Dir: `/data "a"`, TotalBytes: &total, UsableBytes: &usable, KafkaBytes: 7, TopicBytes: map[string]int64{"orders": 5, "__consumer_offsets": 2}},
+			{Broker: 2, Dir: "/unknown", KafkaBytes: 3},
+			{Broker: 3, Dir: "/broken", Error: "KAFKA_STORAGE_ERROR"},
+		}},
+		Partitions: Partitions{Topics: 2, Partitions: 4, UnderReplicated: 1, Offline: 0, BelowMinISR: new(int)},
+		EndOffsets: EndOffsets{Topics: []TopicEndOffset{{Topic: "orders", EndOffset: "9007199254740993"}, {Topic: "failing", Error: "NOT_LEADER"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := out.String()
+	for _, line := range []string{
+		"# TYPE kafka3o_metrics_section_up gauge",
+		`kafka3o_metrics_section_up{section="logDirs"} 1`,
+		`kafka3o_log_dir_total_bytes{broker="1",dir="/data \"a\""} 100`,
+		`kafka3o_log_dir_usable_bytes{broker="1",dir="/data \"a\""} 60`,
+		`kafka3o_log_dir_kafka_bytes{broker="1",dir="/data \"a\""} 7`,
+		`kafka3o_log_dir_kafka_bytes{broker="2",dir="/unknown"} 3`,
+		"kafka3o_topics 2",
+		`kafka3o_partitions{state="all"} 4`,
+		`kafka3o_partitions{state="under_replicated"} 1`,
+		`kafka3o_partitions{state="below_min_isr"} 0`,
+		`kafka3o_partitions{state="offline"} 0`,
+		`kafka3o_topic_size_bytes{topic="orders"} 5`,
+		`kafka3o_topic_size_bytes{topic="__consumer_offsets"} 2`,
+		"# TYPE kafka3o_topic_end_offset_total counter",
+		`kafka3o_topic_end_offset_total{topic="orders"} 9007199254740993`,
+	} {
+		if !strings.Contains(text, line+"\n") {
+			t.Errorf("missing %q in:\n%s", line, text)
+		}
+	}
+	for _, absent := range []string{`kafka3o_log_dir_total_bytes{broker="2"`, `broker="3"`, `topic="failing"`} {
+		if strings.Contains(text, absent) {
+			t.Errorf("unexpected %q in:\n%s", absent, text)
+		}
+	}
+}
+
+func TestWritePrometheusText_MarksUnavailableSectionsAndLeavesTheirValuesOut(t *testing.T) {
+	var out strings.Builder
+	if err := WritePrometheusText(&out, ClusterMetrics{
+		LogDirs:    LogDirs{Error: "denied"},
+		Partitions: Partitions{Error: "refused"},
+		EndOffsets: EndOffsets{Error: "refused"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	text := out.String()
+	for _, line := range []string{`kafka3o_metrics_section_up{section="logDirs"} 0`, `kafka3o_metrics_section_up{section="partitions"} 0`, `kafka3o_metrics_section_up{section="endOffsets"} 0`} {
+		if !strings.Contains(text, line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	if strings.Contains(text, "kafka3o_topics ") || strings.Contains(text, "kafka3o_partitions{") {
+		t.Errorf("unavailable partitions were written:\n%s", text)
+	}
+}
+
+func TestWritePrometheusText_LeavesOutAnUnknownMinISRCount(t *testing.T) {
+	var out strings.Builder
+	_ = WritePrometheusText(&out, ClusterMetrics{Partitions: Partitions{Partitions: 1}})
+	if strings.Contains(out.String(), "below_min_isr") {
+		t.Fatalf("unknown below-min-ISR count was written:\n%s", out.String())
+	}
+}
