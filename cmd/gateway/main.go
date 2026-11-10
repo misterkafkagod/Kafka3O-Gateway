@@ -24,6 +24,7 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/kafka"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/partitions"
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/s3store"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/settings"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/topics"
 )
@@ -95,6 +96,9 @@ func main() {
 	manageConnector := connect.NewManageConnector(connect.NewSendConnectAction(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	backupSettings := backup.Settings{S3Endpoint: cfg.Backup.S3Endpoint, Bucket: cfg.Backup.Bucket, Region: cfg.Backup.Region, Prefix: cfg.Backup.Prefix}
 	startBackup := backup.NewStartBackup(backupSettings, connect.NewCreateConnector(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
+	backupObjects := s3store.NewListObjects(cfg.Backup.S3Endpoint, cfg.Backup.Bucket, cfg.Backup.Region,
+		s3store.Credentials{AccessKey: cfg.Backup.ReadAccessKey, SecretKey: cfg.Backup.ReadSecretKey}, connectClient, time.Now)
+	listBackups := backup.NewListBackups(backupSettings, listConnectors, backupObjects)
 	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
 	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
 	alterConfiguration := settings.NewAlterConfiguration(describeConfigurations, kafka.NewAlterConfiguration(writeAdmin), cfg.Kafka.Timeout)
@@ -110,7 +114,7 @@ func main() {
 		getCluster: getCluster, listTopics: listTopics, getTopicDetail: getTopicDetail,
 		listLatestTopicMessages: listLatestTopicMessages, readTopicMessages: readTopicMessages,
 		searchTopicMessages: searchTopicMessages, produceTopicMessage: produceTopicMessage,
-		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup,
+		createTopic: createTopic, deleteTopic: deleteTopic, listConsumerGroups: listConsumerGroups, previewOffsetReset: previewOffsetReset, applyOffsetReset: applyOffsetReset, listConnectors: listConnectors, manageConnector: manageConnector, startBackup: startBackup, listBackups: listBackups,
 		getConfigurations: getConfigurations, alterConfiguration: alterConfiguration,
 		increasePartitions: increasePartitions, listReassignments: listReassignments, reassignPartition: reassignPartition,
 	})

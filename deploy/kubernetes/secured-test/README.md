@@ -58,3 +58,8 @@ connector recipe are in the UI repository's
 [s3-backup-connectors discovery](../../../../Kafka3O-UI/spec/discovery/s3-backup-connectors.md).
 Kafka B has no backup setting.
 
+The Gateway lists backup objects with a separate read-only SeaweedFS identity
+(actions `Read`, `List`) from the optional Secret `kafka3o-backup-read` (keys
+`access-key`, `secret-key`) in `kafka3o-test-clusters`. Without it, the backup
+list shows the storage summary as unknown.
+

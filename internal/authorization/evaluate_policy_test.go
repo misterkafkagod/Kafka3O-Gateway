@@ -9,7 +9,7 @@ func TestEvaluatePolicyKafkaActionMatrix(t *testing.T) {
 	reads := []Action{
 		ActionDescribeCluster, ActionListTopics, ActionDescribeTopic, ActionReadMessages,
 		ActionSearchMessages, ActionListConsumerGroups, ActionPreviewOffsetReset, ActionReadTopicConfig,
-		ActionReadBrokerConfig, ActionListReassignments, ActionListConnectors,
+		ActionReadBrokerConfig, ActionListReassignments, ActionListConnectors, ActionListBackups,
 	}
 	writes := []Action{
 		ActionProduceMessage, ActionCreateTopic, ActionDeleteTopic,

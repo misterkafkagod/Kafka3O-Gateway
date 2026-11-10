@@ -10,6 +10,7 @@ var routeActions = map[string]authorization.Action{
 	"GET consumer-groups":                         authorization.ActionListConsumerGroups,
 	"GET consumer-groups/{}/offset-reset":         authorization.ActionPreviewOffsetReset,
 	"POST consumer-groups/{}/offset-reset":        authorization.ActionResetOffsets,
+	"GET backups":                                 authorization.ActionListBackups,
 	"POST backups":                                authorization.ActionStartBackup,
 	"GET connect/connectors":                      authorization.ActionListConnectors,
 	"POST connect/connectors/{}/pause":            authorization.ActionPauseConnector,

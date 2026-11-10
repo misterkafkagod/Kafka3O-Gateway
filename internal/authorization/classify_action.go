@@ -5,7 +5,7 @@ func classifyAction(action Action) (actionCategory, error) {
 	case ActionDescribeCluster, ActionListTopics, ActionDescribeTopic,
 		ActionReadMessages, ActionSearchMessages, ActionListConsumerGroups,
 		ActionReadTopicConfig, ActionReadBrokerConfig, ActionListReassignments, ActionPreviewOffsetReset,
-		ActionListConnectors:
+		ActionListConnectors, ActionListBackups:
 		return clusterRead, nil
 	case ActionProduceMessage, ActionCreateTopic, ActionDeleteTopic,
 		ActionAlterTopicConfig, ActionAlterBrokerConfig, ActionIncreasePartitions,

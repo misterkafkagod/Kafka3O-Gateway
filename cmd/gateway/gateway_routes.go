@@ -30,6 +30,7 @@ type gatewayActions struct {
 	listConnectors          connect.ListConnectors
 	manageConnector         connect.ManageConnector
 	startBackup             backup.StartBackup
+	listBackups             backup.ListBackups
 	getConfigurations       settings.GetConfigurations
 	alterConfiguration      settings.AlterConfiguration
 	increasePartitions      partitions.IncreasePartitionCount
@@ -54,6 +55,7 @@ func registerGatewayRoutes(api huma.API, a gatewayActions) {
 	httpapi.RegisterListConnectors(api, a.listConnectors)
 	httpapi.RegisterConnectorActions(api, a.manageConnector)
 	httpapi.RegisterStartBackup(api, a.startBackup)
+	httpapi.RegisterListBackups(api, a.listBackups)
 	httpapi.RegisterGetTopicConfigurations(api, a.getConfigurations)
 	httpapi.RegisterGetBrokerConfigurations(api, a.getConfigurations)
 	httpapi.RegisterAlterTopicConfiguration(api, a.alterConfiguration)
