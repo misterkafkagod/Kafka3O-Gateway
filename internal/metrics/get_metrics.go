@@ -14,12 +14,13 @@ type GetMetrics interface {
 type getMetrics struct {
 	logDirs ReadLogDirs
 	health  ReadPartitionHealth
+	offsets ReadEndOffsets
 	timeout time.Duration
 	now     func() time.Time
 }
 
-func NewGetMetrics(logDirs ReadLogDirs, health ReadPartitionHealth, timeout time.Duration, now func() time.Time) GetMetrics {
-	return getMetrics{logDirs: logDirs, health: health, timeout: timeout, now: now}
+func NewGetMetrics(logDirs ReadLogDirs, health ReadPartitionHealth, offsets ReadEndOffsets, timeout time.Duration, now func() time.Time) GetMetrics {
+	return getMetrics{logDirs: logDirs, health: health, offsets: offsets, timeout: timeout, now: now}
 }
 
 func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
@@ -41,8 +42,21 @@ func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 	topics, err := g.health.Execute(ctx)
 	if err != nil {
 		result.Partitions = Partitions{Error: err.Error(), UnreadableTopics: []string{}}
+		result.EndOffsets = EndOffsets{Error: err.Error(), Topics: []TopicEndOffset{}}
+		return result
+	}
+	result.Partitions = SummarizePartitionHealth(topics)
+	names := make([]string, 0, len(topics))
+	for _, topic := range topics {
+		if topic.Error == "" {
+			names = append(names, topic.Topic)
+		}
+	}
+	offsets, err := g.offsets.Execute(ctx, names)
+	if err != nil {
+		result.EndOffsets = EndOffsets{Error: err.Error(), Topics: []TopicEndOffset{}}
 	} else {
-		result.Partitions = SummarizePartitionHealth(topics)
+		result.EndOffsets = EndOffsets{Topics: offsets}
 	}
 	return result
 }

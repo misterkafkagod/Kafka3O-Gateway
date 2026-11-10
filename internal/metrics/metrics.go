@@ -9,6 +9,7 @@ type ClusterMetrics struct {
 	LogDirs       LogDirs    `json:"logDirs"`
 	Partitions    Partitions `json:"partitions"`
 	LargestTopics TopicSizes `json:"largestTopics"`
+	EndOffsets    EndOffsets `json:"endOffsets"`
 }
 
 type LogDirs struct {
@@ -62,4 +63,18 @@ type TopicSizes struct {
 type TopicSize struct {
 	Topic string `json:"topic"`
 	Bytes int64  `json:"bytes"`
+}
+
+// EndOffsets are per-topic sums of partition end offsets; they only grow while a topic exists, so two samples
+// give a topic's message rate.
+type EndOffsets struct {
+	Error  string           `json:"error,omitempty"`
+	Topics []TopicEndOffset `json:"topics"`
+}
+
+// TopicEndOffset carries the sum as a decimal string, like every Kafka offset the Gateway returns, or an error.
+type TopicEndOffset struct {
+	Topic     string `json:"topic"`
+	EndOffset string `json:"endOffset,omitempty"`
+	Error     string `json:"error,omitempty"`
 }

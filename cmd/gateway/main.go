@@ -82,7 +82,7 @@ func main() {
 	writeAdmin := kadm.NewClient(producer)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
-	getMetrics := metrics.NewGetMetrics(kafka.NewReadLogDirs(admin), kafka.NewReadPartitionHealth(admin), cfg.Kafka.Timeout, time.Now)
+	getMetrics := metrics.NewGetMetrics(kafka.NewReadLogDirs(admin), kafka.NewReadPartitionHealth(admin), kafka.NewReadEndOffsets(admin), cfg.Kafka.Timeout, time.Now)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, kafkaClient), cfg.Kafka.Timeout)
