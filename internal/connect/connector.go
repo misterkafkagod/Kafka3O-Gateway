@@ -20,7 +20,26 @@ type Connector struct {
 	Tasks    []Task `json:"tasks"`
 }
 
+// Action is a connector lifecycle request; Task is used only by ActionRestartTask.
+type Action struct {
+	Kind      string
+	Connector string
+	Task      int32
+}
+
+const (
+	ActionPause       = "pause"
+	ActionResume      = "resume"
+	ActionRestart     = "restart"
+	ActionRestartTask = "restart-task"
+)
+
 var (
 	ErrConnectNotConfigured = errors.New("kafka connect is not configured for this cluster")
 	ErrConnectUnreachable   = errors.New("kafka connect is unreachable")
+	ErrConnectorNotFound    = errors.New("the connector or task does not exist")
+	ErrConnectRejected      = errors.New("kafka connect rejected the action")
+	ErrConnectActionUnknown = errors.New("the connect action may have been applied")
+	ErrInvalidConnectorName = errors.New("the connector name is invalid")
+	ErrInvalidConnectAction = errors.New("the connect action is invalid")
 )
