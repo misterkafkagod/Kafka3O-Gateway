@@ -63,6 +63,9 @@ func LoadConfig(path string) (Config, error) {
 	if err := ValidateKafkaSecurity(cfg.Kafka); err != nil {
 		return Config{}, err
 	}
+	if cfg.Connect.OffsetsTopic == "" {
+		cfg.Connect.OffsetsTopic = "kafka3o-connect-offsets"
+	}
 	if err := ValidateConnectURL(cfg.Connect.URL); err != nil {
 		return Config{}, err
 	}

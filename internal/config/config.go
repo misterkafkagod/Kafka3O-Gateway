@@ -27,6 +27,8 @@ type BackupConfig struct {
 // ConnectConfig optionally points the Gateway at its cluster's Kafka Connect REST API; empty means no Connect.
 type ConnectConfig struct {
 	URL string `koanf:"url"`
+	// OffsetsTopic is the Connect worker's offset.storage.topic, read for restore progress.
+	OffsetsTopic string `koanf:"offsetstopic"`
 }
 
 // SecurityConfig selects the legacy shared-token mode (default) or the secured mode, in which only the Console

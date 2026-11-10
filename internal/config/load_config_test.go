@@ -25,8 +25,9 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Config{
-		HTTP:  HTTPConfig{Listen: ":8080"},
-		Kafka: KafkaConfig{Brokers: []string{"localhost:9092"}, Timeout: 3 * time.Second},
+		HTTP:    HTTPConfig{Listen: ":8080"},
+		Kafka:   KafkaConfig{Brokers: []string{"localhost:9092"}, Timeout: 3 * time.Second},
+		Connect: ConnectConfig{OffsetsTopic: "kafka3o-connect-offsets"},
 	}
 	if diff := cmp.Diff(want, cfg); diff != "" {
 		t.Errorf("config mismatch (-want +got):\n%s", diff)
@@ -47,8 +48,9 @@ kafka:
 		t.Fatal(err)
 	}
 	want := Config{
-		HTTP:  HTTPConfig{Listen: ":9000", CORS: CORSConfig{AllowedOrigins: []string{"http://localhost:5173"}}},
-		Kafka: KafkaConfig{Brokers: []string{"a:9092", "b:9092"}, Timeout: 2 * time.Second},
+		HTTP:    HTTPConfig{Listen: ":9000", CORS: CORSConfig{AllowedOrigins: []string{"http://localhost:5173"}}},
+		Kafka:   KafkaConfig{Brokers: []string{"a:9092", "b:9092"}, Timeout: 2 * time.Second},
+		Connect: ConnectConfig{OffsetsTopic: "kafka3o-connect-offsets"},
 	}
 	if diff := cmp.Diff(want, cfg); diff != "" {
 		t.Errorf("config mismatch (-want +got):\n%s", diff)
