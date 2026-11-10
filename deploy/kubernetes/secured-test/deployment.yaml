@@ -122,6 +122,8 @@ spec:
               valueFrom: { secretKeyRef: { name: kafka-a-security, key: sasl.password } }
             - { name: KAFKA3O_SECURITY__MODE, value: secured }
             - { name: KAFKA3O_SECURITY__CLUSTERID, value: kafka-a }
+            # M12 test Kafka Connect worker (namespace kafka3o-connect-test); Kafka B has no Connect.
+            - { name: KAFKA3O_CONNECT__URL, value: "http://kafka-connect.kafka3o-connect-test.svc.cluster.local:8083" }
             - { name: KAFKA3O_SECURITY__SERVICECAFILE, value: /run/pki/ca.crt }
             - { name: KAFKA3O_SECURITY__CLIENTCERTIFICATEFILE, value: /run/pki/tls.crt }
             - { name: KAFKA3O_SECURITY__CLIENTKEYFILE, value: /run/pki/tls.key }

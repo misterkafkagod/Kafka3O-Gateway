@@ -34,3 +34,15 @@ snapshot over `/var/lib/kafka3o-console/console.sqlite` (owner uid 1000, mode
 0600; the volume root stays 2770 so `fsGroupChangePolicy: OnRootMismatch` never
 re-chmods the owner-only database) and scaling back to 1. Cluster classification is held only by the
 Console: `kafka-b` is Production and `kafka-a` non-Production.
+
+## Kafka Connect (M12)
+
+`gateway-a` reads the test Kafka Connect worker at
+`http://kafka-connect.kafka3o-connect-test.svc.cluster.local:8083`
+(`KAFKA3O_CONNECT__URL`); `gateway-b` has no Connect URL, so Kafka B's Connect
+tab says "not configured". The worker itself is described in the UI repository's
+[kafka-connect-api discovery](../../../../Kafka3O-UI/spec/discovery/kafka-connect-api.md)
+and runs in its own namespace on Kafka A only. Remove it with
+`kubectl delete namespace kafka3o-connect-test` and delete the
+`kafka3o-connect-configs`, `kafka3o-connect-offsets` and `kafka3o-connect-status`
+topics on Kafka A.

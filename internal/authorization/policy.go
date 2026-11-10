@@ -29,6 +29,7 @@ const (
 	ActionSearchMessages      Action = "messages.search"
 	ActionListConsumerGroups  Action = "consumer_groups.list"
 	ActionPreviewOffsetReset  Action = "consumer_groups.offsets.preview"
+	ActionListConnectors      Action = "connect.connectors.list"
 	ActionReadTopicConfig     Action = "topics.config.read"
 	ActionReadBrokerConfig    Action = "brokers.config.read"
 	ActionListReassignments   Action = "topics.reassignments.list"

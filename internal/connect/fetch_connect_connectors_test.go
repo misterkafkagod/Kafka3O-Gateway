@@ -61,7 +61,10 @@ func TestFetchConnectConnectorsReportsMissingOrBrokenConnect(t *testing.T) {
 		t.Fatalf("not configured: %v", err)
 	}
 	for name, server := range map[string]*httptest.Server{
-		"server error":   func() *httptest.Server { s, _ := connectFixture(t, http.StatusInternalServerError, `{"error_code":500,"message":"x"}`); return s }(),
+		"server error": func() *httptest.Server {
+			s, _ := connectFixture(t, http.StatusInternalServerError, `{"error_code":500,"message":"x"}`)
+			return s
+		}(),
 		"malformed json": func() *httptest.Server { s, _ := connectFixture(t, http.StatusOK, `{"x":`); return s }(),
 	} {
 		if _, err := NewFetchConnectConnectors(server.URL, server.Client()).Execute(context.Background()); !errors.Is(err, ErrConnectUnreachable) {

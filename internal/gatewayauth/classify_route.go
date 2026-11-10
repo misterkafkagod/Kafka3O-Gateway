@@ -26,6 +26,21 @@ func ClassifyRoute(method, escapedPath string) (Route, bool) {
 		return Route{}, false
 	case len(segments) == 1:
 		key += segments[0]
+	case len(segments) >= 2 && segments[0] == "connect" && segments[1] == "connectors":
+		// connect/connectors[/{name}[/action|/tasks/{id}/restart]]
+		key += "connect/connectors"
+		if len(segments) > 2 {
+			key += "/{}"
+		}
+		if len(segments) > 3 {
+			for i, segment := range segments[3:] {
+				if i == 1 && segments[3] == "tasks" {
+					key += "/{}"
+					continue
+				}
+				key += "/" + segment
+			}
+		}
 	case len(segments) >= 3 && segments[0] == "consumer-groups":
 		key += "consumer-groups/{}/" + strings.Join(segments[2:], "/")
 	case len(segments) >= 2 && (segments[0] == "topics" || segments[0] == "brokers"):
