@@ -15,6 +15,8 @@ func TestClassifyRouteMapsEveryKnownRouteAndDeniesTheRest(t *testing.T) {
 		{"GET", "/api/v1/topics", authorization.ActionListTopics},
 		{"POST", "/api/v1/topics", authorization.ActionCreateTopic},
 		{"GET", "/api/v1/consumer-groups", authorization.ActionListConsumerGroups},
+		{"GET", "/api/v1/consumer-groups/billing/offset-reset", authorization.ActionPreviewOffsetReset},
+		{"GET", "/api/v1/consumer-groups/team%2Fbilling/offset-reset", authorization.ActionPreviewOffsetReset},
 		{"GET", "/api/v1/topics/orders", authorization.ActionDescribeTopic},
 		{"DELETE", "/api/v1/topics/orders", authorization.ActionDeleteTopic},
 		{"GET", "/api/v1/topics/orders/messages", authorization.ActionReadMessages},
@@ -41,6 +43,8 @@ func TestClassifyRouteMapsEveryKnownRouteAndDeniesTheRest(t *testing.T) {
 		{"GET", "/openapi.json"}, {"GET", "/docs"}, {"GET", "/api/v1/"}, {"GET", "/api/v1/topics/"}, {"GET", "/api/v1/topics//messages"},
 		{"GET", "/api/v1/topics/../cluster"}, {"GET", "/api/v1/topics/orders/messages/search/extra"}, {"GET", "/api/v2/topics"},
 		{"POST", "/api/v1/topics/orders/partitions/3/replicas/x"}, {"GET", "/api/v1/brokers/1"}, {"GET", "/api/v1/admin"},
+		{"GET", "/api/v1/consumer-groups/billing"}, {"DELETE", "/api/v1/consumer-groups/billing/offset-reset"},
+		{"GET", "/api/v1/consumer-groups//offset-reset"}, {"GET", "/api/v1/consumer-groups/billing/offset-reset/extra"},
 	} {
 		if route, ok := ClassifyRoute(tt[0], tt[1]); ok {
 			t.Errorf("%s %s was classified as %+v", tt[0], tt[1], route)

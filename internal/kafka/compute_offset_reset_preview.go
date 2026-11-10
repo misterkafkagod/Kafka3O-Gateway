@@ -22,15 +22,15 @@ type offsetResetAdmin interface {
 	ListOffsetsAfterMilli(context.Context, int64, ...string) (kadm.ListedOffsets, error)
 }
 
-type previewOffsetReset struct {
+type computeOffsetResetPreview struct {
 	admin offsetResetAdmin
 }
 
-func NewPreviewOffsetReset(admin offsetResetAdmin) groups.PreviewOffsetReset {
-	return previewOffsetReset{admin: admin}
+func NewComputeOffsetResetPreview(admin offsetResetAdmin) groups.ComputeOffsetResetPreview {
+	return computeOffsetResetPreview{admin: admin}
 }
 
-func (p previewOffsetReset) Execute(ctx context.Context, group, topic string, target groups.OffsetResetTarget) (groups.OffsetResetPreview, error) {
+func (p computeOffsetResetPreview) Execute(ctx context.Context, group, topic string, target groups.OffsetResetTarget) (groups.OffsetResetPreview, error) {
 	if group == "" || topic == "" || (target.Kind != "earliest" && target.Kind != "latest" && target.Kind != "timestamp") ||
 		(target.Kind == "timestamp" && target.Timestamp < 0) {
 		return groups.OffsetResetPreview{}, groups.ErrInvalidResetTarget
