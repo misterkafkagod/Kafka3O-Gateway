@@ -23,6 +23,8 @@ type Backup struct {
 	Error   string          `json:"error,omitempty"`
 	Storage *StorageSummary `json:"storage,omitempty"`
 	Restore *RestoreStatus  `json:"restore,omitempty"`
+	// Restoring is true while a restore connector for the topic exists, also when its progress was not checked.
+	Restoring bool `json:"restoring,omitempty"`
 	// Settings are the job's effective settings, read back from Connect; nil when they could not be read.
 	Settings *BackupOptions `json:"settings,omitempty"`
 }

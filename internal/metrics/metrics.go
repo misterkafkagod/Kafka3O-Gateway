@@ -14,6 +14,7 @@ type ClusterMetrics struct {
 	Brokers       Brokers    `json:"brokers"`
 	Groups        Groups     `json:"consumerGroups"`
 	Connect       Connect    `json:"connect"`
+	Backups       Backups    `json:"backups"`
 }
 
 type LogDirs struct {
@@ -157,4 +158,24 @@ type ConnectFailure struct {
 	Connector string `json:"connector"`
 	Task      *int32 `json:"task"`
 	Error     string `json:"error"`
+}
+
+// Backups is each topic backup's health. NotConfigured is true for a cluster without backup storage.
+type Backups struct {
+	Error         string         `json:"error,omitempty"`
+	NotConfigured bool           `json:"notConfigured,omitempty"`
+	Backups       []BackupHealth `json:"backups"`
+}
+
+// BackupHealth is one backup; Objects, StoredBytes and LastWrite are nil when the storage could not be listed, and
+// LastWrite also when nothing was written yet (StorageListed tells them apart).
+type BackupHealth struct {
+	Topic         string     `json:"topic"`
+	State         string     `json:"state"`
+	Error         string     `json:"error,omitempty"`
+	StorageListed bool       `json:"storageListed"`
+	Objects       *int       `json:"objects"`
+	StoredBytes   *int64     `json:"storedBytes"`
+	LastWrite     *time.Time `json:"lastWrite"`
+	Restoring     bool       `json:"restoring"`
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/backup"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
 )
 
@@ -62,6 +63,17 @@ func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 			result.Connect = Connect{Error: err.Error(), Connectors: []StateCount{}, Tasks: []StateCount{}, Failures: []ConnectFailure{}}
 		default:
 			result.Connect = SummarizeConnect(connectors)
+		}
+	})
+	wait.Go(func() {
+		backups, err := g.sources.Backups.Execute(ctx)
+		switch {
+		case errors.Is(err, backup.ErrBackupsNotConfigured):
+			result.Backups = Backups{NotConfigured: true, Backups: []BackupHealth{}}
+		case err != nil:
+			result.Backups = Backups{Error: err.Error(), Backups: []BackupHealth{}}
+		default:
+			result.Backups = SummarizeBackups(backups)
 		}
 	})
 	wait.Go(func() {

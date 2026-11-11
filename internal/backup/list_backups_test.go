@@ -152,3 +152,15 @@ func TestListBackupsFindsRestoresByTheirOwnNames(t *testing.T) {
 		t.Fatalf("%+v %v %v", backups, err, check.topics)
 	}
 }
+
+func TestListBackupsFlagsRestoresWithoutCheckingThem(t *testing.T) {
+	connectors := fakeConnectors{connectors: []connect.Connector{
+		{Name: "kafka3o-backup-orders", Type: "sink", State: "PAUSED"},
+		{Name: "kafka3o-backup-payments", Type: "sink", State: "RUNNING"},
+		{Name: "kafka3o-restore-orders~r-1", Type: "source", State: "RUNNING"},
+	}}
+	backups, err := NewListBackups(settings, connectors, fakeObjects{}, nil, nil).Execute(context.Background())
+	if err != nil || len(backups) != 2 || !backups[0].Restoring || backups[0].Restore != nil || backups[1].Restoring {
+		t.Fatalf("%+v %v", backups, err)
+	}
+}

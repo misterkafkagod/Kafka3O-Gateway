@@ -86,8 +86,6 @@ func main() {
 	connectClient := &http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	listConnectors := connect.NewListConnectors(connect.NewFetchConnectConnectors(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
-	getMetrics := metrics.NewGetMetrics(metrics.Sources{LogDirs: kafka.NewReadLogDirs(admin), Health: kafka.NewReadPartitionHealth(admin),
-		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin), Groups: listConsumerGroups, Connect: listConnectors}, cfg.Kafka.Timeout, time.Now)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, kafkaClient), cfg.Kafka.Timeout)
@@ -109,6 +107,10 @@ func main() {
 		backup.NewScanObjectRecords(s3store.NewGetObject(cfg.Backup.S3Endpoint, cfg.Backup.Bucket, cfg.Backup.Region, backupReadCredentials, connectClient, time.Now)),
 		kafka.NewReadConnectOffsets(admin, kafkaClient, cfg.Connect.OffsetsTopic), manageConnector)
 	listBackups := backup.NewListBackups(backupSettings, listConnectors, backupObjects, checkRestore, connect.NewFetchConnectorConfig(cfg.Connect.URL, connectClient))
+	// The metrics' backup list has no restore check, so reading metrics never finishes a restore.
+	getMetrics := metrics.NewGetMetrics(metrics.Sources{LogDirs: kafka.NewReadLogDirs(admin), Health: kafka.NewReadPartitionHealth(admin),
+		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin), Groups: listConsumerGroups, Connect: listConnectors,
+		Backups: backup.NewListBackups(backupSettings, listConnectors, backupObjects, nil, nil)}, cfg.Kafka.Timeout, time.Now)
 	manageBackup := backup.NewManageBackup(backupSettings, manageConnector)
 	restoreID := func() string {
 		suffix := make([]byte, 4)

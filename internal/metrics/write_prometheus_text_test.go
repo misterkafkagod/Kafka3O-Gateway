@@ -3,6 +3,7 @@ package metrics
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestWritePrometheusText_WritesEverySection(t *testing.T) {
@@ -157,5 +158,31 @@ func TestWritePrometheusText_Connect(t *testing.T) {
 	_ = WritePrometheusText(&out, ClusterMetrics{Connect: Connect{Error: "kafka connect is unreachable"}})
 	if !strings.Contains(out.String(), `kafka3o_metrics_section_up{section="connect"} 0`) || strings.Contains(out.String(), "kafka3o_connect_") {
 		t.Errorf("an unreachable Connect wrote values:\n%s", out.String())
+	}
+}
+
+func TestWritePrometheusText_Backups(t *testing.T) {
+	written := time.Date(2026, 11, 11, 3, 30, 30, 0, time.UTC)
+	stored, objects := int64(1900), 10
+	var out strings.Builder
+	_ = WritePrometheusText(&out, ClusterMetrics{Backups: Backups{Backups: []BackupHealth{
+		{Topic: "orders", State: "RUNNING", StorageListed: true, Objects: &objects, StoredBytes: &stored, LastWrite: &written},
+		{Topic: "paused", State: "PAUSED", Restoring: true},
+	}}})
+	text := out.String()
+	for _, line := range []string{`kafka3o_metrics_section_up{section="backups"} 1`, `kafka3o_backup_up{topic="orders"} 1`, `kafka3o_backup_up{topic="paused"} 0`,
+		`kafka3o_backup_restoring{topic="paused"} 1`, `kafka3o_backup_stored_bytes{topic="orders"} 1900`,
+		`kafka3o_backup_last_write_timestamp_seconds{topic="orders"} 1794367830`} {
+		if !strings.Contains(text, line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	if strings.Contains(text, `kafka3o_backup_stored_bytes{topic="paused"}`) {
+		t.Error("an unlisted storage size was written")
+	}
+	out.Reset()
+	_ = WritePrometheusText(&out, ClusterMetrics{Backups: Backups{NotConfigured: true}})
+	if strings.Contains(out.String(), "backup") {
+		t.Errorf("a cluster without backups wrote backup lines:\n%s", out.String())
 	}
 }

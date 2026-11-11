@@ -30,6 +30,9 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 	if !m.Connect.NotConfigured {
 		fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"connect\"} %d\n", up(m.Connect.Error))
 	}
+	if !m.Backups.NotConfigured {
+		fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"backups\"} %d\n", up(m.Backups.Error))
+	}
 
 	for _, gauge := range []struct {
 		name, help string
@@ -135,6 +138,34 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 		family("kafka3o_connect_tasks", "gauge", "Kafka Connect tasks by state.")
 		for _, state := range m.Connect.Tasks {
 			fmt.Fprintf(out, "kafka3o_connect_tasks{state=\"%s\"} %d\n", EscapeLabelValue(state.State), state.Count)
+		}
+	}
+	if m.Backups.Error == "" && !m.Backups.NotConfigured {
+		bit := func(on bool) int {
+			if on {
+				return 1
+			}
+			return 0
+		}
+		family("kafka3o_backup_up", "gauge", "Whether the topic's backup job is running (1) or not (0).")
+		for _, item := range m.Backups.Backups {
+			fmt.Fprintf(out, "kafka3o_backup_up{topic=\"%s\"} %d\n", EscapeLabelValue(item.Topic), bit(item.State == "RUNNING"))
+		}
+		family("kafka3o_backup_restoring", "gauge", "Whether a restore of the topic's backup is running (1) or not (0).")
+		for _, item := range m.Backups.Backups {
+			fmt.Fprintf(out, "kafka3o_backup_restoring{topic=\"%s\"} %d\n", EscapeLabelValue(item.Topic), bit(item.Restoring))
+		}
+		family("kafka3o_backup_stored_bytes", "gauge", "Bytes the topic's backup has stored.")
+		for _, item := range m.Backups.Backups {
+			if item.StoredBytes != nil {
+				fmt.Fprintf(out, "kafka3o_backup_stored_bytes{topic=\"%s\"} %d\n", EscapeLabelValue(item.Topic), *item.StoredBytes)
+			}
+		}
+		family("kafka3o_backup_last_write_timestamp_seconds", "gauge", "When the topic's backup last wrote to the storage, as Unix time.")
+		for _, item := range m.Backups.Backups {
+			if item.LastWrite != nil {
+				fmt.Fprintf(out, "kafka3o_backup_last_write_timestamp_seconds{topic=\"%s\"} %d\n", EscapeLabelValue(item.Topic), item.LastWrite.Unix())
+			}
 		}
 	}
 	return out.Flush()

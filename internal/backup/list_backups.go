@@ -84,6 +84,7 @@ func (l listBackups) Execute(ctx context.Context) ([]Backup, error) {
 			}
 			backup.Storage = &summary
 		}
+		_, backup.Restoring = restoring[topic]
 		if restore, ok := restoring[topic]; ok && l.restores != nil {
 			status := l.restores.Execute(ctx, topic, restore)
 			backup.Restore = &status

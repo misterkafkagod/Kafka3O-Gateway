@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/misterkafkagod/Kafka3O-Gateway/internal/backup"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/groups"
 )
@@ -14,4 +15,6 @@ type Sources struct {
 	Brokers ReadBrokerLeaders
 	Groups  groups.ListConsumerGroups
 	Connect connect.ListConnectors
+	// Backups must be built without the restore check, so reading metrics never finishes a restore.
+	Backups backup.ListBackups
 }
