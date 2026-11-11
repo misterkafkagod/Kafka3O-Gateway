@@ -26,7 +26,7 @@ func restoreFixture(backupState string, createErr error) (*fakeManage, *fakeCrea
 
 func TestStartRestorePausesTheBackupAndCreatesTheRestore(t *testing.T) {
 	manage, create, start := restoreFixture("RUNNING", nil)
-	restore, err := start.Execute(context.Background(), "orders")
+	restore, err := start.Execute(context.Background(), "orders", RestoreFilter{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestStartRestorePausesTheBackupAndCreatesTheRestore(t *testing.T) {
 func TestStartRestoreLeavesAPausedOrMissingBackupAlone(t *testing.T) {
 	for _, state := range []string{"PAUSED", ""} {
 		manage, create, start := restoreFixture(state, nil)
-		if _, err := start.Execute(context.Background(), "orders"); err != nil {
+		if _, err := start.Execute(context.Background(), "orders", RestoreFilter{}); err != nil {
 			t.Fatalf("%q: %v", state, err)
 		}
 		if len(manage.actions) != 0 || create.config["transforms.unwrap.resume.backup"] != "false" {
@@ -59,18 +59,18 @@ func TestStartRestoreRefusals(t *testing.T) {
 	inProgress := fakeConnectors{connectors: []connect.Connector{{Name: "kafka3o-restore-orders", Type: "source", State: "RUNNING"}}}
 	manage, create := &fakeManage{}, &fakeCreate{}
 	start := NewStartRestore(settings, inProgress, fakeConnectorConfig{}, fakeObjects{}, manage, create, func() string { return "r" }, time.Second)
-	if _, err := start.Execute(context.Background(), "orders"); !errors.Is(err, ErrRestoreInProgress) || create.name != "" {
+	if _, err := start.Execute(context.Background(), "orders", RestoreFilter{}); !errors.Is(err, ErrRestoreInProgress) || create.name != "" {
 		t.Errorf("in progress: %v", err)
 	}
 	empty := NewStartRestore(settings, fakeConnectors{}, fakeConnectorConfig{}, fakeObjects{}, manage, create, func() string { return "r" }, time.Second)
-	if _, err := empty.Execute(context.Background(), "orders"); !errors.Is(err, ErrNothingToRestore) {
+	if _, err := empty.Execute(context.Background(), "orders", RestoreFilter{}); !errors.Is(err, ErrNothingToRestore) {
 		t.Errorf("nothing stored: %v", err)
 	}
 	noStorage := NewStartRestore(settings, fakeConnectors{}, fakeConnectorConfig{}, fakeObjects{err: s3store.ErrNoCredentials}, manage, create, func() string { return "r" }, time.Second)
-	if _, err := noStorage.Execute(context.Background(), "orders"); !errors.Is(err, ErrStorageUnavailable) {
+	if _, err := noStorage.Execute(context.Background(), "orders", RestoreFilter{}); !errors.Is(err, ErrStorageUnavailable) {
 		t.Errorf("no storage access: %v", err)
 	}
-	if _, err := NewStartRestore(Settings{}, fakeConnectors{}, fakeConnectorConfig{}, fakeObjects{}, manage, create, func() string { return "r" }, time.Second).Execute(context.Background(), "orders"); !errors.Is(err, ErrBackupsNotConfigured) {
+	if _, err := NewStartRestore(Settings{}, fakeConnectors{}, fakeConnectorConfig{}, fakeObjects{}, manage, create, func() string { return "r" }, time.Second).Execute(context.Background(), "orders", RestoreFilter{}); !errors.Is(err, ErrBackupsNotConfigured) {
 		t.Errorf("not configured: %v", err)
 	}
 	if len(manage.actions) != 0 {
@@ -80,14 +80,14 @@ func TestStartRestoreRefusals(t *testing.T) {
 
 func TestStartRestoreResumesTheBackupWhenCreationFails(t *testing.T) {
 	manage, _, start := restoreFixture("RUNNING", connect.ErrConnectRejected)
-	if _, err := start.Execute(context.Background(), "orders"); !errors.Is(err, connect.ErrConnectRejected) {
+	if _, err := start.Execute(context.Background(), "orders", RestoreFilter{}); !errors.Is(err, connect.ErrConnectRejected) {
 		t.Fatal(err)
 	}
 	if len(manage.actions) != 2 || manage.actions[1].Kind != "resume" {
 		t.Fatalf("actions = %+v", manage.actions)
 	}
 	manage, _, start = restoreFixture("RUNNING", connect.ErrConnectActionUnknown)
-	if _, err := start.Execute(context.Background(), "orders"); !errors.Is(err, connect.ErrConnectActionUnknown) {
+	if _, err := start.Execute(context.Background(), "orders", RestoreFilter{}); !errors.Is(err, connect.ErrConnectActionUnknown) {
 		t.Fatal(err)
 	}
 	if len(manage.actions) != 1 {
@@ -105,7 +105,7 @@ func TestStartRestoreReadsTheBackupJobsCompression(t *testing.T) {
 	connectors := fakeConnectors{connectors: []connect.Connector{{Name: "kafka3o-backup-orders", Type: "sink", State: "RUNNING"}}}
 	config := fakeConnectorConfig{config: BackupConnectorConfig(settings, "orders", BackupOptions{StartFrom: "latest", Compression: "zstd"})}
 	create := &fakeCreate{}
-	restore, err := NewStartRestore(settings, connectors, config, mixedObjects, &fakeManage{}, create, func() string { return "r" }, time.Second).Execute(context.Background(), "orders")
+	restore, err := NewStartRestore(settings, connectors, config, mixedObjects, &fakeManage{}, create, func() string { return "r" }, time.Second).Execute(context.Background(), "orders", RestoreFilter{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestStartRestoreReadsTheBackupJobsCompression(t *testing.T) {
 func TestStartRestoreWithoutAJobUsesTheNewestObjectsCompression(t *testing.T) {
 	create := &fakeCreate{}
 	restore, err := NewStartRestore(settings, fakeConnectors{}, fakeConnectorConfig{err: connect.ErrConnectorNotFound}, mixedObjects, &fakeManage{}, create,
-		func() string { return "r" }, time.Second).Execute(context.Background(), "orders")
+		func() string { return "r" }, time.Second).Execute(context.Background(), "orders", RestoreFilter{})
 	if err != nil || restore.Objects != 2 || restore.Skipped != 1 || create.config["file.compression.type"] != "zstd" {
 		t.Fatalf("restore %+v, %v, config %v", restore, err, create.config["file.compression.type"])
 	}
@@ -128,8 +128,38 @@ func TestStartRestoreStopsWhenTheJobsSettingsCannotBeRead(t *testing.T) {
 	connectors := fakeConnectors{connectors: []connect.Connector{{Name: "kafka3o-backup-orders", Type: "sink", State: "RUNNING"}}}
 	manage, create := &fakeManage{}, &fakeCreate{}
 	_, err := NewStartRestore(settings, connectors, fakeConnectorConfig{err: connect.ErrConnectUnreachable}, mixedObjects, manage, create,
-		func() string { return "r" }, time.Second).Execute(context.Background(), "orders")
+		func() string { return "r" }, time.Second).Execute(context.Background(), "orders", RestoreFilter{})
 	if !errors.Is(err, connect.ErrConnectUnreachable) || len(manage.actions) != 0 || create.name != "" {
 		t.Fatalf("err %v, actions %+v, created %q", err, manage.actions, create.name)
+	}
+}
+
+func TestStartRestoreKeepsOnlyTheChosenPartitionsAndWindow(t *testing.T) {
+	_, create, start := restoreFixture("RUNNING", nil)
+	from := time.Date(2026, 11, 11, 1, 0, 0, 0, time.UTC)
+	to := from.Add(time.Hour)
+	restore, err := start.Execute(context.Background(), "orders", RestoreFilter{From: &from, To: &to, Partitions: []int{1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restore.Objects != 1 || create.config["transforms.unwrap.snapshot.boundary"] != "1:4" || create.config["tasks.max"] != "1" ||
+		create.config["transforms.unwrap.time.from"] != "1794358800000" || create.config["transforms.unwrap.time.to"] != "1794362400000" {
+		t.Fatalf("restore %+v, config %v", restore, create.config)
+	}
+}
+
+func TestStartRestoreRefusesFiltersBeforeConnect(t *testing.T) {
+	from := time.Date(2026, 11, 11, 1, 0, 0, 0, time.UTC)
+	before := from.Add(-time.Minute)
+	for name, filter := range map[string]RestoreFilter{
+		"reversed window":   {From: &from, To: &before},
+		"no partitions":     {Partitions: []int{}},
+		"unknown partition": {Partitions: []int{0, 7}},
+	} {
+		manage, create, start := restoreFixture("RUNNING", nil)
+		_, err := start.Execute(context.Background(), "orders", filter)
+		if !errors.Is(err, ErrInvalidRestoreFilter) || len(manage.actions) != 0 || create.name != "" {
+			t.Errorf("%s: err %v, actions %+v, created %q", name, err, manage.actions, create.name)
+		}
 	}
 }

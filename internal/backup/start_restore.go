@@ -3,6 +3,8 @@ package backup
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"time"
 
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/connect"
@@ -10,7 +12,7 @@ import (
 )
 
 type StartRestore interface {
-	Execute(ctx context.Context, topic string) (Restore, error)
+	Execute(ctx context.Context, topic string, filter RestoreFilter) (Restore, error)
 }
 
 type startRestore struct {
@@ -30,14 +32,18 @@ func NewStartRestore(settings Settings, connectors connect.ListConnectors, confi
 		restoreID: restoreID, timeout: timeout}
 }
 
-// Execute fixes the restore's snapshot to the objects that exist now, pauses the topic's running backup so it cannot
-// add objects or re-save restored records, and creates the restore connector.
-func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error) {
+// Execute fixes the restore's snapshot to the objects that exist now (in the chosen partitions), pauses the topic's
+// running backup so it cannot add objects or re-save restored records, and creates the restore connector.
+func (s startRestore) Execute(ctx context.Context, topic string, filter RestoreFilter) (Restore, error) {
 	if s.settings.S3Endpoint == "" {
 		return Restore{}, ErrBackupsNotConfigured
 	}
 	if !kafkaTopicName.MatchString(topic) || topic == "." || topic == ".." {
 		return Restore{}, ErrInvalidTopic
+	}
+	window, chosen, err := ValidateRestoreFilter(filter)
+	if err != nil {
+		return Restore{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
@@ -54,9 +60,18 @@ func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error
 			resumeBackup, hasJob = connector.State != "PAUSED", true
 		}
 	}
-	objects, err := s.objects.Execute(ctx, s.settings.Prefix+topic+"/")
+	listed, err := s.objects.Execute(ctx, s.settings.Prefix+topic+"/")
 	if err != nil {
 		return Restore{}, errors.Join(ErrStorageUnavailable, err)
+	}
+	objects := listed
+	if chosen != nil {
+		objects = nil
+		for _, object := range listed {
+			if _, partition, _, ok := ParseBackupObjectName(object.Key); ok && slices.Contains(chosen, partition) {
+				objects = append(objects, object)
+			}
+		}
 	}
 	// The source reads one compression: the backup job's, or without a job the newest object's.
 	compression := ""
@@ -81,6 +96,14 @@ func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error
 		compression = BackupObjectCompression(newest.Key)
 	}
 	boundary, count, partitions := SnapshotBoundary(objects, topic, compression)
+	if chosen != nil && partitions < len(chosen) {
+		stored, _ := ParseSnapshotBoundary(boundary)
+		for _, partition := range chosen {
+			if _, ok := stored[partition]; !ok {
+				return Restore{}, fmt.Errorf("%w: partition %d has no stored messages in this backup", ErrInvalidRestoreFilter, partition)
+			}
+		}
+	}
 	if count == 0 {
 		return Restore{}, ErrNothingToRestore
 	}
@@ -90,7 +113,7 @@ func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error
 		}
 	}
 	id := s.restoreID()
-	if err := s.create.Execute(ctx, RestoreConnectorName(topic), RestoreConnectorConfig(s.settings, topic, compression, id, boundary, partitions, resumeBackup)); err != nil {
+	if err := s.create.Execute(ctx, RestoreConnectorName(topic), RestoreConnectorConfig(s.settings, topic, compression, id, boundary, partitions, resumeBackup, window)); err != nil {
 		if resumeBackup && !errors.Is(err, connect.ErrConnectActionUnknown) {
 			// Nothing was restored, so the backup goes back to running.
 			_ = s.manage.Execute(ctx, connect.Action{Kind: connect.ActionResume, Connector: BackupConnectorName(topic)})

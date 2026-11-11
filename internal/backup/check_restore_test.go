@@ -18,14 +18,25 @@ func (f fakeConnectorConfig) Execute(context.Context, string) (map[string]string
 	return f.config, f.err
 }
 
+// fakeCounts holds each object's line count; any window keeps every line.
 type fakeCounts map[string]int64
 
-func (f fakeCounts) Execute(_ context.Context, object s3store.Object) (int64, error) {
+func (f fakeCounts) Execute(_ context.Context, object s3store.Object, _ RecordWindow) (ObjectScan, error) {
 	count, ok := f[object.Key]
 	if !ok {
-		return 0, ErrStorageUnavailable
+		return ObjectScan{}, ErrStorageUnavailable
 	}
-	return count, nil
+	return ObjectScan{Matched: count, LastMatch: count}, nil
+}
+
+// fakeScans holds each object's scan for a windowed restore.
+type fakeScans map[string]ObjectScan
+
+func (f fakeScans) Execute(_ context.Context, object s3store.Object, window RecordWindow) (ObjectScan, error) {
+	if window == AllRecords {
+		return ObjectScan{}, errors.New("a windowed restore was scanned without its window")
+	}
+	return f[object.Key], nil
 }
 
 type fakeOffsets struct {
@@ -105,5 +116,34 @@ func TestCheckRestoreCountsOnlyTheRestoresCompression(t *testing.T) {
 		fakeOffsets{committed: map[string]int64{zstdFirst: 4, zstdSecond: 2}}, manage).Execute(context.Background(), "orders", runningRestore)
 	if !status.Finished || status.Total != 6 || status.Restored != 6 {
 		t.Fatalf("the gzip object of an earlier backup blocked or joined the zstd restore: %+v", status)
+	}
+}
+
+func windowedCheck(committed map[string]int64, scans fakeScans, manage *fakeManage) CheckRestore {
+	config := fakeConnectorConfig{config: map[string]string{"transforms.unwrap.restore.id": "r-1", "transforms.unwrap.snapshot.boundary": "0:20",
+		"transforms.unwrap.resume.backup": "false", "transforms.unwrap.time.from": "1000", "transforms.unwrap.time.to": "2000"}}
+	objects := fakeObjects{byPrefix: map[string][]s3store.Object{"kafka-a/orders/": {{Key: first}, {Key: second}, {Key: later}}}}
+	return NewCheckRestore(settings, config, objects, scans, fakeOffsets{committed: committed}, manage)
+}
+
+func TestCheckRestoreWithATimeWindowWaitsForEachObjectsLastMatch(t *testing.T) {
+	// first: 3 of its 20 lines match, the last on line 15; second: nothing matches.
+	scans := fakeScans{first: {Matched: 3, LastMatch: 15}, second: {}}
+	manage := &fakeManage{}
+	status := windowedCheck(map[string]int64{first: 14}, scans, manage).Execute(context.Background(), "orders", runningRestore)
+	if status.Finished || status.Restored != 0 || status.Total != 3 || len(manage.actions) != 0 {
+		t.Fatalf("before the last match: %+v", status)
+	}
+	status = windowedCheck(map[string]int64{first: 15}, scans, manage).Execute(context.Background(), "orders", runningRestore)
+	if !status.Finished || status.Restored != 3 || status.Total != 3 || len(manage.actions) != 1 || manage.actions[0].Kind != "delete" {
+		t.Fatalf("after the last match: %+v %+v", status, manage.actions)
+	}
+}
+
+func TestCheckRestoreWithAWindowMatchingNothingFinishesAtOnce(t *testing.T) {
+	manage := &fakeManage{}
+	status := windowedCheck(map[string]int64{}, fakeScans{first: {}, second: {}}, manage).Execute(context.Background(), "orders", runningRestore)
+	if !status.Finished || status.Total != 0 || len(manage.actions) != 1 {
+		t.Fatalf("status %+v, actions %+v", status, manage.actions)
 	}
 }

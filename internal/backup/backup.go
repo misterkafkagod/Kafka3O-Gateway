@@ -60,6 +60,7 @@ var (
 	ErrNothingToRestore      = errors.New("the topic's backup holds no objects")
 	ErrStorageUnavailable    = errors.New("the backup storage cannot be listed")
 	ErrInvalidBackupSettings = errors.New("the backup settings are invalid")
+	ErrInvalidRestoreFilter  = errors.New("the restore selection is invalid")
 )
 
 // Restore is a restore started for a topic from the objects that existed at that moment.

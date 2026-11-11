@@ -7,7 +7,8 @@ var compressionExtensions = map[string]string{"gzip": ".gz", "zstd": ".zst", "sn
 // RestoreConnectorConfig is the s3-backup-connectors recipe's source configuration with the Kafka3O restore transform.
 // Each partition's objects go to one task in order, so restores run in parallel across partitions without reordering.
 // The source reads only objects of the given compression (gzip, zstd, snappy or none), named with its extension.
-func RestoreConnectorConfig(settings Settings, topic, compression, restoreID, boundary string, partitions int, resumeBackup bool) map[string]string {
+// A window other than AllRecords is passed to the transform, which drops records outside it.
+func RestoreConnectorConfig(settings Settings, topic, compression, restoreID, boundary string, partitions int, resumeBackup bool, window RecordWindow) map[string]string {
 	tasks := partitions
 	if tasks < 1 {
 		tasks = 1
@@ -15,7 +16,7 @@ func RestoreConnectorConfig(settings Settings, topic, compression, restoreID, bo
 	if tasks > 8 {
 		tasks = 8
 	}
-	return map[string]string{
+	config := map[string]string{
 		"connector.class":                     "io.aiven.kafka.connect.s3.source.S3SourceConnector",
 		"tasks.max":                           strconv.Itoa(tasks),
 		"distribution.type":                   "partition",
@@ -38,4 +39,11 @@ func RestoreConnectorConfig(settings Settings, topic, compression, restoreID, bo
 		"transforms.unwrap.snapshot.boundary": boundary,
 		"transforms.unwrap.resume.backup":     strconv.FormatBool(resumeBackup),
 	}
+	if window.From != AllRecords.From {
+		config["transforms.unwrap.time.from"] = strconv.FormatInt(window.From, 10)
+	}
+	if window.To != AllRecords.To {
+		config["transforms.unwrap.time.to"] = strconv.FormatInt(window.To, 10)
+	}
+	return config
 }

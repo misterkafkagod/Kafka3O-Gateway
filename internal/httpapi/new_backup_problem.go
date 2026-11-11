@@ -21,6 +21,9 @@ func NewBackupProblem(err error) *Problem {
 	case errors.Is(err, backup.ErrInvalidBackupSettings):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusBadRequest, Title: "Invalid backup settings",
 			Detail: err.Error()}, Code: "invalid_backup_settings"}
+	case errors.Is(err, backup.ErrInvalidRestoreFilter):
+		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusBadRequest, Title: "Invalid restore selection",
+			Detail: err.Error()}, Code: "invalid_restore_filter"}
 	case errors.Is(err, backup.ErrBackupNotFound):
 		return &Problem{ErrorModel: huma.ErrorModel{Status: http.StatusNotFound, Title: "Backup not found",
 			Detail: "This topic has no backup"}, Code: "not_found"}
