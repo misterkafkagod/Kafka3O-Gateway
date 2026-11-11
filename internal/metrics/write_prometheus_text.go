@@ -24,6 +24,7 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"logDirs\"} %d\n", up(m.LogDirs.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"partitions\"} %d\n", up(m.Partitions.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"endOffsets\"} %d\n", up(m.EndOffsets.Error))
+	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"quorum\"} %d\n", up(m.Quorum.Error))
 
 	for _, gauge := range []struct {
 		name, help string
@@ -62,6 +63,20 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 	for _, topic := range m.EndOffsets.Topics {
 		if topic.Error == "" {
 			fmt.Fprintf(out, "kafka3o_topic_end_offset_total{topic=\"%s\"} %s\n", EscapeLabelValue(topic.Topic), topic.EndOffset)
+		}
+	}
+	if m.Quorum.Error == "" {
+		if m.Quorum.LeaderID != nil {
+			family("kafka3o_quorum_leader", "gauge", "Node id of the KRaft controller quorum's leader.")
+			fmt.Fprintf(out, "kafka3o_quorum_leader %d\n", *m.Quorum.LeaderID)
+		}
+		family("kafka3o_quorum_high_watermark", "gauge", "High watermark of the cluster metadata log.")
+		fmt.Fprintf(out, "kafka3o_quorum_high_watermark %d\n", m.Quorum.HighWatermark)
+		family("kafka3o_quorum_replica_lag", "gauge", "Records a quorum voter or observer is behind the leader's log end.")
+		for _, replica := range m.Quorum.Replicas {
+			if replica.Lag != nil {
+				fmt.Fprintf(out, "kafka3o_quorum_replica_lag{replica=\"%d\",role=\"%s\"} %d\n", replica.ID, EscapeLabelValue(replica.Role), *replica.Lag)
+			}
 		}
 	}
 	return out.Flush()

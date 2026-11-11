@@ -10,6 +10,7 @@ type ClusterMetrics struct {
 	Partitions    Partitions `json:"partitions"`
 	LargestTopics TopicSizes `json:"largestTopics"`
 	EndOffsets    EndOffsets `json:"endOffsets"`
+	Quorum        Quorum     `json:"quorum"`
 }
 
 type LogDirs struct {
@@ -77,4 +78,24 @@ type TopicEndOffset struct {
 	Topic     string `json:"topic"`
 	EndOffset string `json:"endOffset,omitempty"`
 	Error     string `json:"error,omitempty"`
+}
+
+// Quorum is the KRaft controller quorum as DescribeQuorum reports it. LeaderID is nil when no leader is known.
+type Quorum struct {
+	Error         string          `json:"error,omitempty"`
+	LeaderID      *int32          `json:"leaderId"`
+	LeaderEpoch   int32           `json:"leaderEpoch"`
+	HighWatermark int64           `json:"highWatermark"`
+	Replicas      []QuorumReplica `json:"replicas"`
+}
+
+// QuorumReplica is one voter or observer. Lag is how far its log end is behind the leader's, nil when the leader's
+// is unknown; the times are nil when Kafka reports -1.
+type QuorumReplica struct {
+	ID           int32      `json:"id"`
+	Role         string     `json:"role"`
+	LogEndOffset int64      `json:"logEndOffset"`
+	Lag          *int64     `json:"lag"`
+	LastFetch    *time.Time `json:"lastFetch"`
+	LastCaughtUp *time.Time `json:"lastCaughtUp"`
 }

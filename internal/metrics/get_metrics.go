@@ -12,23 +12,26 @@ type GetMetrics interface {
 }
 
 type getMetrics struct {
-	logDirs ReadLogDirs
-	health  ReadPartitionHealth
-	offsets ReadEndOffsets
+	sources Sources
 	timeout time.Duration
 	now     func() time.Time
 }
 
-func NewGetMetrics(logDirs ReadLogDirs, health ReadPartitionHealth, offsets ReadEndOffsets, timeout time.Duration, now func() time.Time) GetMetrics {
-	return getMetrics{logDirs: logDirs, health: health, offsets: offsets, timeout: timeout, now: now}
+func NewGetMetrics(sources Sources, timeout time.Duration, now func() time.Time) GetMetrics {
+	return getMetrics{sources: sources, timeout: timeout, now: now}
 }
 
 func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
-	result := ClusterMetrics{ReadAt: g.now().UTC(), LogDirs: LogDirs{Dirs: []LogDir{}}}
-	dirs, err := g.logDirs.Execute(ctx)
+	result := ClusterMetrics{ReadAt: g.now().UTC(), LogDirs: LogDirs{Dirs: []LogDir{}}, Quorum: Quorum{Replicas: []QuorumReplica{}}}
+	if quorum, err := g.sources.Quorum.Execute(ctx); err != nil {
+		result.Quorum.Error = err.Error()
+	} else {
+		result.Quorum = quorum
+	}
+	dirs, err := g.sources.LogDirs.Execute(ctx)
 	if err != nil {
 		result.LogDirs.Error = err.Error()
 		result.LargestTopics.Error = err.Error()
@@ -39,7 +42,7 @@ func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 	}
 	result.LargestTopics.Topics = LargestTopics(dirs)
 
-	topics, err := g.health.Execute(ctx)
+	topics, err := g.sources.Health.Execute(ctx)
 	if err != nil {
 		result.Partitions = Partitions{Error: err.Error(), UnreadableTopics: []string{}}
 		result.EndOffsets = EndOffsets{Error: err.Error(), Topics: []TopicEndOffset{}}
@@ -52,7 +55,7 @@ func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 			names = append(names, topic.Topic)
 		}
 	}
-	offsets, err := g.offsets.Execute(ctx, names)
+	offsets, err := g.sources.Offsets.Execute(ctx, names)
 	if err != nil {
 		result.EndOffsets = EndOffsets{Error: err.Error(), Topics: []TopicEndOffset{}}
 	} else {

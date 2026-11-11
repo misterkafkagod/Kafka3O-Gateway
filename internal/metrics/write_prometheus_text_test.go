@@ -76,3 +76,25 @@ func TestWritePrometheusText_LeavesOutAnUnknownMinISRCount(t *testing.T) {
 		t.Fatalf("unknown below-min-ISR count was written:\n%s", out.String())
 	}
 }
+
+func TestWritePrometheusText_Quorum(t *testing.T) {
+	leader, zero, behind := int32(1), int64(0), int64(100)
+	var out strings.Builder
+	_ = WritePrometheusText(&out, ClusterMetrics{Quorum: Quorum{LeaderID: &leader, HighWatermark: 894587, Replicas: []QuorumReplica{
+		{ID: 1, Role: "voter", Lag: &zero}, {ID: 4, Role: "observer", Lag: &behind}, {ID: 5, Role: "observer"}}}})
+	text := out.String()
+	for _, line := range []string{`kafka3o_metrics_section_up{section="quorum"} 1`, "kafka3o_quorum_leader 1", "kafka3o_quorum_high_watermark 894587",
+		`kafka3o_quorum_replica_lag{replica="1",role="voter"} 0`, `kafka3o_quorum_replica_lag{replica="4",role="observer"} 100`} {
+		if !strings.Contains(text, line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	if strings.Contains(text, `replica="5"`) {
+		t.Error("an unknown lag was written")
+	}
+	out.Reset()
+	_ = WritePrometheusText(&out, ClusterMetrics{Quorum: Quorum{Error: "describe quorum: CLUSTER_AUTHORIZATION_FAILED"}})
+	if !strings.Contains(out.String(), `kafka3o_metrics_section_up{section="quorum"} 0`) || strings.Contains(out.String(), "kafka3o_quorum_") {
+		t.Errorf("a failed quorum section wrote values:\n%s", out.String())
+	}
+}
