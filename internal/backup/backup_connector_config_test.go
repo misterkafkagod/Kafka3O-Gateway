@@ -6,7 +6,7 @@ import (
 )
 
 func TestBackupConnectorConfigFollowsTheDiscoveryRecipe(t *testing.T) {
-	config := BackupConnectorConfig(Settings{S3Endpoint: "http://s3:8333", Bucket: "kafka3o-backups", Region: "us-east-1", Prefix: "kafka-a/"}, "orders")
+	config := BackupConnectorConfig(Settings{S3Endpoint: "http://s3:8333", Bucket: "kafka3o-backups", Region: "us-east-1", Prefix: "kafka-a/"}, "orders", BackupOptions{StartFrom: "earliest", Compression: "gzip"})
 	for key, want := range map[string]string{
 		"connector.class":                     "io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector",
 		"topics":                              "orders",
@@ -29,5 +29,25 @@ func TestBackupConnectorConfigFollowsTheDiscoveryRecipe(t *testing.T) {
 				t.Errorf("%s holds a literal credential", key)
 			}
 		}
+	}
+}
+
+func TestBackupConnectorConfigDefaultsAreTheM13Configuration(t *testing.T) {
+	config := BackupConnectorConfig(settings, "orders", BackupOptions{StartFrom: "earliest", Compression: "gzip"})
+	if config["file.compression.type"] != "gzip" || config["consumer.override.auto.offset.reset"] != "earliest" || len(config) != 24 {
+		t.Fatalf("config = %v (%d keys)", config, len(config))
+	}
+	if _, ok := config["file.max.records"]; ok {
+		t.Fatal("no record limit by default")
+	}
+}
+
+func TestBackupConnectorConfigMapsTheOptions(t *testing.T) {
+	config := BackupConnectorConfig(settings, "orders", BackupOptions{StartFrom: "latest", Compression: "zstd", RecordsPerFile: 100})
+	if config["file.compression.type"] != "zstd" || config["consumer.override.auto.offset.reset"] != "latest" || config["file.max.records"] != "100" {
+		t.Fatalf("config = %v", config)
+	}
+	if got := ReadBackupOptions(config); got != (BackupOptions{StartFrom: "latest", Compression: "zstd", RecordsPerFile: 100}) {
+		t.Fatalf("read back = %+v", got)
 	}
 }

@@ -9,9 +9,17 @@ import (
 	"github.com/misterkafkagod/Kafka3O-Gateway/internal/backup"
 )
 
+// BackupSettingsInput is the optional choice of backup settings; empty fields take the defaults.
+type BackupSettingsInput struct {
+	StartFrom      string `json:"startFrom,omitempty" maxLength:"16"`
+	Compression    string `json:"compression,omitempty" maxLength:"16"`
+	RecordsPerFile int    `json:"recordsPerFile,omitempty"`
+}
+
 type StartBackupInput struct {
 	Body struct {
-		Topic string `json:"topic" minLength:"1" maxLength:"249"`
+		Topic    string               `json:"topic" minLength:"1" maxLength:"249"`
+		Settings *BackupSettingsInput `json:"settings,omitempty"`
 	}
 }
 
@@ -28,7 +36,11 @@ func RegisterStartBackup(api huma.API, start backup.StartBackup) {
 		DefaultStatus: http.StatusCreated,
 		Errors:        []int{http.StatusBadRequest, http.StatusNotFound, http.StatusConflict, http.StatusServiceUnavailable},
 	}, func(ctx context.Context, input *StartBackupInput) (*StartBackupOutput, error) {
-		created, err := start.Execute(ctx, input.Body.Topic)
+		var options *backup.BackupOptions
+		if chosen := input.Body.Settings; chosen != nil {
+			options = &backup.BackupOptions{StartFrom: chosen.StartFrom, Compression: chosen.Compression, RecordsPerFile: chosen.RecordsPerFile}
+		}
+		created, err := start.Execute(ctx, input.Body.Topic, options)
 		if err != nil {
 			return nil, NewBackupProblem(err)
 		}

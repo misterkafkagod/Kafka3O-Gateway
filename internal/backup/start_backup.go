@@ -12,7 +12,7 @@ import (
 var kafkaTopicName = regexp.MustCompile(`^[A-Za-z0-9._-]{1,249}$`)
 
 type StartBackup interface {
-	Execute(ctx context.Context, topic string) (Backup, error)
+	Execute(ctx context.Context, topic string, options *BackupOptions) (Backup, error)
 }
 
 type startBackup struct {
@@ -25,22 +25,26 @@ func NewStartBackup(settings Settings, create connect.CreateConnector, timeout t
 	return startBackup{settings: settings, create: create, timeout: timeout}
 }
 
-// Execute creates the topic's backup connector; a topic has at most one backup.
-func (s startBackup) Execute(ctx context.Context, topic string) (Backup, error) {
+// Execute creates the topic's backup connector with the validated options (nil = defaults); a topic has at most one backup.
+func (s startBackup) Execute(ctx context.Context, topic string, options *BackupOptions) (Backup, error) {
 	if s.settings.S3Endpoint == "" {
 		return Backup{}, ErrBackupsNotConfigured
 	}
 	if !kafkaTopicName.MatchString(topic) || topic == "." || topic == ".." {
 		return Backup{}, ErrInvalidTopic
 	}
+	valid, err := ValidateBackupOptions(options)
+	if err != nil {
+		return Backup{}, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	name := BackupConnectorName(topic)
-	if err := s.create.Execute(ctx, name, BackupConnectorConfig(s.settings, topic)); err != nil {
+	if err := s.create.Execute(ctx, name, BackupConnectorConfig(s.settings, topic, valid)); err != nil {
 		if errors.Is(err, connect.ErrConnectorExists) {
 			return Backup{}, ErrBackupExists
 		}
 		return Backup{}, err
 	}
-	return Backup{Topic: topic, Connector: name, Location: BackupLocation(s.settings, topic)}, nil
+	return Backup{Topic: topic, Connector: name, Location: BackupLocation(s.settings, topic), Settings: &valid}, nil
 }

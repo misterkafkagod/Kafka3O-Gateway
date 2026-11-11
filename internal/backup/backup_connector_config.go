@@ -1,12 +1,14 @@
 package backup
 
+import "strconv"
+
 const byteArrayConverter = "org.apache.kafka.connect.converters.ByteArrayConverter"
 
 // BackupConnectorConfig is the s3-backup-connectors recipe's sink configuration: lossless gzip jsonl of key, value,
 // timestamp and headers, skipping records a restore wrote (header kafka3o-restore). Credentials stay in Connect's
-// environment and are only referenced here.
-func BackupConnectorConfig(settings Settings, topic string) map[string]string {
-	return map[string]string{
+// environment and are only referenced here. Options are validated; their defaults give the M13 configuration.
+func BackupConnectorConfig(settings Settings, topic string, options BackupOptions) map[string]string {
+	config := map[string]string{
 		"connector.class":                     "io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector",
 		"tasks.max":                           "1",
 		"topics":                              topic,
@@ -17,14 +19,14 @@ func BackupConnectorConfig(settings Settings, topic string) map[string]string {
 		"aws.s3.bucket.name":                  settings.Bucket,
 		"aws.s3.prefix":                       settings.Prefix + topic + "/",
 		"file.name.template":                  "{{topic}}-{{partition}}-{{start_offset}}",
-		"file.compression.type":               "gzip",
+		"file.compression.type":               options.Compression,
 		"format.output.type":                  "jsonl",
 		"format.output.fields":                "key,value,timestamp,headers",
 		"format.output.fields.value.encoding": "base64",
 		"key.converter":                       byteArrayConverter,
 		"value.converter":                     byteArrayConverter,
 		"header.converter":                    byteArrayConverter,
-		"consumer.override.auto.offset.reset": "earliest",
+		"consumer.override.auto.offset.reset": options.StartFrom,
 		"transforms":                          "skipRestored",
 		"transforms.skipRestored.type":        "org.apache.kafka.connect.transforms.Filter",
 		"transforms.skipRestored.predicate":   "restored",
@@ -32,4 +34,8 @@ func BackupConnectorConfig(settings Settings, topic string) map[string]string {
 		"predicates.restored.type":            "org.apache.kafka.connect.transforms.predicates.HasHeaderKey",
 		"predicates.restored.name":            "kafka3o-restore",
 	}
+	if options.RecordsPerFile > 0 {
+		config["file.max.records"] = strconv.Itoa(options.RecordsPerFile)
+	}
+	return config
 }

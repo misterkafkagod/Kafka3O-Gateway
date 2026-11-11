@@ -52,13 +52,14 @@ type StorageSummary struct {
 }
 
 var (
-	ErrBackupsNotConfigured = errors.New("backups are not configured for this cluster")
-	ErrBackupExists         = errors.New("the topic already has a backup")
-	ErrInvalidTopic         = errors.New("the topic name is invalid")
-	ErrBackupNotFound       = errors.New("the topic has no backup")
-	ErrRestoreInProgress    = errors.New("a restore of this topic is already running")
-	ErrNothingToRestore     = errors.New("the topic's backup holds no objects")
-	ErrStorageUnavailable   = errors.New("the backup storage cannot be listed")
+	ErrBackupsNotConfigured  = errors.New("backups are not configured for this cluster")
+	ErrBackupExists          = errors.New("the topic already has a backup")
+	ErrInvalidTopic          = errors.New("the topic name is invalid")
+	ErrBackupNotFound        = errors.New("the topic has no backup")
+	ErrRestoreInProgress     = errors.New("a restore of this topic is already running")
+	ErrNothingToRestore      = errors.New("the topic's backup holds no objects")
+	ErrStorageUnavailable    = errors.New("the backup storage cannot be listed")
+	ErrInvalidBackupSettings = errors.New("the backup settings are invalid")
 )
 
 // Restore is a restore started for a topic from the objects that existed at that moment.

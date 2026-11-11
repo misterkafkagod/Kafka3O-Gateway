@@ -8,7 +8,7 @@ func TestReadBackupOptions(t *testing.T) {
 		config map[string]string
 		want   BackupOptions
 	}{
-		{"M13 configuration", BackupConnectorConfig(settings, "orders"), BackupOptions{StartFrom: "earliest", Compression: "gzip"}},
+		{"M13 configuration", BackupConnectorConfig(settings, "orders", BackupOptions{StartFrom: "earliest", Compression: "gzip"}), BackupOptions{StartFrom: "earliest", Compression: "gzip"}},
 		{"no keys", map[string]string{}, BackupOptions{StartFrom: "earliest", Compression: "gzip"}},
 		{"every key", map[string]string{"consumer.override.auto.offset.reset": "latest", "file.compression.type": "snappy", "file.max.records": "500"},
 			BackupOptions{StartFrom: "latest", Compression: "snappy", RecordsPerFile: 500}},
