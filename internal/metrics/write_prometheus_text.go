@@ -26,6 +26,7 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"endOffsets\"} %d\n", up(m.EndOffsets.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"quorum\"} %d\n", up(m.Quorum.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"brokers\"} %d\n", up(m.Brokers.Error))
+	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"consumerGroups\"} %d\n", up(m.Groups.Error))
 
 	for _, gauge := range []struct {
 		name, help string
@@ -94,6 +95,33 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 		family(gauge.name, "gauge", gauge.help)
 		for _, broker := range m.Brokers.Brokers {
 			fmt.Fprintf(out, "%s{broker=\"%d\"} %d\n", gauge.name, broker.Broker, gauge.value(broker))
+		}
+	}
+	if m.Groups.Error == "" {
+		family("kafka3o_consumer_groups", "gauge", "Consumer groups by state.")
+		for _, state := range m.Groups.States {
+			fmt.Fprintf(out, "kafka3o_consumer_groups{state=\"%s\"} %d\n", EscapeLabelValue(state.State), state.Count)
+		}
+		family("kafka3o_consumer_group_members", "gauge", "Members of the consumer group.")
+		for _, group := range m.Groups.Groups {
+			fmt.Fprintf(out, "kafka3o_consumer_group_members{group=\"%s\"} %d\n", EscapeLabelValue(group.Group), group.Members)
+		}
+		// Lag is written only when every partition's lag is known; a partial sum would read as a smaller lag.
+		family("kafka3o_consumer_group_lag", "gauge", "Total lag of the consumer group over its partitions.")
+		for _, group := range m.Groups.Groups {
+			if group.Lag != nil && group.UnknownPartitions == 0 && group.Error == "" {
+				fmt.Fprintf(out, "kafka3o_consumer_group_lag{group=\"%s\"} %s\n", EscapeLabelValue(group.Group), *group.Lag)
+			}
+		}
+		family("kafka3o_consumer_group_max_partition_lag", "gauge", "Largest partition lag of the consumer group.")
+		for _, group := range m.Groups.Groups {
+			if group.MaxPartitionLag != nil && group.UnknownPartitions == 0 && group.Error == "" {
+				fmt.Fprintf(out, "kafka3o_consumer_group_max_partition_lag{group=\"%s\"} %s\n", EscapeLabelValue(group.Group), *group.MaxPartitionLag)
+			}
+		}
+		family("kafka3o_consumer_group_unknown_lag_partitions", "gauge", "Partitions of the consumer group whose lag Kafka did not report.")
+		for _, group := range m.Groups.Groups {
+			fmt.Fprintf(out, "kafka3o_consumer_group_unknown_lag_partitions{group=\"%s\"} %d\n", EscapeLabelValue(group.Group), group.UnknownPartitions)
 		}
 	}
 	return out.Flush()

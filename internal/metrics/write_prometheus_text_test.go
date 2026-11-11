@@ -114,3 +114,28 @@ func TestWritePrometheusText_Brokers(t *testing.T) {
 		t.Errorf("a failed brokers section wrote values:\n%s", out.String())
 	}
 }
+
+func TestWritePrometheusText_ConsumerGroups(t *testing.T) {
+	total, top, partial := "9007199254740993", "9007199254740990", "3"
+	var out strings.Builder
+	_ = WritePrometheusText(&out, ClusterMetrics{Groups: Groups{States: []StateCount{{State: "Stable", Count: 2}}, Groups: []GroupLag{
+		{Group: "orders", State: "Stable", Members: 2, Lag: &total, MaxPartitionLag: &top},
+		{Group: `odd"name`, State: "Stable", Lag: &partial, MaxPartitionLag: &partial, UnknownPartitions: 1},
+	}}})
+	text := out.String()
+	for _, line := range []string{`kafka3o_metrics_section_up{section="consumerGroups"} 1`, `kafka3o_consumer_groups{state="Stable"} 2`,
+		`kafka3o_consumer_group_members{group="orders"} 2`, `kafka3o_consumer_group_lag{group="orders"} 9007199254740993`,
+		`kafka3o_consumer_group_max_partition_lag{group="orders"} 9007199254740990`, `kafka3o_consumer_group_unknown_lag_partitions{group="odd\"name"} 1`} {
+		if !strings.Contains(text, line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	if strings.Contains(text, `kafka3o_consumer_group_lag{group="odd\"name"}`) {
+		t.Error("a partly unknown lag was written")
+	}
+	out.Reset()
+	_ = WritePrometheusText(&out, ClusterMetrics{Groups: Groups{Error: "list groups: timeout"}})
+	if !strings.Contains(out.String(), `kafka3o_metrics_section_up{section="consumerGroups"} 0`) || strings.Contains(out.String(), "kafka3o_consumer_group") {
+		t.Errorf("a failed groups section wrote values:\n%s", out.String())
+	}
+}

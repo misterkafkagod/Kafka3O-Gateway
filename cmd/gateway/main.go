@@ -83,8 +83,9 @@ func main() {
 	writeAdmin := kadm.NewClient(producer)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
+	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
 	getMetrics := metrics.NewGetMetrics(metrics.Sources{LogDirs: kafka.NewReadLogDirs(admin), Health: kafka.NewReadPartitionHealth(admin),
-		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin)}, cfg.Kafka.Timeout, time.Now)
+		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin), Groups: listConsumerGroups}, cfg.Kafka.Timeout, time.Now)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, kafkaClient), cfg.Kafka.Timeout)
@@ -93,7 +94,6 @@ func main() {
 	produceTopicMessage := topics.NewProduceTopicMessage(kafka.NewSendTopicMessage(producer), cfg.Kafka.Timeout)
 	createTopic := topics.NewCreateTopic(kafka.NewCreateKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
 	deleteTopic := topics.NewDeleteTopic(kafka.NewDeleteKafkaTopic(writeAdmin), cfg.Kafka.Timeout)
-	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
 	groupInactive := kafka.NewEnsureGroupInactive(admin)
 	previewOffsetReset := groups.NewPreviewOffsetReset(kafka.NewComputeOffsetResetPreview(groupInactive, admin), cfg.Kafka.Timeout)
 	applyOffsetReset := groups.NewApplyOffsetReset(kafka.NewCommitOffsetReset(groupInactive, admin, writeAdmin), cfg.Kafka.Timeout)

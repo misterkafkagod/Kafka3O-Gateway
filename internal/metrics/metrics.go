@@ -12,6 +12,7 @@ type ClusterMetrics struct {
 	EndOffsets    EndOffsets `json:"endOffsets"`
 	Quorum        Quorum     `json:"quorum"`
 	Brokers       Brokers    `json:"brokers"`
+	Groups        Groups     `json:"consumerGroups"`
 }
 
 type LogDirs struct {
@@ -114,4 +115,28 @@ type BrokerLeaders struct {
 	Leaders             int   `json:"leaders"`
 	Replicas            int   `json:"replicas"`
 	NonPreferredLeaders int   `json:"nonPreferredLeaders"`
+}
+
+// Groups summarizes the cluster's consumer groups: how many are in each state and each group's lag.
+type Groups struct {
+	Error  string       `json:"error,omitempty"`
+	States []StateCount `json:"states"`
+	Groups []GroupLag   `json:"groups"`
+}
+
+type StateCount struct {
+	State string `json:"state"`
+	Count int    `json:"count"`
+}
+
+// GroupLag is one group's lag. Lag and MaxPartitionLag are exact decimal sums of the partitions whose lag is known;
+// UnknownPartitions counts the others, so a non-zero count makes Lag a lower bound. Both are nil without known lag.
+type GroupLag struct {
+	Group             string  `json:"group"`
+	State             string  `json:"state"`
+	Members           int     `json:"members"`
+	Lag               *string `json:"lag"`
+	MaxPartitionLag   *string `json:"maxPartitionLag"`
+	UnknownPartitions int     `json:"unknownPartitions"`
+	Error             string  `json:"error,omitempty"`
 }
