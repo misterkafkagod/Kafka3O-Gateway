@@ -23,6 +23,15 @@ type Backup struct {
 	Error   string          `json:"error,omitempty"`
 	Storage *StorageSummary `json:"storage,omitempty"`
 	Restore *RestoreStatus  `json:"restore,omitempty"`
+	// Settings are the job's effective settings, read back from Connect; nil when they could not be read.
+	Settings *BackupOptions `json:"settings,omitempty"`
+}
+
+// BackupOptions are the user-chosen backup settings; anything else in the connector configuration is generated.
+type BackupOptions struct {
+	StartFrom      string `json:"startFrom"`
+	Compression    string `json:"compression"`
+	RecordsPerFile int    `json:"recordsPerFile"`
 }
 
 // RestoreStatus is a running or just-finished restore of the topic's backup.

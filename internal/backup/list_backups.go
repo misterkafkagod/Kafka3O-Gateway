@@ -18,10 +18,11 @@ type listBackups struct {
 	connectors connect.ListConnectors
 	objects    s3store.ListObjects
 	restores   CheckRestore
+	configs    connect.FetchConnectorConfig
 }
 
-func NewListBackups(settings Settings, connectors connect.ListConnectors, objects s3store.ListObjects, restores CheckRestore) ListBackups {
-	return listBackups{settings: settings, connectors: connectors, objects: objects, restores: restores}
+func NewListBackups(settings Settings, connectors connect.ListConnectors, objects s3store.ListObjects, restores CheckRestore, configs connect.FetchConnectorConfig) ListBackups {
+	return listBackups{settings: settings, connectors: connectors, objects: objects, restores: restores, configs: configs}
 }
 
 // Execute reports every backup connector with its Connect state and, when the storage can be listed, what it wrote.
@@ -65,6 +66,12 @@ func (l listBackups) Execute(ctx context.Context) ([]Backup, error) {
 			}
 			if task.State == "FAILED" && backup.State == "RUNNING" {
 				backup.State = "FAILED"
+			}
+		}
+		if connector.State != "NO JOB" && l.configs != nil {
+			if config, err := l.configs.Execute(ctx, connector.Name); err == nil {
+				options := ReadBackupOptions(config)
+				backup.Settings = &options
 			}
 		}
 		if objects, err := l.objects.Execute(ctx, l.settings.Prefix+topic+"/"); err == nil {

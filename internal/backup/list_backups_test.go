@@ -40,7 +40,7 @@ func TestListBackupsCombinesConnectAndStorage(t *testing.T) {
 	objects := fakeObjects{byPrefix: map[string][]s3store.Object{
 		"kafka-a/orders/": {{Key: "a", Size: 265, LastModified: first}, {Key: "b", Size: 120, LastModified: last}},
 	}}
-	backups, err := NewListBackups(settings, connectors, objects, nil).Execute(context.Background())
+	backups, err := NewListBackups(settings, connectors, objects, nil, nil).Execute(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,14 +59,14 @@ func TestListBackupsCombinesConnectAndStorage(t *testing.T) {
 
 func TestListBackupsWithoutStorageOrConnect(t *testing.T) {
 	connectors := fakeConnectors{connectors: []connect.Connector{{Name: "kafka3o-backup-orders", Type: "sink", State: "PAUSED"}}}
-	backups, err := NewListBackups(settings, connectors, fakeObjects{err: s3store.ErrNoCredentials}, nil).Execute(context.Background())
+	backups, err := NewListBackups(settings, connectors, fakeObjects{err: s3store.ErrNoCredentials}, nil, nil).Execute(context.Background())
 	if err != nil || len(backups) != 1 || backups[0].Storage != nil || backups[0].State != "PAUSED" {
 		t.Fatalf("backups = %+v, %v", backups, err)
 	}
-	if _, err := NewListBackups(Settings{}, connectors, fakeObjects{}, nil).Execute(context.Background()); !errors.Is(err, ErrBackupsNotConfigured) {
+	if _, err := NewListBackups(Settings{}, connectors, fakeObjects{}, nil, nil).Execute(context.Background()); !errors.Is(err, ErrBackupsNotConfigured) {
 		t.Fatalf("not configured: %v", err)
 	}
-	if _, err := NewListBackups(settings, fakeConnectors{err: connect.ErrConnectUnreachable}, fakeObjects{}, nil).Execute(context.Background()); !errors.Is(err, connect.ErrConnectUnreachable) {
+	if _, err := NewListBackups(settings, fakeConnectors{err: connect.ErrConnectUnreachable}, fakeObjects{}, nil, nil).Execute(context.Background()); !errors.Is(err, connect.ErrConnectUnreachable) {
 		t.Fatalf("connect down: %v", err)
 	}
 }
@@ -88,7 +88,7 @@ func TestListBackupsIncludesRestores(t *testing.T) {
 		{Name: "kafka3o-restore-audit", Type: "source", State: "RUNNING"},
 	}}
 	check := &fakeCheckRestore{status: RestoreStatus{RestoreID: "r-1", State: "RUNNING", Restored: 3, Total: 10}}
-	backups, err := NewListBackups(settings, connectors, fakeObjects{}, check).Execute(context.Background())
+	backups, err := NewListBackups(settings, connectors, fakeObjects{}, check, nil).Execute(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,8 +97,46 @@ func TestListBackupsIncludesRestores(t *testing.T) {
 		t.Fatalf("backups = %+v, checked %v", backups, check.topics)
 	}
 	check.status.Finished = true
-	backups, _ = NewListBackups(settings, connectors, fakeObjects{}, check).Execute(context.Background())
+	backups, _ = NewListBackups(settings, connectors, fakeObjects{}, check, nil).Execute(context.Background())
 	if backups[1].State != "RUNNING" || !backups[1].Restore.Finished {
 		t.Fatalf("finished restore = %+v", backups[1])
+	}
+}
+
+type fakeConfigsByName map[string]map[string]string
+
+func (f fakeConfigsByName) Execute(_ context.Context, name string) (map[string]string, error) {
+	if config, ok := f[name]; ok {
+		return config, nil
+	}
+	return nil, connect.ErrConnectorNotFound
+}
+
+func TestListBackupsReadsEffectiveSettings(t *testing.T) {
+	connectors := fakeConnectors{connectors: []connect.Connector{
+		{Name: "kafka3o-backup-orders", Type: "sink", State: "RUNNING"},
+		{Name: "kafka3o-backup-payments", Type: "sink", State: "PAUSED"},
+		{Name: "kafka3o-restore-gone", Type: "source", State: "RUNNING"},
+	}}
+	configs := fakeConfigsByName{"kafka3o-backup-orders": {"file.compression.type": "zstd", "consumer.override.auto.offset.reset": "latest", "file.max.records": "100"}}
+	backups, err := NewListBackups(settings, connectors, fakeObjects{}, nil, configs).Execute(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 3 {
+		t.Fatalf("backups = %+v", backups)
+	}
+	byTopic := map[string]Backup{}
+	for _, backup := range backups {
+		byTopic[backup.Topic] = backup
+	}
+	if got := byTopic["orders"].Settings; got == nil || *got != (BackupOptions{StartFrom: "latest", Compression: "zstd", RecordsPerFile: 100}) {
+		t.Fatalf("orders settings = %+v", got)
+	}
+	if byTopic["payments"].Settings != nil {
+		t.Fatalf("an unreadable configuration must leave settings out: %+v", byTopic["payments"].Settings)
+	}
+	if gone := byTopic["gone"]; gone.State != "NO JOB" || gone.Settings != nil {
+		t.Fatalf("a restore without a backup job has no settings: %+v", gone)
 	}
 }
