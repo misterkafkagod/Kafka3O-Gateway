@@ -140,3 +140,15 @@ func TestListBackupsReadsEffectiveSettings(t *testing.T) {
 		t.Fatalf("a restore without a backup job has no settings: %+v", gone)
 	}
 }
+
+func TestListBackupsFindsRestoresByTheirOwnNames(t *testing.T) {
+	connectors := fakeConnectors{connectors: []connect.Connector{
+		{Name: "kafka3o-backup-orders", Type: "sink", State: "PAUSED"},
+		{Name: "kafka3o-restore-orders~r-20261111T033128Z-bb9b5f2e", Type: "source", State: "RUNNING"},
+	}}
+	check := &fakeCheckRestore{status: RestoreStatus{RestoreID: "r-20261111T033128Z-bb9b5f2e", State: "RUNNING", Restored: 1, Total: 3}}
+	backups, err := NewListBackups(settings, connectors, fakeObjects{}, check, nil).Execute(context.Background())
+	if err != nil || len(backups) != 1 || backups[0].Restore == nil || backups[0].Restore.Total != 3 || len(check.topics) != 1 || check.topics[0] != "orders" {
+		t.Fatalf("%+v %v %v", backups, err, check.topics)
+	}
+}

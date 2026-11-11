@@ -53,10 +53,10 @@ func (s startRestore) Execute(ctx context.Context, topic string, filter RestoreF
 	}
 	resumeBackup, hasJob := false, false
 	for _, connector := range connectors {
-		switch connector.Name {
-		case RestoreConnectorName(topic):
+		if restoring, ok := ParseRestoreConnectorName(connector.Name); ok && restoring == topic {
 			return Restore{}, ErrRestoreInProgress
-		case BackupConnectorName(topic):
+		}
+		if connector.Name == BackupConnectorName(topic) {
 			resumeBackup, hasJob = connector.State != "PAUSED", true
 		}
 	}
@@ -113,7 +113,7 @@ func (s startRestore) Execute(ctx context.Context, topic string, filter RestoreF
 		}
 	}
 	id := s.restoreID()
-	if err := s.create.Execute(ctx, RestoreConnectorName(topic), RestoreConnectorConfig(s.settings, topic, compression, id, boundary, partitions, resumeBackup, window)); err != nil {
+	if err := s.create.Execute(ctx, RestoreConnectorName(topic, id), RestoreConnectorConfig(s.settings, topic, compression, id, boundary, partitions, resumeBackup, window)); err != nil {
 		if resumeBackup && !errors.Is(err, connect.ErrConnectActionUnknown) {
 			// Nothing was restored, so the backup goes back to running.
 			_ = s.manage.Execute(ctx, connect.Action{Kind: connect.ActionResume, Connector: BackupConnectorName(topic)})

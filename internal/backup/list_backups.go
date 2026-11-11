@@ -35,12 +35,11 @@ func (l listBackups) Execute(ctx context.Context) ([]Backup, error) {
 		return nil, err
 	}
 	prefix := BackupConnectorName("")
-	restorePrefix := RestoreConnectorName("")
 	restoring := map[string]connect.Connector{}
 	backedUp := map[string]bool{}
 	for _, connector := range connectors {
-		if strings.HasPrefix(connector.Name, restorePrefix) && connector.Type == "source" {
-			restoring[strings.TrimPrefix(connector.Name, restorePrefix)] = connector
+		if topic, ok := ParseRestoreConnectorName(connector.Name); ok && connector.Type == "source" {
+			restoring[topic] = connector
 		}
 		if strings.HasPrefix(connector.Name, prefix) && connector.Type == "sink" {
 			backedUp[strings.TrimPrefix(connector.Name, prefix)] = true

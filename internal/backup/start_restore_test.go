@@ -36,7 +36,7 @@ func TestStartRestorePausesTheBackupAndCreatesTheRestore(t *testing.T) {
 	if len(manage.actions) != 1 || manage.actions[0] != (connect.Action{Kind: "pause", Connector: "kafka3o-backup-orders"}) {
 		t.Fatalf("actions = %+v", manage.actions)
 	}
-	if create.name != "kafka3o-restore-orders" || create.config["transforms.unwrap.snapshot.boundary"] != "0:0,1:4" ||
+	if create.name != "kafka3o-restore-orders~r-42" || create.config["transforms.unwrap.snapshot.boundary"] != "0:0,1:4" ||
 		create.config["transforms.unwrap.resume.backup"] != "true" || create.config["tasks.max"] != "2" ||
 		create.config["file.compression.type"] != "gzip" || create.config["file.name.template"] != "{{topic}}-{{partition}}-{{start_offset}}.gz" {
 		t.Fatalf("created %s %v", create.name, create.config)
@@ -161,5 +161,22 @@ func TestStartRestoreRefusesFiltersBeforeConnect(t *testing.T) {
 		if !errors.Is(err, ErrInvalidRestoreFilter) || len(manage.actions) != 0 || create.name != "" {
 			t.Errorf("%s: err %v, actions %+v, created %q", name, err, manage.actions, create.name)
 		}
+	}
+}
+
+func TestStartRestoreSeesARunningRestoreUnderItsOwnName(t *testing.T) {
+	connectors := fakeConnectors{connectors: []connect.Connector{
+		{Name: "kafka3o-restore-orders-archive~r-1", Type: "source", State: "RUNNING"},
+		{Name: "kafka3o-restore-orders~r-20261111T033128Z-bb9b5f2e", Type: "source", State: "RUNNING"},
+	}}
+	create := &fakeCreate{}
+	_, err := NewStartRestore(settings, connectors, fakeConnectorConfig{}, mixedObjects, &fakeManage{}, create, func() string { return "r" }, time.Second).Execute(context.Background(), "orders", RestoreFilter{})
+	if !errors.Is(err, ErrRestoreInProgress) || create.name != "" {
+		t.Fatalf("err %v, created %q", err, create.name)
+	}
+	other := fakeConnectors{connectors: connectors.connectors[:1]}
+	if _, err := NewStartRestore(settings, other, fakeConnectorConfig{err: connect.ErrConnectorNotFound}, mixedObjects, &fakeManage{}, create, func() string { return "r-2" }, time.Second).
+		Execute(context.Background(), "orders", RestoreFilter{}); err != nil || create.name != "kafka3o-restore-orders~r-2" {
+		t.Fatalf("another topic's restore blocked this one: %v %q", err, create.name)
 	}
 }
