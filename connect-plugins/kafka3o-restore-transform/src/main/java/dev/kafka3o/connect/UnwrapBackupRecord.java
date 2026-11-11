@@ -18,7 +18,8 @@ import org.apache.kafka.connect.transforms.Transformation;
 
 /**
  * Restores one Kafka3O backup line (Aiven S3 sink jsonl with base64 key, value and headers) as the original record,
- * marks it with the restore header so backups skip it, and drops records from objects outside the restore's snapshot.
+ * marks it with the restore header so backups skip it, and drops records from objects outside the restore's snapshot
+ * or with timestamps outside its optional time window.
  * The lifecycle methods are required by Kafka Connect's {@link Transformation} interface.
  */
 public class UnwrapBackupRecord<R extends ConnectRecord<R>> implements Transformation<R> {
@@ -27,10 +28,13 @@ public class UnwrapBackupRecord<R extends ConnectRecord<R>> implements Transform
         .define("restore.id", ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE, ConfigDef.Importance.HIGH, "Value of the kafka3o-restore header")
         .define("snapshot.boundary", ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE, ConfigDef.Importance.HIGH,
             "Highest backup object start offset per partition, as partition:offset,...")
-        .define("resume.backup", ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.LOW, "Whether the Gateway resumes the backup afterwards");
+        .define("resume.backup", ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.LOW, "Whether the Gateway resumes the backup afterwards")
+        .define("time.from", ConfigDef.Type.STRING, "", ConfigDef.Importance.MEDIUM, "Earliest record timestamp kept, epoch ms (inclusive)")
+        .define("time.to", ConfigDef.Type.STRING, "", ConfigDef.Importance.MEDIUM, "Record timestamps kept are before this, epoch ms (exclusive)");
 
     private byte[] restoreId;
     private SnapshotBoundary boundary;
+    private TimeWindow window;
 
     @Override
     public void configure(Map<String, ?> configs) {
@@ -41,6 +45,9 @@ public class UnwrapBackupRecord<R extends ConnectRecord<R>> implements Transform
         restoreId = id.toString().getBytes(StandardCharsets.UTF_8);
         Object specification = configs.get("snapshot.boundary");
         boundary = new SnapshotBoundary(specification == null ? null : specification.toString());
+        Object from = configs.get("time.from");
+        Object to = configs.get("time.to");
+        window = new TimeWindow(from == null ? null : from.toString(), to == null ? null : to.toString());
     }
 
     @Override
@@ -59,6 +66,9 @@ public class UnwrapBackupRecord<R extends ConnectRecord<R>> implements Transform
             byte[] originalKey = line.get("key") == null ? null : base64.decode((String) line.get("key"));
             byte[] originalValue = line.get("value") == null ? null : base64.decode((String) line.get("value"));
             long timestamp = Instant.parse((String) line.get("timestamp")).toEpochMilli();
+            if (!window.includes(timestamp)) {
+                return null;
+            }
             ConnectHeaders headers = new ConnectHeaders();
             if (line.get("headers") instanceof List<?> list) {
                 for (Object entry : list) {

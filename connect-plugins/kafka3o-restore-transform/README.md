@@ -8,7 +8,8 @@ headers; gzip, zstd, snappy or uncompressed). See the UI repository's
 - `dev.kafka3o.connect.UnwrapBackupRecord`: turns each backup line back into the original record (key, value,
   headers, timestamp, partition), adds the header `kafka3o-restore: <restore.id>` so the topic's backup skips it, and
   drops records from objects newer than `snapshot.boundary` (`partition:offset,...`, the highest object start offset
-  per partition when the restore started).
+  per partition when the restore started) or, when `time.from` / `time.to` are set (epoch ms, `[from, to)`), whose
+  timestamps fall outside that window.
 
 Build with Java 21 (Temurin 21.0.13) and Maven 3.9.16, against connect-api 4.3.2 (Kafka 4.3.2 fixes the lz4-java and snappy-java advisories in 4.3.1):
 

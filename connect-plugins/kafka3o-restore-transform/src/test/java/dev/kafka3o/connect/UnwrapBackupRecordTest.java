@@ -89,4 +89,24 @@ class UnwrapBackupRecordTest {
         assertThrows(ConfigException.class, () -> new UnwrapBackupRecord<SourceRecord>().configure(Map.of("snapshot.boundary", "0:1")));
         assertThrows(ConfigException.class, () -> new UnwrapBackupRecord<SourceRecord>().configure(Map.of("restore.id", "r-1")));
     }
+
+    @Test
+    void dropsRecordsOutsideTheTimeWindow() {
+        UnwrapBackupRecord<SourceRecord> windowed = new UnwrapBackupRecord<>();
+        long start = Instant.parse("2026-11-11T01:00:00Z").toEpochMilli();
+        long end = Instant.parse("2026-11-11T02:00:00Z").toEpochMilli();
+        windowed.configure(Map.of("restore.id", "r-1", "snapshot.boundary", "0:20", "time.from", Long.toString(start), "time.to", Long.toString(end)));
+        for (String timestamp : new String[] {"2026-11-11T00:59:59.999Z", "2026-11-11T02:00:00Z"}) {
+            Map<String, Object> backup = new HashMap<>(Map.of("value", base64("v"), "timestamp", timestamp, "headers", List.of()));
+            assertNull(windowed.apply(line("p/t-0-00000000000000000000.gz", backup)), timestamp);
+        }
+        Map<String, Object> inside = new HashMap<>(Map.of("value", base64("v"), "timestamp", "2026-11-11T01:00:00Z", "headers", List.of()));
+        assertEquals(Instant.parse("2026-11-11T01:00:00Z").toEpochMilli(), windowed.apply(line("p/t-0-00000000000000000000.zst", inside)).timestamp());
+    }
+
+    @Test
+    void refusesAReversedTimeWindow() {
+        assertThrows(ConfigException.class, () -> new UnwrapBackupRecord<SourceRecord>().configure(
+            Map.of("restore.id", "r-1", "snapshot.boundary", "0:20", "time.from", "2000", "time.to", "1000")));
+    }
 }
