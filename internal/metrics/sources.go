@@ -6,4 +6,5 @@ type Sources struct {
 	Health  ReadPartitionHealth
 	Offsets ReadEndOffsets
 	Quorum  ReadQuorum
+	Brokers ReadBrokerLeaders
 }

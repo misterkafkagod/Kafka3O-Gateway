@@ -84,7 +84,7 @@ func main() {
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
 	getMetrics := metrics.NewGetMetrics(metrics.Sources{LogDirs: kafka.NewReadLogDirs(admin), Health: kafka.NewReadPartitionHealth(admin),
-		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient)}, cfg.Kafka.Timeout, time.Now)
+		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin)}, cfg.Kafka.Timeout, time.Now)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, kafkaClient), cfg.Kafka.Timeout)

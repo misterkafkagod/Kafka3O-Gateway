@@ -25,6 +25,7 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"partitions\"} %d\n", up(m.Partitions.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"endOffsets\"} %d\n", up(m.EndOffsets.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"quorum\"} %d\n", up(m.Quorum.Error))
+	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"brokers\"} %d\n", up(m.Brokers.Error))
 
 	for _, gauge := range []struct {
 		name, help string
@@ -77,6 +78,22 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 			if replica.Lag != nil {
 				fmt.Fprintf(out, "kafka3o_quorum_replica_lag{replica=\"%d\",role=\"%s\"} %d\n", replica.ID, EscapeLabelValue(replica.Role), *replica.Lag)
 			}
+		}
+	}
+	for _, gauge := range []struct {
+		name, help string
+		value      func(BrokerLeaders) int
+	}{
+		{"kafka3o_broker_leaders", "Partitions the broker leads.", func(b BrokerLeaders) int { return b.Leaders }},
+		{"kafka3o_broker_replicas", "Partition replicas the broker holds.", func(b BrokerLeaders) int { return b.Replicas }},
+		{"kafka3o_broker_non_preferred_leaders", "Partitions the broker leads although it is not their preferred replica.", func(b BrokerLeaders) int { return b.NonPreferredLeaders }},
+	} {
+		if m.Brokers.Error != "" {
+			break
+		}
+		family(gauge.name, "gauge", gauge.help)
+		for _, broker := range m.Brokers.Brokers {
+			fmt.Fprintf(out, "%s{broker=\"%d\"} %d\n", gauge.name, broker.Broker, gauge.value(broker))
 		}
 	}
 	return out.Flush()

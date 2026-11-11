@@ -98,3 +98,19 @@ func TestWritePrometheusText_Quorum(t *testing.T) {
 		t.Errorf("a failed quorum section wrote values:\n%s", out.String())
 	}
 }
+
+func TestWritePrometheusText_Brokers(t *testing.T) {
+	var out strings.Builder
+	_ = WritePrometheusText(&out, ClusterMetrics{Brokers: Brokers{Brokers: []BrokerLeaders{{Broker: 1, Leaders: 39, Replicas: 40, NonPreferredLeaders: 2}}}})
+	for _, line := range []string{`kafka3o_metrics_section_up{section="brokers"} 1`, `kafka3o_broker_leaders{broker="1"} 39`,
+		`kafka3o_broker_replicas{broker="1"} 40`, `kafka3o_broker_non_preferred_leaders{broker="1"} 2`} {
+		if !strings.Contains(out.String(), line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	out.Reset()
+	_ = WritePrometheusText(&out, ClusterMetrics{Brokers: Brokers{Error: "read metadata: timeout"}})
+	if !strings.Contains(out.String(), `kafka3o_metrics_section_up{section="brokers"} 0`) || strings.Contains(out.String(), "kafka3o_broker_") {
+		t.Errorf("a failed brokers section wrote values:\n%s", out.String())
+	}
+}

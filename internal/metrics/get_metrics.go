@@ -31,6 +31,11 @@ func (g getMetrics) Execute(ctx context.Context) ClusterMetrics {
 	} else {
 		result.Quorum = quorum
 	}
+	if brokers, err := g.sources.Brokers.Execute(ctx); err != nil {
+		result.Brokers = Brokers{Error: err.Error(), Brokers: []BrokerLeaders{}}
+	} else {
+		result.Brokers = Brokers{Brokers: brokers}
+	}
 	dirs, err := g.sources.LogDirs.Execute(ctx)
 	if err != nil {
 		result.LogDirs.Error = err.Error()

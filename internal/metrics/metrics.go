@@ -11,6 +11,7 @@ type ClusterMetrics struct {
 	LargestTopics TopicSizes `json:"largestTopics"`
 	EndOffsets    EndOffsets `json:"endOffsets"`
 	Quorum        Quorum     `json:"quorum"`
+	Brokers       Brokers    `json:"brokers"`
 }
 
 type LogDirs struct {
@@ -98,4 +99,19 @@ type QuorumReplica struct {
 	Lag          *int64     `json:"lag"`
 	LastFetch    *time.Time `json:"lastFetch"`
 	LastCaughtUp *time.Time `json:"lastCaughtUp"`
+}
+
+// Brokers is how partition leadership and replicas are spread over the brokers.
+type Brokers struct {
+	Error   string          `json:"error,omitempty"`
+	Brokers []BrokerLeaders `json:"brokers"`
+}
+
+// BrokerLeaders counts the partitions a broker leads, the replicas it holds and the partitions it leads although
+// it is not their preferred (first) replica.
+type BrokerLeaders struct {
+	Broker              int32 `json:"broker"`
+	Leaders             int   `json:"leaders"`
+	Replicas            int   `json:"replicas"`
+	NonPreferredLeaders int   `json:"nonPreferredLeaders"`
 }
