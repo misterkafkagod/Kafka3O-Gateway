@@ -4,9 +4,12 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** The partition and first offset encoded in a backup object name: {@code <prefix><topic>-<partition>-<start offset>.gz}. */
+/**
+ * The partition and first offset encoded in a backup object name: {@code <prefix><topic>-<partition>-<start offset>}
+ * plus the compression's extension ({@code .gz}, {@code .zst}, {@code .snappy}, or none).
+ */
 public record BackupObjectKey(int partition, long startOffset) {
-    private static final Pattern NAME = Pattern.compile("^.+-(\\d{1,10})-(\\d{1,20})(\\.gz)?$");
+    private static final Pattern NAME = Pattern.compile("^.+-(\\d{1,10})-(\\d{1,20})(\\.gz|\\.zst|\\.snappy)?$");
 
     public static Optional<BackupObjectKey> parse(String objectKey) {
         if (objectKey == null) {

@@ -12,11 +12,14 @@ class BackupObjectKeyTest {
         assertEquals(Optional.of(new BackupObjectKey(0, 20)),
             BackupObjectKey.parse("kafka-a/kafka3o-m10-verify/kafka3o-m10-verify-0-00000000000000000020.gz"));
         assertEquals(Optional.of(new BackupObjectKey(12, 0)), BackupObjectKey.parse("orders-v2-12-00000000000000000000"));
+        assertEquals(Optional.of(new BackupObjectKey(1, 35)), BackupObjectKey.parse("p/orders-1-00000000000000000035.zst"));
+        assertEquals(Optional.of(new BackupObjectKey(0, 37)), BackupObjectKey.parse("p/orders-0-00000000000000000037.snappy"));
     }
 
     @Test
     void rejectsOtherNames() {
-        for (String name : new String[] {null, "", "notes.txt", "orders-x-1.gz", "orders-1-99999999999999999999.gz", "-1-2.gz"}) {
+        for (String name : new String[] {null, "", "notes.txt", "orders-x-1.gz", "orders-1-99999999999999999999.gz", "-1-2.gz",
+            "orders-0-00000000000000000000.lz4", "orders-0-00000000000000000000.zst.tmp"}) {
             assertTrue(BackupObjectKey.parse(name).isEmpty(), String.valueOf(name));
         }
     }
