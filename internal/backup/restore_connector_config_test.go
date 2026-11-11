@@ -3,7 +3,7 @@ package backup
 import "testing"
 
 func TestRestoreConnectorConfig(t *testing.T) {
-	config := RestoreConnectorConfig(settings, "orders", "r-1", "0:20,2:5", 3, true)
+	config := RestoreConnectorConfig(settings, "orders", "gzip", "r-1", "0:20,2:5", 3, true)
 	for key, want := range map[string]string{
 		"connector.class":                     "io.aiven.kafka.connect.s3.source.S3SourceConnector",
 		"topic":                               "orders",
@@ -11,6 +11,7 @@ func TestRestoreConnectorConfig(t *testing.T) {
 		"tasks.max":                           "3",
 		"distribution.type":                   "partition",
 		"file.name.template":                  "{{topic}}-{{partition}}-{{start_offset}}.gz",
+		"file.compression.type":               "gzip",
 		"transforms.unwrap.type":              "dev.kafka3o.connect.UnwrapBackupRecord",
 		"transforms.unwrap.restore.id":        "r-1",
 		"transforms.unwrap.snapshot.boundary": "0:20,2:5",
@@ -21,7 +22,20 @@ func TestRestoreConnectorConfig(t *testing.T) {
 			t.Errorf("%s = %q, want %q", key, config[key], want)
 		}
 	}
-	if RestoreConnectorConfig(settings, "orders", "r", "0:1", 40, false)["tasks.max"] != "8" || RestoreConnectorConfig(settings, "orders", "r", "", 0, false)["tasks.max"] != "1" {
+	if RestoreConnectorConfig(settings, "orders", "gzip", "r", "0:1", 40, false)["tasks.max"] != "8" || RestoreConnectorConfig(settings, "orders", "gzip", "r", "", 0, false)["tasks.max"] != "1" {
 		t.Fatal("tasks.max is not bounded to 1..8")
+	}
+}
+
+func TestRestoreConnectorConfigFollowsTheCompression(t *testing.T) {
+	for compression, template := range map[string]string{
+		"zstd":   "{{topic}}-{{partition}}-{{start_offset}}.zst",
+		"snappy": "{{topic}}-{{partition}}-{{start_offset}}.snappy",
+		"none":   "{{topic}}-{{partition}}-{{start_offset}}",
+	} {
+		config := RestoreConnectorConfig(settings, "orders", compression, "r", "0:1", 1, false)
+		if config["file.name.template"] != template || config["file.compression.type"] != compression {
+			t.Errorf("%s: %q %q", compression, config["file.name.template"], config["file.compression.type"])
+		}
 	}
 }

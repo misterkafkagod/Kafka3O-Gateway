@@ -67,4 +67,6 @@ type Restore struct {
 	Topic     string `json:"topic"`
 	RestoreID string `json:"restoreId"`
 	Objects   int    `json:"objects"`
+	// Skipped counts stored objects written with another compression than the restore reads.
+	Skipped int `json:"skipped"`
 }

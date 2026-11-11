@@ -2,9 +2,12 @@ package backup
 
 import "strconv"
 
+var compressionExtensions = map[string]string{"gzip": ".gz", "zstd": ".zst", "snappy": ".snappy", "none": ""}
+
 // RestoreConnectorConfig is the s3-backup-connectors recipe's source configuration with the Kafka3O restore transform.
 // Each partition's objects go to one task in order, so restores run in parallel across partitions without reordering.
-func RestoreConnectorConfig(settings Settings, topic, restoreID, boundary string, partitions int, resumeBackup bool) map[string]string {
+// The source reads only objects of the given compression (gzip, zstd, snappy or none), named with its extension.
+func RestoreConnectorConfig(settings Settings, topic, compression, restoreID, boundary string, partitions int, resumeBackup bool) map[string]string {
 	tasks := partitions
 	if tasks < 1 {
 		tasks = 1
@@ -23,8 +26,8 @@ func RestoreConnectorConfig(settings Settings, topic, restoreID, boundary string
 		"aws.s3.region":                       settings.Region,
 		"aws.s3.bucket.name":                  settings.Bucket,
 		"aws.s3.prefix":                       settings.Prefix + topic + "/",
-		"file.name.template":                  "{{topic}}-{{partition}}-{{start_offset}}.gz",
-		"file.compression.type":               "gzip",
+		"file.name.template":                  "{{topic}}-{{partition}}-{{start_offset}}" + compressionExtensions[compression],
+		"file.compression.type":               compression,
 		"input.format":                        "jsonl",
 		"key.converter":                       byteArrayConverter,
 		"value.converter":                     byteArrayConverter,

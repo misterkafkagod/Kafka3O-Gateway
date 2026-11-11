@@ -14,15 +14,28 @@ func TestSnapshotBoundary(t *testing.T) {
 		{Key: "kafka-a/orders/orders-1-00000000000000000003.gz.tmp"},
 		{Key: "kafka-a/orders/other-0-00000000000000000099.gz"},
 	}
-	boundary, count, partitions := SnapshotBoundary(objects, "orders")
+	boundary, count, partitions := SnapshotBoundary(objects, "orders", "gzip")
 	if boundary != "0:20,2:5" || count != 3 || partitions != 2 {
 		t.Fatalf("boundary %q, count %d, partitions %d", boundary, count, partitions)
 	}
-	if boundary, count, _ := SnapshotBoundary(nil, "orders"); boundary != "" || count != 0 {
+	if boundary, count, _ := SnapshotBoundary(nil, "orders", "gzip"); boundary != "" || count != 0 {
 		t.Fatalf("empty: %q %d", boundary, count)
 	}
 	// Topic names may contain dashes and digits.
-	if boundary, _, _ := SnapshotBoundary([]s3store.Object{{Key: "p/a-1-b-3-00000000000000000007.gz"}}, "a-1-b"); boundary != "3:7" {
+	if boundary, _, _ := SnapshotBoundary([]s3store.Object{{Key: "p/a-1-b-3-00000000000000000007.gz"}}, "a-1-b", "gzip"); boundary != "3:7" {
 		t.Fatalf("dashed topic: %q", boundary)
+	}
+}
+
+func TestSnapshotBoundaryKeepsOnlyTheCompression(t *testing.T) {
+	objects := []s3store.Object{
+		{Key: "kafka-a/orders/orders-0-00000000000000000000.gz"},
+		{Key: "kafka-a/orders/orders-0-00000000000000000040.zst"},
+		{Key: "kafka-a/orders/orders-1-00000000000000000002"},
+	}
+	for compression, want := range map[string]string{"gzip": "0:0", "zstd": "0:40", "none": "1:2", "snappy": ""} {
+		if boundary, _, _ := SnapshotBoundary(objects, "orders", compression); boundary != want {
+			t.Errorf("%s: %q, want %q", compression, boundary, want)
+		}
 	}
 }

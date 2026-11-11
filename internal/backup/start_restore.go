@@ -16,6 +16,7 @@ type StartRestore interface {
 type startRestore struct {
 	settings   Settings
 	connectors connect.ListConnectors
+	configs    connect.FetchConnectorConfig
 	objects    s3store.ListObjects
 	manage     connect.ManageConnector
 	create     connect.CreateConnector
@@ -23,9 +24,10 @@ type startRestore struct {
 	timeout    time.Duration
 }
 
-func NewStartRestore(settings Settings, connectors connect.ListConnectors, objects s3store.ListObjects, manage connect.ManageConnector,
-	create connect.CreateConnector, restoreID func() string, timeout time.Duration) StartRestore {
-	return startRestore{settings: settings, connectors: connectors, objects: objects, manage: manage, create: create, restoreID: restoreID, timeout: timeout}
+func NewStartRestore(settings Settings, connectors connect.ListConnectors, configs connect.FetchConnectorConfig, objects s3store.ListObjects,
+	manage connect.ManageConnector, create connect.CreateConnector, restoreID func() string, timeout time.Duration) StartRestore {
+	return startRestore{settings: settings, connectors: connectors, configs: configs, objects: objects, manage: manage, create: create,
+		restoreID: restoreID, timeout: timeout}
 }
 
 // Execute fixes the restore's snapshot to the objects that exist now, pauses the topic's running backup so it cannot
@@ -43,20 +45,42 @@ func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error
 	if err != nil {
 		return Restore{}, err
 	}
-	resumeBackup := false
+	resumeBackup, hasJob := false, false
 	for _, connector := range connectors {
 		switch connector.Name {
 		case RestoreConnectorName(topic):
 			return Restore{}, ErrRestoreInProgress
 		case BackupConnectorName(topic):
-			resumeBackup = connector.State != "PAUSED"
+			resumeBackup, hasJob = connector.State != "PAUSED", true
 		}
 	}
 	objects, err := s.objects.Execute(ctx, s.settings.Prefix+topic+"/")
 	if err != nil {
 		return Restore{}, errors.Join(ErrStorageUnavailable, err)
 	}
-	boundary, count, partitions := SnapshotBoundary(objects, topic)
+	// The source reads one compression: the backup job's, or without a job the newest object's.
+	compression := ""
+	if hasJob {
+		config, err := s.configs.Execute(ctx, BackupConnectorName(topic))
+		if err != nil {
+			return Restore{}, err
+		}
+		compression = ReadBackupOptions(config).Compression
+	}
+	stored := 0
+	var newest s3store.Object
+	for _, object := range objects {
+		if name, _, _, ok := ParseBackupObjectName(object.Key); ok && name == topic {
+			stored++
+			if stored == 1 || object.LastModified.After(newest.LastModified) {
+				newest = object
+			}
+		}
+	}
+	if compression == "" {
+		compression = BackupObjectCompression(newest.Key)
+	}
+	boundary, count, partitions := SnapshotBoundary(objects, topic, compression)
 	if count == 0 {
 		return Restore{}, ErrNothingToRestore
 	}
@@ -66,7 +90,7 @@ func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error
 		}
 	}
 	id := s.restoreID()
-	if err := s.create.Execute(ctx, RestoreConnectorName(topic), RestoreConnectorConfig(s.settings, topic, id, boundary, partitions, resumeBackup)); err != nil {
+	if err := s.create.Execute(ctx, RestoreConnectorName(topic), RestoreConnectorConfig(s.settings, topic, compression, id, boundary, partitions, resumeBackup)); err != nil {
 		if resumeBackup && !errors.Is(err, connect.ErrConnectActionUnknown) {
 			// Nothing was restored, so the backup goes back to running.
 			_ = s.manage.Execute(ctx, connect.Action{Kind: connect.ActionResume, Connector: BackupConnectorName(topic)})
@@ -76,5 +100,5 @@ func (s startRestore) Execute(ctx context.Context, topic string) (Restore, error
 		}
 		return Restore{}, err
 	}
-	return Restore{Topic: topic, RestoreID: id, Objects: count}, nil
+	return Restore{Topic: topic, RestoreID: id, Objects: count, Skipped: stored - count}, nil
 }

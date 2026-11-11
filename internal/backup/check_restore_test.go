@@ -94,3 +94,16 @@ func TestCheckRestoreLeavesFailedRestoresAndBackupsAlone(t *testing.T) {
 		t.Fatalf("actions = %+v", manage.actions)
 	}
 }
+
+func TestCheckRestoreCountsOnlyTheRestoresCompression(t *testing.T) {
+	const zstdFirst, zstdSecond = "kafka-a/orders/orders-0-00000000000000000012.zst", "kafka-a/orders/orders-1-00000000000000000003.zst"
+	config := fakeConnectorConfig{config: map[string]string{"transforms.unwrap.restore.id": "r-1", "transforms.unwrap.snapshot.boundary": "0:12,1:3",
+		"transforms.unwrap.resume.backup": "false", "file.compression.type": "zstd"}}
+	objects := fakeObjects{byPrefix: map[string][]s3store.Object{"kafka-a/orders/": {{Key: first}, {Key: zstdFirst}, {Key: zstdSecond}}}}
+	manage := &fakeManage{}
+	status := NewCheckRestore(settings, config, objects, fakeCounts{first: 20, zstdFirst: 4, zstdSecond: 2},
+		fakeOffsets{committed: map[string]int64{zstdFirst: 4, zstdSecond: 2}}, manage).Execute(context.Background(), "orders", runningRestore)
+	if !status.Finished || status.Total != 6 || status.Restored != 6 {
+		t.Fatalf("the gzip object of an earlier backup blocked or joined the zstd restore: %+v", status)
+	}
+}

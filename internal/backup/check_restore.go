@@ -60,10 +60,11 @@ func (c checkRestore) Execute(ctx context.Context, topic string, connector conne
 		status.Error = firstNonEmpty(status.Error, "restore progress is unavailable: "+err.Error())
 		return status
 	}
+	compression := firstNonEmpty(config["file.compression.type"], "gzip")
 	for _, object := range objects {
 		name, partition, offset, ok := ParseBackupObjectName(object.Key)
 		highest, inSnapshot := boundary[partition]
-		if !ok || name != topic || !inSnapshot || offset > highest {
+		if !ok || name != topic || !inSnapshot || offset > highest || BackupObjectCompression(object.Key) != compression {
 			continue
 		}
 		records, err := c.count.Execute(ctx, object)

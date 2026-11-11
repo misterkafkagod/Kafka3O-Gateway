@@ -114,7 +114,7 @@ func main() {
 		_, _ = rand.Read(suffix)
 		return "r-" + time.Now().UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(suffix)
 	}
-	startRestore := backup.NewStartRestore(backupSettings, listConnectors, backupObjects, manageConnector,
+	startRestore := backup.NewStartRestore(backupSettings, listConnectors, connect.NewFetchConnectorConfig(cfg.Connect.URL, connectClient), backupObjects, manageConnector,
 		connect.NewCreateConnector(cfg.Connect.URL, connectClient), restoreID, cfg.Kafka.Timeout)
 	describeConfigurations := kafka.NewDescribeConfigurations(kafkaClient)
 	getConfigurations := settings.NewGetConfigurations(describeConfigurations, cfg.Kafka.Timeout)
