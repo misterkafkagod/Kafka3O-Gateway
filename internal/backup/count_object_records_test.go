@@ -47,11 +47,26 @@ func TestCountObjectRecordsCountsLinesAndCaches(t *testing.T) {
 	}
 }
 
+func TestCountObjectRecordsReadsEveryCompression(t *testing.T) {
+	const lines = "{\"value\":\"x\"}\n{\"value\":\"y\"}\n"
+	get := &fakeGet{bodies: map[string][]byte{"o-0-00000000000000000000.zst": zstandard(lines), "o-0-00000000000000000002.snappy": xerialSnappy(lines),
+		"o-0-00000000000000000004": []byte(lines)}}
+	count := NewCountObjectRecords(get)
+	for key := range get.bodies {
+		if n, err := count.Execute(context.Background(), s3store.Object{Key: key}); err != nil || n != 2 {
+			t.Errorf("%s: %d %v", key, n, err)
+		}
+	}
+}
+
 func TestCountObjectRecordsFailures(t *testing.T) {
-	get := &fakeGet{bodies: map[string][]byte{"plain.gz": []byte("not gzip")}}
+	get := &fakeGet{bodies: map[string][]byte{"plain.gz": []byte("not gzip"), "bad.zst": []byte("not zstd")}}
 	count := NewCountObjectRecords(get)
 	if _, err := count.Execute(context.Background(), s3store.Object{Key: "plain.gz"}); !errors.Is(err, ErrStorageUnavailable) {
 		t.Errorf("not gzip: %v", err)
+	}
+	if _, err := count.Execute(context.Background(), s3store.Object{Key: "bad.zst"}); !errors.Is(err, ErrStorageUnavailable) {
+		t.Errorf("not zstd: %v", err)
 	}
 	if _, err := count.Execute(context.Background(), s3store.Object{Key: "missing.gz"}); !errors.Is(err, s3store.ErrUnavailable) {
 		t.Errorf("missing: %v", err)

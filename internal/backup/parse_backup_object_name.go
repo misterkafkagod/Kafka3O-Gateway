@@ -6,7 +6,8 @@ import (
 	"strconv"
 )
 
-var backupObjectName = regexp.MustCompile(`^(.+)-(\d{1,10})-(\d{20})\.gz$`)
+// backupObjectName matches the sink's file names; the extension follows the compression (none has none).
+var backupObjectName = regexp.MustCompile(`^(.+)-(\d{1,10})-(\d{20})(\.gz|\.zst|\.snappy)?$`)
 
 // ParseBackupObjectName reads the topic, partition and start offset from a backup object key's file name.
 func ParseBackupObjectName(key string) (topic string, partition int, startOffset int64, ok bool) {

@@ -2,7 +2,6 @@ package backup
 
 import (
 	"bufio"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"strconv"
@@ -13,7 +12,7 @@ import (
 
 const recordCountCacheLimit = 100000
 
-// CountObjectRecords counts the backup records (jsonl lines) in one gzip object.
+// CountObjectRecords counts the backup records (jsonl lines) in one object, decompressed by its file name.
 type CountObjectRecords interface {
 	Execute(ctx context.Context, object s3store.Object) (int64, error)
 }
@@ -42,11 +41,13 @@ func (c countObjectRecords) Execute(ctx context.Context, object s3store.Object) 
 		return 0, err
 	}
 	defer body.Close()
-	unzipped, err := gzip.NewReader(body)
+	compression := BackupObjectCompression(object.Key)
+	lines, err := OpenBackupObject(body, compression)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s is not gzip: %w", ErrStorageUnavailable, object.Key, err)
+		return 0, fmt.Errorf("%w: %s is not %s: %w", ErrStorageUnavailable, object.Key, compression, err)
 	}
-	scanner := bufio.NewScanner(unzipped)
+	defer lines.Close()
+	scanner := bufio.NewScanner(lines)
 	scanner.Buffer(make([]byte, 64*1024), 64<<20)
 	for scanner.Scan() {
 		if len(scanner.Bytes()) > 0 {
