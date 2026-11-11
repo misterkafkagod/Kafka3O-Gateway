@@ -83,9 +83,11 @@ func main() {
 	writeAdmin := kadm.NewClient(producer)
 
 	getCluster := cluster.NewGetCluster(kafka.NewDescribeCluster(kafkaClient), cfg.Kafka.Timeout)
+	connectClient := &http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	listConnectors := connect.NewListConnectors(connect.NewFetchConnectConnectors(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	listConsumerGroups := groups.NewListConsumerGroups(kafka.NewFetchConsumerGroups(admin), cfg.Kafka.Timeout)
 	getMetrics := metrics.NewGetMetrics(metrics.Sources{LogDirs: kafka.NewReadLogDirs(admin), Health: kafka.NewReadPartitionHealth(admin),
-		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin), Groups: listConsumerGroups}, cfg.Kafka.Timeout, time.Now)
+		Offsets: kafka.NewReadEndOffsets(admin), Quorum: kafka.NewReadQuorum(kafkaClient), Brokers: kafka.NewReadBrokerLeaders(admin), Groups: listConsumerGroups, Connect: listConnectors}, cfg.Kafka.Timeout, time.Now)
 	listTopics := topics.NewListTopics(kafka.NewListTopicMetadata(kafkaClient), kafka.NewCountTopicMessages(admin), cfg.Kafka.Timeout)
 	getTopicDetail := topics.NewGetTopicDetail(kafka.NewDescribeTopic(admin), cfg.Kafka.Timeout)
 	listLatestTopicMessages := topics.NewListLatestTopicMessages(kafka.NewListLatestTopicMessages(admin, kafkaClient), cfg.Kafka.Timeout)
@@ -97,8 +99,6 @@ func main() {
 	groupInactive := kafka.NewEnsureGroupInactive(admin)
 	previewOffsetReset := groups.NewPreviewOffsetReset(kafka.NewComputeOffsetResetPreview(groupInactive, admin), cfg.Kafka.Timeout)
 	applyOffsetReset := groups.NewApplyOffsetReset(kafka.NewCommitOffsetReset(groupInactive, admin, writeAdmin), cfg.Kafka.Timeout)
-	connectClient := &http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	listConnectors := connect.NewListConnectors(connect.NewFetchConnectConnectors(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	manageConnector := connect.NewManageConnector(connect.NewSendConnectAction(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)
 	backupSettings := backup.Settings{S3Endpoint: cfg.Backup.S3Endpoint, Bucket: cfg.Backup.Bucket, Region: cfg.Backup.Region, Prefix: cfg.Backup.Prefix}
 	startBackup := backup.NewStartBackup(backupSettings, connect.NewCreateConnector(cfg.Connect.URL, connectClient), cfg.Kafka.Timeout)

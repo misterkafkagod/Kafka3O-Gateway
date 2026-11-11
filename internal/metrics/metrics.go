@@ -13,6 +13,7 @@ type ClusterMetrics struct {
 	Quorum        Quorum     `json:"quorum"`
 	Brokers       Brokers    `json:"brokers"`
 	Groups        Groups     `json:"consumerGroups"`
+	Connect       Connect    `json:"connect"`
 }
 
 type LogDirs struct {
@@ -139,4 +140,21 @@ type GroupLag struct {
 	MaxPartitionLag   *string `json:"maxPartitionLag"`
 	UnknownPartitions int     `json:"unknownPartitions"`
 	Error             string  `json:"error,omitempty"`
+}
+
+// Connect counts the cluster's Kafka Connect connectors and tasks by state, as Connect reports them, and lists what
+// failed. NotConfigured is true for a cluster without Kafka Connect.
+type Connect struct {
+	Error         string           `json:"error,omitempty"`
+	NotConfigured bool             `json:"notConfigured,omitempty"`
+	Connectors    []StateCount     `json:"connectors"`
+	Tasks         []StateCount     `json:"tasks"`
+	Failures      []ConnectFailure `json:"failures"`
+}
+
+// ConnectFailure is a failed connector (Task nil) or task, with Connect's error summary.
+type ConnectFailure struct {
+	Connector string `json:"connector"`
+	Task      *int32 `json:"task"`
+	Error     string `json:"error"`
 }

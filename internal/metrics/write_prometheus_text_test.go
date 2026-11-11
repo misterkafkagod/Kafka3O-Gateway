@@ -139,3 +139,23 @@ func TestWritePrometheusText_ConsumerGroups(t *testing.T) {
 		t.Errorf("a failed groups section wrote values:\n%s", out.String())
 	}
 }
+
+func TestWritePrometheusText_Connect(t *testing.T) {
+	var out strings.Builder
+	_ = WritePrometheusText(&out, ClusterMetrics{Connect: Connect{Connectors: []StateCount{{State: "RUNNING", Count: 4}}, Tasks: []StateCount{{State: "FAILED", Count: 1}}}})
+	for _, line := range []string{`kafka3o_metrics_section_up{section="connect"} 1`, `kafka3o_connect_connectors{state="RUNNING"} 4`, `kafka3o_connect_tasks{state="FAILED"} 1`} {
+		if !strings.Contains(out.String(), line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	out.Reset()
+	_ = WritePrometheusText(&out, ClusterMetrics{Connect: Connect{NotConfigured: true}})
+	if strings.Contains(out.String(), "connect") {
+		t.Errorf("a cluster without Connect wrote Connect lines:\n%s", out.String())
+	}
+	out.Reset()
+	_ = WritePrometheusText(&out, ClusterMetrics{Connect: Connect{Error: "kafka connect is unreachable"}})
+	if !strings.Contains(out.String(), `kafka3o_metrics_section_up{section="connect"} 0`) || strings.Contains(out.String(), "kafka3o_connect_") {
+		t.Errorf("an unreachable Connect wrote values:\n%s", out.String())
+	}
+}

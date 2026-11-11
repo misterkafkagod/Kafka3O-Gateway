@@ -27,6 +27,9 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"quorum\"} %d\n", up(m.Quorum.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"brokers\"} %d\n", up(m.Brokers.Error))
 	fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"consumerGroups\"} %d\n", up(m.Groups.Error))
+	if !m.Connect.NotConfigured {
+		fmt.Fprintf(out, "kafka3o_metrics_section_up{section=\"connect\"} %d\n", up(m.Connect.Error))
+	}
 
 	for _, gauge := range []struct {
 		name, help string
@@ -122,6 +125,16 @@ func WritePrometheusText(w io.Writer, m ClusterMetrics) error {
 		family("kafka3o_consumer_group_unknown_lag_partitions", "gauge", "Partitions of the consumer group whose lag Kafka did not report.")
 		for _, group := range m.Groups.Groups {
 			fmt.Fprintf(out, "kafka3o_consumer_group_unknown_lag_partitions{group=\"%s\"} %d\n", EscapeLabelValue(group.Group), group.UnknownPartitions)
+		}
+	}
+	if m.Connect.Error == "" && !m.Connect.NotConfigured {
+		family("kafka3o_connect_connectors", "gauge", "Kafka Connect connectors by state.")
+		for _, state := range m.Connect.Connectors {
+			fmt.Fprintf(out, "kafka3o_connect_connectors{state=\"%s\"} %d\n", EscapeLabelValue(state.State), state.Count)
+		}
+		family("kafka3o_connect_tasks", "gauge", "Kafka Connect tasks by state.")
+		for _, state := range m.Connect.Tasks {
+			fmt.Fprintf(out, "kafka3o_connect_tasks{state=\"%s\"} %d\n", EscapeLabelValue(state.State), state.Count)
 		}
 	}
 	return out.Flush()
